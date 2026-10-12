@@ -1,359 +1,298 @@
-# Aegis 3D Safe Browser - Comprehensive Project Documentation
+# Aegis 3D Safe Browser: Comprehensive Project Documentation & Architectural Blueprint
 
-> **Next-Generation Zero-Trust Cyber Sandbox, 3D Threat Telemetry, and Scientific Intelligence Browser**  
-> **Lead Architect / Creator**: Narendra Borhade (`narendra.via.mail@gmail.com`)  
-> **Contributors**: Aditya Gaikwad (Frontend Developer), Ghanshyam Jadhav (Core Security & Systems)
-
----
-
-## Table of Contents
-1. [Executive Summary & System Overview](#1-executive-summary--system-overview)
-2. [High-Level Architecture](#2-high-level-architecture)
-3. [Technology Stack](#3-technology-stack)
-4. [Backend Server & API Specifications (`server.ts`)](#4-backend-server--api-specifications-serverts)
-5. [Frontend Architecture & State Management](#5-frontend-architecture--state-management)
-6. [Core Components Deep-Dive](#6-core-components-deep-dive)
-7. [Services & Subsystems](#7-services--subsystems)
-8. [PWA, Service Worker & Offline Resiliency](#8-pwa-service-worker--offline-resiliency)
-9. [Chrome Extension Generation Subsystem](#9-chrome-extension-generation-subsystem)
-10. [Setup, Deployment & Environment Configuration](#10-setup-deployment--environment-configuration)
-11. [Project Structure Directory Map](#11-project-structure-directory-map)
+> **A Next-Generation Zero-Trust Cyber Sandbox, 3D Threat Telemetry System, and Scientific Intelligence Browser**  
+> **Repository**: `aegis-3d-safe-browser` | **Version**: `2.5.0` | **Engine**: Zero-Trust DNS & Command Palette Sandbox
 
 ---
 
-## 1. Executive Summary & System Overview
+## Executive Summary
 
-**Aegis 3D Safe Browser** is a privacy-first, zero-trust web workstation and security analysis environment built with React 19, TypeScript, Tailwind CSS, Three.js, and Node.js/Express. It models web navigation through a multi-layered security prism, protecting users against malicious domains, clickjacking, MIME-confusion attacks, cross-site scripting (XSS), insecure DNS configurations, and unverified third-party scripts.
+The modern web is inundated with cross-site scripting (XSS), stealth telemetry tracking, DNS hijacking, SSL downgrade attacks, and unpatched client-side dependencies. **Aegis 3D Safe Browser** is a privacy-first web workstation designed from the ground up to counter these risks.
 
-### Key Capabilities:
-- **Zero-Trust Simulated & Sandboxed Web Navigation**: Multi-tab browsing with live threat blocking, ad/tracker filtering, quarantine sandboxes, and simulated phishing interception.
-- **Real-Time 3D Cyber Threat Telemetry**: Interactive Three.js particle shield and geospatial 3D visualization representing inbound packets, firewall mitigations, and network nodes.
-- **Deep Automated Vulnerability Scanner**: Audits HTTP headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Server leakage) and detects vulnerable client-side libraries (jQuery, Bootstrap, Lodash, legacy AngularJS) against known CVE databases.
-- **DNS-over-HTTPS (DoH) & Threat Profiler**: High-speed DoH lookups via Cloudflare and Google DoH proxies, inspecting A, AAAA, MX, TXT, NS, and CAA records alongside SPF, DMARC, and DNSSEC verification.
-- **Dual-Site Security Comparator**: Side-by-side comparative vulnerability benchmark evaluating response times, SSL hygiene, and defense posture.
-- **D3.js Data Visualizations**: Interactive SVG charts including Threat Heatmaps, Attack Vector Donuts, Severity Velocity timelines, and Realtime Telemetry lines.
-- **Gemini Copilot**: Integrated AI cybersecurity intelligence assistant powered by `@google/genai` (supporting `gemini-3.8-flash` and custom models).
-- **Client-Side Scientific Search Engine**: Direct CORS-compliant arXiv query engine and scientific literature discovery tool.
-- **Cryptographic Password Vault**: Zero-knowledge in-browser password and credential vault utilizing AES-GCM 256-bit encryption with PBKDF2 key derivation.
-- **Chrome Extension Generator**: One-click in-browser compilation of a Manifest V3 Chrome Extension package with customizable defense levels and rule manifests.
+Combining client-side zero-trust heuristics, Web Crypto AES-256 encryption, hardware-accelerated 3D WebGL visualizations via Three.js, interactive D3.js telemetry graphs, DNS-over-HTTPS (DoH) inspection, and Google Gemini AI threat intelligence, Aegis 3D transforms browsing from passive consumption into an active, hardened, and transparent cyber defense operation.
 
 ---
 
-## 2. High-Level Architecture
+## 1. Project Creators & Engineering Team
 
-The project employs a hybrid client-server model: Express serves both custom cybersecurity backend endpoints and Vite's development/production middleware.
+Aegis 3D Safe Browser was engineered by a specialized team dedicated to zero-trust web architectures, modern reactive UI engineering, and offensive/defensive cybersecurity heuristics.
+
+### Leadership & Core Contributors
 
 ```
-+----------------------------------------------------------------------------------+
-|                            User Browser / PWA Client                             |
-+----------------------------------------------------------------------------------+
-          |                                                       |
-          | UI Actions & State                                    | Three.js / D3.js
-          v                                                       v
-+-----------------------------+                           +-----------------------+
-|  React 19 App Container     |                           |  3D Cyber Scene &     |
-|  - Omnibar & Tab Manager    |                           |  Telemetry Charts     |
-|  - Session / Scroll Restore |                           |  - Three.js Particles |
-|  - Theme & Privacy Service  |                           |  - D3 Threat Heatmap  |
-+-----------------------------+                           +-----------------------+
++----------------------------------------------------------------------------------------------------+
+|                                    AEGIS CORE ENGINEERING TEAM                                     |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+|  [ Narendra Borhade ]               [ Aditya Gaikwad ]                [ Ghanshyam Jadhav ]         |
+|  Creator & Lead Security Architect  Frontend Developer                Core Security & Systems      |
+|  narendra.via.mail@gmail.com        gaikwadaditya0309@gmail.com       ghanshamjadhav8210@gmail.com |
+|                                                                                                    |
+|  - Zero-Trust Sandbox Concept       - Global Ctrl+K Command Palette   - Vulnerability Scanner      |
+|  - DoH & DNSSEC Resolution          - Multi-Tab & Viewport UX         - 30-Day D3 Heatmap Engine   |
+|  - Cloudflare & Threat Engines      - AES-256 Vault Interface         - Tracker & XSS Defense      |
++----------------------------------------------------------------------------------------------------+
+```
+
+### Detailed Contributor Profiles
+
+#### 1. Narendra Borhade — *Creator & Lead Cybersecurity Architect*
+- **Contact**: `narendra.via.mail@gmail.com`
+- **Role & Focus**: Overall architectural vision, system security boundaries, DoH resolver pipeline, and sandbox isolation.
+- **Key Contributions**:
+  - Engineered the Zero-Trust Threat Sandbox and domain risk classification algorithms.
+  - Implemented the dual-provider DNS-over-HTTPS (DoH) engine with fallback resolution (Cloudflare + Google).
+  - Architected the server-side API proxy gateway (`server.ts`) preventing client-side CORS issues.
+  - Directed the integration of the Gemini AI Copilot (`@google/genai`) for real-time CVE reasoning.
+
+#### 2. Aditya Gaikwad — *Frontend Developer & UI/UX Systems Specialist*
+- **Contact**: `gaikwadaditya0309@gmail.com`
+- **Role & Focus**: React 19 UI component architecture, glassmorphic styling, state restoration, and keyboard ergonomics.
+- **Key Contributions**:
+  - Developed the **Global `Ctrl+K` / `Cmd+K` Command Palette** with instant search, tab navigation, and cache purge actions.
+  - Built the multi-tab management system (tab grouping, color coding, pin states, and tab suspension mechanics).
+  - Designed the user-facing cryptographic Password Vault interface and session persistence algorithms with debounced scroll restoration.
+  - Crafted the mobile-first responsive viewport layouts and cybernetic UI aesthetics.
+
+#### 3. Ghanshyam Jadhav — *Core Security & Systems Contributor*
+- **Contact**: `ghanshamjadhav8210@gmail.com`
+- **Role & Focus**: Threat detection engines, vulnerability heuristics, telemetry visualizer pipelines, and client data protection.
+- **Key Contributions**:
+  - Implemented the **Automated Background Vulnerability Scanner** detecting legacy libraries (jQuery, Bootstrap, Lodash, AngularJS 1.x) and missing security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options).
+  - Engineered the 30-day interactive D3.js Threat Heatmap and Attack Vector Donut visualizers.
+  - Developed anti-fingerprinting rules, tracker sanitizers, and cookie/session clearing protocols.
+  - Co-designed the Manifest V3 Chrome Extension export generator.
+
+---
+
+## 2. What is the Project About?
+
+### The Core Problem
+Conventional web browsers execute third-party JavaScript with broad client access, silently exposing users to:
+1. **Ad Trackers & Fingerprinting**: Pervasive cross-site beacons building persistent identity profiles.
+2. **Invisible Vulnerabilities**: Outdated CDN libraries embedded in web applications carrying known CVEs.
+3. **Malicious Protocol Downgrades & Clickjacking**: Missing HTTP headers like HSTS, CSP, and X-Frame-Options.
+4. **Cache Poisoning & Malicious DNS**: Spoofed DNS resolutions routing traffic to credential harvest portals.
+5. **Memory Bloat**: Multiple unmanaged browser tabs consuming system RAM and CPU resources unchecked.
+
+### The Aegis 3D Solution
+Aegis 3D Safe Browser acts as a **protective cyber-workstation**:
+- **Simulates and Sandboxes**: Pages run within isolated sandboxes where traffic is scrutinized against threat heuristics before and during rendering.
+- **Visualizes in Real Time**: Uses hardware-accelerated 3D graphics to visualize network safety states and shield integrity.
+- **Audits Continuously**: Evaluates loaded hosts for CVE vulnerabilities, missing defense headers, and insecure DNS records.
+- **Preserves Privacy**: Offers zero-knowledge local encryption for credentials and session state that never leaves the local machine.
+
+---
+
+## 3. Best & Standout Features
+
+### 1. Hardware-Accelerated 3D Cyber Shield (`CyberScene3D.tsx`)
+- Powered by **Three.js** with high-density particle clouds and rotating wireframe shields.
+- Dynamic color shifts based on domain threat level:
+  - **Emerald / Cyan**: Safe, verified, encrypted endpoints.
+  - **Amber**: Missing defense headers or questionable tracking scripts.
+  - **Crimson**: Active threats, blocked domains, or critical CVE vectors.
+- Provides immediate visual spatial awareness of web safety.
+
+### 2. Live DNS-over-HTTPS (DoH) Inspector (`DnsScannerView.tsx`)
+- Performs high-speed cryptographic DNS queries over Cloudflare and Google DoH endpoints.
+- Analyzes `A`, `AAAA`, `MX`, `TXT`, `NS`, and `CAA` record sets.
+- Verifies **DNSSEC Authenticated Data (AD)** flags, SPF (`v=spf1`), and DMARC (`v=DMARC1`) records to detect email spoofing and DNS cache-poisoning risks.
+
+### 3. Automated Deep Vulnerability Scanner (`BackgroundVulnerabilityScanner.tsx`)
+- Fetches target web assets and analyzes the first 100 KB of HTML/JS payload plus HTTP headers.
+- **Header Security Audits**: Evaluates `Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options` (anti-clickjacking), `X-Content-Type-Options: nosniff`, and `Referrer-Policy`.
+- **Client Library CVE Detection**: Scans scripts against regex rules to identify vulnerable dependencies (e.g., jQuery `<3.5.0` with `CVE-2020-11022`, Bootstrap `<4.0` with `CVE-2019-8331`, Lodash `<4.17.21` with `CVE-2020-8203`, and legacy AngularJS 1.x).
+- Outputs letter grades (`A+` down to `F`) with actionable remediation steps.
+
+### 4. Interactive D3.js Cyber Analytics (`SecurityAnalyticsView.tsx`)
+- **D3 Threat Heatmap**: 30-day temporal visualization of blocked threats, phishing intercepts, and malicious payloads.
+- **Attack Vector Donut**: Proportional breakdown of intercepted vectors (Phishing, Malware, Crypto-mining, Ad-trackers).
+- **Severity Velocity Chart**: Rate of detected high vs. low severity events across active sessions.
+- **Realtime Trend Line**: Live-polling latency and packet mitigation rate metrics.
+
+### 5. Multi-Tab Resource Management & Auto-Suspension (`ResourceMonitorSidebar.tsx`)
+- Tracks per-tab simulated CPU percentage and RAM footprint.
+- **Tab Sleeping / Auto-Suspension**: Automatically suspends tabs idle for over 15 minutes, preserving system resources and displaying an inactive badge.
+- Tab grouping with custom labels and chromatic identifiers (`cyan`, `purple`, `emerald`, `amber`, `rose`, `blue`).
+
+### 6. Zero-Knowledge Cryptographic Password Vault (`PasswordVaultManager.tsx`)
+- Employs **AES-GCM 256-bit encryption** using the native browser Web Crypto API (`crypto.subtle`).
+- Derives keys using **PBKDF2** with 100,000 SHA-256 iterations and a 16-byte cryptographically secure random salt.
+- The master password is never stored on disk or transmitted over the network. Cryptographic keys are purged from memory immediately upon locking the vault.
+
+### 7. Global Command Palette (`CommandPaletteModal.tsx`)
+- Triggered anywhere via `Ctrl+K` or `Cmd+K`.
+- Fast keyboard-driven workflow for tab switching, domain inspection, cache clearing, theme switching, and quick navigation.
+
+### 8. Gemini AI Cyber Copilot (`GeminiCopilotView.tsx`)
+- Direct integration with Google GenAI SDK (`@google/genai`) utilizing `gemini-3.8-flash`.
+- Provides contextual analysis of CVE advisories, Exploit-DB entries, source-code audits, and incident response playbooks.
+
+### 9. Scientific Research Discovery Portal (`ScienceSearchView.tsx`)
+- Integrates with the official arXiv query API via a dedicated backend proxy.
+- Enables cryptographic researchers, security engineers, and scientists to find and review preprints on post-quantum cryptography, zero-knowledge proofs, and machine learning security.
+
+### 10. In-Browser Chrome Extension Generator (`ExtensionExportView.tsx`)
+- Compiles an unpackaged or zipped Manifest V3 Chrome Extension directly in the browser using **JSZip**.
+- Configures custom ad-blocking rules (`declarativeNetRequest`), CSP directives, background service workers, and popup menus.
+
+---
+
+## 4. How the Project Works (Technical Architecture & Workflow)
+
+### System Flow Diagram
+
+```
++------------------------------------------------------------------------------------+
+|                                    USER CLIENT                                     |
+|                                                                                    |
+|  [ Omnibar ] ---> [ Global Ctrl+K Palette ] ---> [ Multi-Tab Workspace Manager ]    |
++------------------------------------------------------------------------------------+
+          |                                               |
+          | User Navigation / Inspection                  | Visual Rendering
+          v                                               v
++-------------------------------+               +------------------------------------+
+| Local Heuristic Threat Engine |               | Three.js 3D Particle Cloud Shield  |
+| - Domain Blocklist Filtering  |               | D3.js Realtime Telemetry Graphs    |
+| - Anti-Phishing RegEx Rules   |               | Interactive Theme & Vault Controls |
++-------------------------------+               +------------------------------------+
           |
-          +------------+------------------+------------------+
-          |            |                  |                  |
-          v            v                  v                  v
-+--------------+ +---------------+ +---------------+ +------------------+
-| Crypto Vault | | Visual History| | Local Threat  | | Resource Monitor |
-| (AES-GCM /   | | & ReadLater   | | Engine & Rules| | (CPU/RAM Tab     |
-| PBKDF2)      | | (IndexedDB/LS)| | (Blocklists)  | | Throttling/Tabs) |
-+--------------+ +---------------+ +---------------+ +------------------+
-          |
-          | HTTP / REST API Calls
+          | Secure REST Fetch Calls
           v
-+----------------------------------------------------------------------------------+
-|                     Express.js Backend & Proxy Gateway (server.ts)                |
-+----------------------------------------------------------------------------------+
++------------------------------------------------------------------------------------+
+|                     EXPRESS 4 PROXY & VITE GATEWAY (server.ts)                     |
++------------------------------------------------------------------------------------+
        |                     |                     |                     |
        v                     v                     v                     v
-+---------------+     +---------------+     +---------------+     +----------------+
-| Gemini AI SDK |     | Cloudflare /  |     | Deep Webpage  |     | arXiv Proxy    |
-| (@google/     |     | Google DoH    |     | Security &    |     | (Atom XML /    |
-| genai)        |     | Resolver API  |     | Vulnerability |     | Science Search)|
-+---------------+     +---------------+     +---------------+     +----------------+
++---------------+     +---------------+     +---------------+     +------------------+
+| DoH Resolver  |     | Deep Security |     | Gemini AI API |     | arXiv Science    |
+| Cloudflare &  |     | & CVE Scanner |     | Google GenAI  |     | Literature Proxy |
+| Google DoH    |     | (Headers/JS)  |     | (3.8-Flash)   |     | (Atom XML Caching|
++---------------+     +---------------+     +---------------+     +------------------+
 ```
 
----
-
-## 3. Technology Stack
-
-### Frontend
-- **Framework**: [React 19](https://react.dev/) (`react`, `react-dom`)
-- **Language**: [TypeScript 7](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) with `@tailwindcss/vite`
-- **3D Graphics & Physics**: [Three.js](https://threejs.org/) (`three`, `@types/three`)
-- **Data Visualization**: [D3.js v7](https://d3js.org/) (`d3`, `@types/d3`)
-- **Animation**: [Motion](https://motion.dev/) (formerly Framer Motion)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Archive Generation**: [JSZip](https://stuk.github.io/jszip/) (for Chrome Extension ZIP downloads)
-- **PWA Tooling**: `vite-plugin-pwa` with custom Service Worker caching (`public/sw.js`)
-
-### Backend / Server
-- **Runtime**: Node.js with `tsx` (TypeScript Execution)
-- **Server**: [Express 4](https://expressjs.com/)
-- **AI Integration**: Official Google GenAI SDK (`@google/genai` v2.4.0)
-- **Environment Handling**: `dotenv`
-- **Build / Dev Server**: [Vite 8](https://vitejs.dev/) with `@vitejs/plugin-react`
+### End-to-End Navigation Lifecycle:
+1. **Input & Normalization**: The user types a URL or search query into the `Omnibar` or `Command Palette`. The string is normalized into an absolute HTTPS target.
+2. **Pre-Flight Heuristic Check**: `threatEngine.ts` checks the target domain against known malicious patterns, crypto-miners, and phishing signatures.
+3. **DoH & Security Header Resolution**: 
+   - The backend (`server.ts`) queries Cloudflare/Google DoH endpoints to verify DNS records, SPF/DMARC status, and DNSSEC authenticity.
+   - Concurrently, `/api/security/vulnerability-scan` performs a scan of headers and embedded scripts.
+4. **Scoring & 3D Visualization**:
+   - The system aggregates the security score (0–100) and assigns an SSL grade (`A+` to `F`).
+   - The Three.js 3D Cyber Scene rotates into position, shifting its color scheme to reflect the calculated threat posture.
+5. **Isolation Rendering**:
+   - If clean: The site is rendered in the sandboxed workspace.
+   - If suspicious: The user is prompted with an interstitial quarantine warning detailing the discovered CVEs or missing headers.
+6. **State Persistence**:
+   - `sessionStateService.ts` automatically saves active tabs, omnibar content, and the current scroll position using debounced handlers, ensuring seamless resumption across sessions.
 
 ---
 
-## 4. Backend Server & API Specifications (`server.ts`)
+## 5. Technology Stack Summary
 
-The backend is contained in [`server.ts`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/server.ts), functioning as both an API gateway to avoid client-side CORS issues and as a Vite development host.
-
-### API Endpoints
-
-#### 1. Gemini Cyber AI Intelligence (`POST /api/gemini/chat`)
-- **Description**: Proxies conversation prompts to Google's Gemini models using `@google/genai`.
-- **Request Body**:
-  ```json
-  {
-    "messages": [{ "role": "user", "content": "Analyze CVE-2024-3094" }],
-    "systemInstruction": "Optional custom system instruction",
-    "model": "gemini-3.8-flash"
-  }
-  ```
-- **Fallback**: Returns a friendly offline fallback when `GEMINI_API_KEY` is not present in `.env`.
-
-#### 2. DNS-over-HTTPS (DoH) Resolver (`GET /api/dns/scan`)
-- **Description**: Resolves DNS records through Cloudflare DoH (`https://cloudflare-dns.com/dns-query`) with automatic fallback to Google DoH (`https://dns.google/resolve`).
-- **Query Parameters**:
-  - `domain`: Target hostname (e.g. `github.com`).
-  - `type`: Record type (`A`, `AAAA`, `MX`, `TXT`, `NS`, `CAA`).
-- **Response**: Latency in ms, DNS status code, DNSSEC AD verification flag, Answer and Authority records.
-
-#### 3. Live Website Security Inspector (`GET /api/inspect/website`)
-- **Description**: Performs an automated HTTP `HEAD` / `GET` inspection using custom user-agent headers.
-- **Computed Metrics**:
-  - Response time (ms)
-  - Security score (0–100)
-  - Analysis of security headers: `Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, and `Server` banner.
-
-#### 4. Automated Deep Vulnerability Scanner (`GET /api/security/vulnerability-scan`)
-- **Description**: Fetches page contents (up to 100 KB) and headers to execute a comprehensive security audit.
-- **Audits Performed**:
-  - Missing or permissive headers (`unsafe-inline`, missing HSTS, clickjacking risk).
-  - Outdated client library detection via regex pattern scanning (jQuery, Bootstrap, Lodash, AngularJS 1.x) correlated against CVE references (e.g. `CVE-2020-11022`, `CVE-2019-8331`).
-  - Letter grade calculation (`A+`, `A`, `B`, `C`, `D`, `F`) and remediation actions.
-
-#### 5. Science Literature Proxy (`GET /api/arxiv`)
-- **Description**: CORS proxy for the arXiv Atom API (`https://export.arxiv.org/api/query`) supporting scientific searches and biology/cryptography preprint lookups.
-
-#### 6. System Health Check (`GET /api/health`)
-- **Description**: Reports uptime status, engine mode, version (`2.5.0`), creator attribution, and core contributors.
-
-#### 7. Service Worker Route (`GET /sw.js`)
-- **Description**: Serves `sw.js` with `Service-Worker-Allowed: /` and no-cache headers to ensure consistent offline functionality.
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend Framework** | React 19, TypeScript 7 |
+| **Styling & Design** | Tailwind CSS v4, Lucide Icons, Glassmorphic CSS |
+| **3D Rendering** | Three.js (WebGL Hardware-Accelerated Particle Engine) |
+| **Data Visualization** | D3.js v7 (Scalable Vector Graphics, Heatmaps, Donuts, Trendlines) |
+| **State & Animations** | Motion (Framer Motion), Custom React Hooks, LocalStorage / IndexedDB |
+| **Cryptography** | Web Crypto API (AES-GCM 256-bit, PBKDF2 with 100k SHA-256 iterations) |
+| **Backend Gateway** | Node.js, Express 4, `tsx` TypeScript Execution |
+| **AI Intelligence** | Google GenAI SDK (`@google/genai`), Gemini 3.8 Flash |
+| **Packaging & Offline** | Vite 8, PWA (Custom Service Worker Cache-First strategy), JSZip |
 
 ---
 
-## 5. Frontend Architecture & State Management
+## 6. Project Future Scope & Roadmap
 
-### Navigation Views (`NavTab`)
-The main interface state is driven by `activeTab` in [`src/App.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/App.tsx#L40):
-- `'browser'`: Primary multi-tab safe browsing sandbox.
-- `'dns-scanner'`: DoH lookup and DNS security profiler.
-- `'compare'`: Dual-URL security score and header comparator.
-- `'threat-blocker'`: Real-time firewall rule viewer and blocked domain log.
-- `'security-analytics'`: D3 threat trends, velocity charts, and attack vector donut.
-- `'science'`: Academic and scientific preprint research portal.
-- `'gemini-copilot'`: Threat intelligence AI chatbot.
-- `'auth'`: User account profile and cryptographic vault interface.
-- `'about'`: Engineering specifications, creator credentials, and project mission.
-- `'extension'`: Interactive Manifest V3 Chrome Extension builder and export tool.
+The development team has planned a multi-phase evolutionary roadmap to transition Aegis 3D from a web-based sandbox into an ecosystem of zero-trust tools:
 
-### Session Persistence & State Restoration
-Implemented in [`src/services/sessionStateService.ts`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/services/sessionStateService.ts):
-- Persists active tabs, URLs, DNS inputs, and comparative domains.
-- Automatically saves and restores window scroll coordinates (`scrollX`, `scrollY`) with a 150ms debounce.
-- Displays an interactive toast notification when a previous session is successfully resumed.
+```
++----------------------------------------------------------------------------------+
+|                             AEGIS EVOLUTION ROADMAP                              |
++----------------------------------------------------------------------------------+
+|                                                                                  |
+|  [ Phase 1: Near-Term ]   ->   [ Phase 2: Medium-Term ] -> [ Phase 3: Long-Term ] |
+|  - Electron / Tauri App        - Post-Quantum Crypto       - Decentralized Onion |
+|  - Real Chromium Sandbox       - WebAssembly Heuristics      Routing Network     |
+|  - Cloudflare Turnstile API    - Collaborative Telemetry   - Zero-Knowledge Web  |
+|                                                              Identity Protocol   |
++----------------------------------------------------------------------------------+
+```
 
----
+### Phase 1: Native Desktop Wrapper & Real Sandboxing (Near-Term)
+- **Tauri / Electron Packaging**: Package Aegis 3D into a standalone desktop application with native OS-level process isolation.
+- **Embedded Chromium / CEF Engine**: Replace iframe simulation with a Chromium Embedded Framework engine that provides direct network interception, cookie jar isolation, and request-level blocking.
+- **Live Cloudflare Turnstile Hook**: Full integration of challenge-response verification for automated bot mitigation before high-risk page access.
 
-## 6. Core Components Deep-Dive
+### Phase 2: Quantum-Resistant Cryptography & WebAssembly (Medium-Term)
+- **Post-Quantum Cryptography (PQC)**: Upgrade the Password Vault and internal token exchange to support NIST-standardized post-quantum algorithms (ML-KEM / Kyber and ML-DSA / Dilithium).
+- **WebAssembly (Wasm) Packet Filtering**: Port Rust-based network filtering engines (such as AdGuard or Brave Adblock core) to Wasm for microsecond-level ad and tracker blocking directly in the client.
+- **Decentralized Threat Intelligence Sharing**: Opt-in peer-to-peer threat telemetry enabling nodes to share newly discovered phishing domains without central server dependencies.
 
-All components reside in [`src/components/`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/):
-
-| Component | File | Responsibilities |
-| :--- | :--- | :--- |
-| **BrowserView** | [`BrowserView.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/BrowserView.tsx) | Multi-tab browsing canvas, sandbox iframe simulator, tab grouping, tab pinning, tab suspension, quarantined iframe handling, and live threat counter. |
-| **CyberScene3D** | [`CyberScene3D.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/CyberScene3D.tsx) | Three.js hardware-accelerated 3D visualizer showing rotating shield geometry, floating particle defense clouds, and live color-shifting based on threat severity. |
-| **CommandPaletteModal** | [`CommandPaletteModal.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/CommandPaletteModal.tsx) | Spotlight-style global quick launcher triggered by `Ctrl+K` / `Cmd+K`. Allows instant navigation, tab switching, cache clearing, and theme toggling. |
-| **BackgroundVulnerabilityScanner** | [`BackgroundVulnerabilityScanner.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/BackgroundVulnerabilityScanner.tsx) | Automated background scanning engine checking loaded tabs for security regressions, CVEs, and outdated assets. |
-| **DnsScannerView** | [`DnsScannerView.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/DnsScannerView.tsx) | Domain intelligence dashboard showing DNS records, DNSSEC status, SPF/DMARC posture, and cache-poisoning risks. |
-| **WebsiteComparatorView** | [`WebsiteComparatorView.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/WebsiteComparatorView.tsx) | Side-by-side URL security inspector comparing latency, headers, SSL grades, and protection capabilities. |
-| **SecurityAnalyticsView** | [`SecurityAnalyticsView.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/SecurityAnalyticsView.tsx) | Comprehensive dashboard hosting multiple D3 charts, vulnerability statistics, and threat history graphs. |
-| **D3 Charts** | [`ThreatHeatmapD3.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/ThreatHeatmapD3.tsx), [`D3AttackVectorDonut.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/D3AttackVectorDonut.tsx), [`D3RealtimeTrendChart.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/D3RealtimeTrendChart.tsx), [`D3SeverityVelocityChart.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/D3SeverityVelocityChart.tsx) | Interactive SVG charts rendering hour-by-hour threat distributions, attack vectors (phishing, malware, crypto-miners), and real-time velocity. |
-| **PasswordVaultManager** | [`PasswordVaultManager.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/PasswordVaultManager.tsx) | Client-side password manager with password strength evaluation, generator, and encrypted credential storage. |
-| **ResourceMonitorSidebar** | [`ResourceMonitorSidebar.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/ResourceMonitorSidebar.tsx) | Per-tab CPU/Memory telemetry monitor with automated tab sleep/suspension capabilities to reduce RAM usage. |
-| **Omnibar** | [`Omnibar.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/Omnibar.tsx) | URL and search input supporting instant URL normalization, safety status chips, and quick action shortcuts. |
-| **ExtensionExportView** | [`ExtensionExportView.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/ExtensionExportView.tsx) | Configures and generates Manifest V3 extension packages directly in the browser using JSZip. |
+### Phase 3: Zero-Knowledge Decentralized Web Navigation (Long-Term)
+- **Built-in Onion / Mixnet Routing**: Native integration with Tor or Nym mixnet protocols to conceal client IP addresses from network eavesdroppers.
+- **AI-Powered DOM Exploit Defense**: On-device neural models that detect DOM-based zero-day exploits, invisible pixel tracking, and synthetic canvas fingerprinting in real time.
+- **Decentralized Identity (DID) Vault**: Allow passwordless web authentication using decentralized identifiers and verifiable credentials, reducing reliance on centralized identity providers.
 
 ---
 
-## 7. Services & Subsystems
-
-Located in [`src/services/`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/services/):
-
-### 1. `cryptoVaultService.ts`
-- **Algorithm**: AES-GCM with 256-bit keys.
-- **Key Derivation**: Web Crypto API `PBKDF2` (100,000 iterations, SHA-256) using a 16-byte random salt.
-- **Zero-Knowledge**: Master password is never stored; keys are derived on-the-fly and cleared from memory upon lock.
-
-### 2. `threatEngine.ts`
-- Evaluates URLs against curated domain blocklists, regular expression rules, and heuristics.
-- Detects phishing signatures, crypto-jacking scripts, tracking beacons, and unsafe protocol downgrades.
-- Generates threat logs and classifies domains into `clean`, `warning`, or `blocked`.
-
-### 3. `dnsService.ts`
-- Interfaces with the `/api/dns/scan` endpoint.
-- Validates MX records, SPF (`v=spf1`), DMARC (`v=DMARC1`), CAA policies, and DNSSEC signatures.
-
-### 4. `privacyService.ts` & `themeService.ts`
-- **Privacy Service**: Provides incognito sandboxing, ephemeral session storage, and cookie clearing.
-- **Theme Service**: Supports multiple themes (Aegis Dark, Cyberpunk Cyan, High Contrast, Midnight Purple) by updating DOM root attributes.
-
-### 5. `resourceMonitorService.ts` & `performanceMetricsService.ts`
-- Simulates realistic per-tab memory consumption and CPU thread usage.
-- Triggers auto-suspension for tabs idle for more than 15 minutes to recover simulated memory.
-- Measures Time-to-First-Byte (TTFB), First Contentful Paint (FCP), and TLS handshake latencies.
-
----
-
-## 8. PWA, Service Worker & Offline Resiliency
-
-The application functions as a Progressive Web App (PWA) with full offline support:
-- **Manifest (`public/manifest.json`)**: Configured with `display: "standalone"`, branding colors (`#030712`), and icons (`192x192`, `512x512`, maskable).
-- **Service Worker (`public/sw.js`)**:
-  - Implements a Cache-First strategy for static assets (`styles`, `scripts`, `images`, `fonts`).
-  - Implements a Network-First strategy with cache fallback for dynamic API responses.
-  - Custom offline fallback page for network disconnects.
-- **Offline Indicator (`src/components/OfflineIndicator.tsx`)**: Reusable UI component hooked to `useOnlineStatus` to warn users when connectivity is lost.
-
----
-
-## 9. Chrome Extension Generation Subsystem
-
-The Extension Generator in [`ExtensionExportView.tsx`](file:///c:/Users/Ghostpc/Downloads/aegis-3d-safe-browser/src/components/ExtensionExportView.tsx) enables users to export Aegis as a native browser extension:
-1. Generates a valid Manifest V3 `manifest.json`.
-2. Packages background service worker scripts (`background.js`) with declarative net request rules (`declarativeNetRequest`).
-3. Bundles popup user interface files and SVG/PNG icon assets.
-4. Uses **JSZip** to assemble the files into an exportable `.zip` archive ready for unpacking in `chrome://extensions`.
-
----
-
-## 10. Setup, Deployment & Environment Configuration
+## 7. Running & Verifying the Project
 
 ### Prerequisites
 - **Node.js**: v18.0.0 or higher
-- **npm** or **yarn**
+- **npm**: v9.0.0 or higher
 
-### Installation
+### Quickstart Guide
 ```bash
-# Clone or navigate to the repository directory
-cd aegis-3d-safe-browser
+# 1. Install dependencies (using legacy peer deps for modern Vite/Tailwind 4 peer compatibility)
+npm install --legacy-peer-deps
 
-# Install dependencies
-npm install
-```
+# 2. Configure environment variables in .env
+# PORT=3000
+# GEMINI_API_KEY=your_gemini_api_key_here
 
-### Environment Configuration
-Create a `.env` file in the root directory:
-```env
-PORT=3000
-NODE_ENV=development
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-### Running the Application
-```bash
-# Run in development mode (starts Express + Vite HMR)
+# 3. Launch Development Server
 npm run dev
 
-# Build for production
-npm run build
-
-# Start production server
-npm run start
-
-# Type-check and lint
-npm run lint
+# 4. Access the Browser
+# Navigate to: http://localhost:3000
 ```
 
-The app will be accessible at: `http://localhost:3000`
+### Verification & Health Check
+Verify the backend server and team attribution via the health endpoint:
+```bash
+curl http://localhost:3000/api/health
+```
+
+**Expected JSON Response:**
+```json
+{
+  "status": "ok",
+  "system": "Aegis 3D Safe Browser Node Server",
+  "version": "2.5.0",
+  "creator": "Narendra Borhade",
+  "creatorEmail": "narendra.via.mail@gmail.com",
+  "contributors": [
+    {
+      "name": "Aditya Gaikwad",
+      "role": "Frontend Developer",
+      "email": "gaikwadaditya0309@gmail.com"
+    },
+    {
+      "name": "Ghanshyam Jadhav",
+      "role": "Core Security & Systems Contributor",
+      "email": "ghanshamjadhav8210@gmail.com"
+    }
+  ],
+  "engine": "Zero-Trust DNS & Command Palette Sandbox"
+}
+```
 
 ---
 
-## 11. Project Structure Directory Map
+## 8. Summary
 
-```
-aegis-3d-safe-browser/
-│
-├── public/                               # Static PWA assets & icons
-│   ├── manifest.json                     # PWA Web Application Manifest
-│   ├── sw.js                             # Custom Service Worker implementation
-│   ├── icon.svg                          # Vector brand logo
-│   └── pwa-*.png                         # PWA icon sizes (192, 512, maskable)
-│
-├── src/
-│   ├── components/                       # React UI Components
-│   │   ├── BrowserView.tsx               # Main sandboxed browser canvas
-│   │   ├── CyberScene3D.tsx              # Three.js 3D threat shield
-│   │   ├── CommandPaletteModal.tsx       # Global Cmd+K / Ctrl+K modal
-│   │   ├── DnsScannerView.tsx            # DoH scanner and DNS inspection
-│   │   ├── SecurityAnalyticsView.tsx     # Analytics dashboard with D3
-│   │   ├── ThreatHeatmapD3.tsx           # D3 Threat Heatmap component
-│   │   ├── D3AttackVectorDonut.tsx       # D3 Attack vector breakdown
-│   │   ├── D3RealtimeTrendChart.tsx      # D3 Telemetry trends chart
-│   │   ├── D3SeverityVelocityChart.tsx   # D3 Threat velocity chart
-│   │   ├── PasswordVaultManager.tsx      # Cryptographic credential manager
-│   │   ├── ResourceMonitorSidebar.tsx    # Per-tab CPU and memory inspector
-│   │   ├── WebsiteComparatorView.tsx     # Dual-site security benchmark
-│   │   ├── GeminiCopilotView.tsx         # AI Security assistant view
-│   │   ├── ScienceSearchView.tsx         # arXiv literature search view
-│   │   ├── ExtensionExportView.tsx       # Manifest V3 extension builder
-│   │   ├── Omnibar.tsx                   # Safe address bar & search input
-│   │   ├── Navbar.tsx                    # Top navigation bar
-│   │   ├── AuthView.tsx                  # User authentication & vault login
-│   │   ├── AboutUsView.tsx               # Specifications & team info
-│   │   └── ...                           # Additional modal and helper components
-│   │
-│   ├── hooks/                            # Custom React Hooks
-│   │   ├── useOnlineStatus.ts            # Network connectivity listener
-│   │   └── usePWAInstall.ts              # PWA install prompt handler
-│   │
-│   ├── services/                         # Business Logic & Data Stores
-│   │   ├── cryptoVaultService.ts         # AES-GCM 256-bit Web Crypto encryption
-│   │   ├── threatEngine.ts               # Threat detection heuristics & rules
-│   │   ├── dnsService.ts                 # DoH scanner service integration
-│   │   ├── vulnerabilityScannerService.ts# Deep vulnerability check service
-│   │   ├── sessionStateService.ts        # Session & scroll position persistence
-│   │   ├── performanceMetricsService.ts  # Web vitals & latency tracking
-│   │   ├── resourceMonitorService.ts     # Tab memory/CPU monitor & sleeping
-│   │   ├── authStorage.ts                # Account management & storage
-│   │   ├── bookmarkStorage.ts            # Bookmarks storage
-│   │   ├── historyStorage.ts             # Browsing history storage
-│   │   ├── readLaterStorage.ts           # Read-later article store
-│   │   ├── scienceService.ts             # arXiv API query parser
-│   │   ├── privacyService.ts             # Incognito mode & cookie management
-│   │   └── themeService.ts               # Theme management (Dark, Cyberpunk, etc.)
-│   │
-│   ├── App.tsx                           # Main application orchestrator & routing
-│   ├── main.tsx                          # React DOM entry point
-│   ├── types.ts                          # TypeScript interface definitions
-│   ├── index.css                         # Global CSS & Tailwind imports
-│   └── serviceWorkerRegistration.ts      # Service worker registration helper
-│
-├── server.ts                             # Express server, DoH proxy, Gemini API, Vite host
-├── vite.config.ts                        # Vite configuration with Tailwind & React plugins
-├── package.json                          # Project dependencies & scripts
-├── tsconfig.json                         # TypeScript compiler configuration
-└── README.md                             # Quickstart instructions
-```
+**Aegis 3D Safe Browser** brings together high-assurance security engineering and modern web technologies. Conceived and led by **Narendra Borhade**, built with frontend design from **Aditya Gaikwad**, and hardened by threat systems contributor **Ghanshyam Jadhav**, Aegis 3D offers an intuitive, secure, and visually transparent experience for safe web navigation.
