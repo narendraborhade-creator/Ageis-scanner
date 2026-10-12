@@ -175,8 +175,8 @@ export default function App() {
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
-      {/* Main App Container (with mobile bottom bar clearance) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-28 md:py-8 space-y-6 md:space-y-8">
+      {/* Main App Container (with mobile bottom bar clearance and safe-area inset) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:py-8 space-y-5 md:space-y-8">
         {activeTab === 'browser' && (
           <BrowserView
             initialUrl={browserInitialUrl}

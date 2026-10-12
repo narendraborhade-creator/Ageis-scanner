@@ -1003,8 +1003,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </div>
           </div>
 
-          {/* Tools & Sidebars Toggles */}
-          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+          {/* Tools & Sidebars Toggles (Responsive scrollable ribbon on phones) */}
+          <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-full pb-1 scrollbar-none py-0.5">
             {/* Open in Separate Real Browser Window */}
             <button
               type="button"

@@ -234,8 +234,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => setThemeModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border bg-slate-900 border-slate-700/80 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-slate-850"
-              title="Customize visual theme (Cyberpunk, OLED, Matrix, Amber, Violet, Slate)"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border bg-slate-900 border-slate-700/80 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-slate-850"
+              title="Customize visual theme"
             >
               <Palette className="w-3.5 h-3.5 text-cyan-400" />
               <span className="hidden xl:inline">Theme</span>
@@ -245,7 +245,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={handleTogglePrivacy}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
+              className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
                 privacyMode
                   ? 'bg-purple-950/80 border-purple-500/60 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)] ring-1 ring-purple-500/40'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-purple-300 hover:border-purple-500/30'
@@ -260,7 +260,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline">
                 {privacyMode ? 'Privacy: ON' : 'Privacy Mode'}
               </span>
-              <span className="sm:hidden font-bold">
+              <span className="sm:hidden font-bold text-[11px]">
                 {privacyMode ? 'Incognito' : 'Privacy'}
               </span>
             </button>
@@ -292,7 +292,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-cyan-300 transition-colors cursor-pointer"
+              className={`md:hidden p-2 rounded-xl border transition-all cursor-pointer ${
+                mobileMenuOpen
+                  ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                  : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/30'
+              }`}
               title="Toggle mobile menu"
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -462,65 +466,84 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      {/* MOBILE STICKY BOTTOM NAVIGATION BAR (md:hidden) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-950/95 border-t border-cyan-500/20 backdrop-blur-2xl px-2 py-2 flex items-center justify-around shadow-2xl pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <button
-          type="button"
-          onClick={() => onSelectTab('browser')}
-          className={`flex flex-col items-center gap-0.5 p-1 rounded-lg transition-colors relative ${
-            activeTab === 'browser' ? 'text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Search className="w-5 h-5" />
-          <span className="text-[10px] font-mono">Browser</span>
-          {openTabsCount > 1 && (
-            <span className="absolute -top-1 right-1 w-4 h-4 rounded-full bg-cyan-500 text-slate-950 font-mono text-[9px] font-bold flex items-center justify-center">
-              {openTabsCount}
-            </span>
-          )}
-        </button>
+      {/* MOBILE ULTRA-BEAUTIFUL DOCKED BOTTOM NAVIGATION (md:hidden) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-950/95 border-t border-cyan-500/30 backdrop-blur-3xl px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_35px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center justify-around max-w-md mx-auto">
+          {/* Browser Tab */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('browser')}
+            className={`flex flex-col items-center justify-center gap-1 py-1.5 px-3 rounded-2xl transition-all relative cursor-pointer ${
+              activeTab === 'browser'
+                ? 'bg-cyan-500/15 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)] border border-cyan-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Search className={`w-4 h-4 transition-transform ${activeTab === 'browser' ? 'scale-110 text-cyan-400' : ''}`} />
+            <span className="text-[10px] font-mono tracking-tight font-medium">Browser</span>
+            {openTabsCount > 1 && (
+              <span className="absolute -top-1 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-cyan-500 text-slate-950 font-mono text-[9px] font-extrabold flex items-center justify-center shadow-[0_0_8px_rgba(6,182,212,0.8)]">
+                {openTabsCount}
+              </span>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => onSelectTab('threat-blocker')}
-          className={`flex flex-col items-center gap-0.5 p-1 rounded-lg transition-colors ${
-            activeTab === 'threat-blocker' ? 'text-rose-400 font-bold' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Shield className="w-5 h-5" />
-          <span className="text-[10px] font-mono">Shield</span>
-        </button>
+          {/* Threat Shield */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('threat-blocker')}
+            className={`flex flex-col items-center justify-center gap-1 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+              activeTab === 'threat-blocker'
+                ? 'bg-rose-500/15 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.25)] border border-rose-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Shield className={`w-4 h-4 transition-transform ${activeTab === 'threat-blocker' ? 'scale-110 text-rose-400' : ''}`} />
+            <span className="text-[10px] font-mono tracking-tight font-medium">Shield</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => onSelectTab('dns-scanner')}
-          className={`flex flex-col items-center gap-0.5 p-1 rounded-lg transition-colors ${
-            activeTab === 'dns-scanner' ? 'text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Globe className="w-5 h-5" />
-          <span className="text-[10px] font-mono">DNS</span>
-        </button>
+          {/* DNS Scanner */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('dns-scanner')}
+            className={`flex flex-col items-center justify-center gap-1 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+              activeTab === 'dns-scanner'
+                ? 'bg-cyan-500/15 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)] border border-cyan-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Globe className={`w-4 h-4 transition-transform ${activeTab === 'dns-scanner' ? 'scale-110 text-cyan-400' : ''}`} />
+            <span className="text-[10px] font-mono tracking-tight font-medium">DNS</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => onSelectTab('gemini-copilot')}
-          className={`flex flex-col items-center gap-0.5 p-1 rounded-lg transition-colors ${
-            activeTab === 'gemini-copilot' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Cpu className="w-5 h-5" />
-          <span className="text-[10px] font-mono">AI Copilot</span>
-        </button>
+          {/* Gemini AI Copilot */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('gemini-copilot')}
+            className={`flex flex-col items-center justify-center gap-1 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+              activeTab === 'gemini-copilot'
+                ? 'bg-amber-500/15 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] border border-amber-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Cpu className={`w-4 h-4 transition-transform ${activeTab === 'gemini-copilot' ? 'scale-110 text-amber-400' : ''}`} />
+            <span className="text-[10px] font-mono tracking-tight font-medium">AI Copilot</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(true)}
-          className="flex flex-col items-center gap-0.5 p-1 rounded-lg text-slate-400 hover:text-cyan-300 transition-colors"
-        >
-          <Layers className="w-5 h-5" />
-          <span className="text-[10px] font-mono">More</span>
-        </button>
+          {/* More Drawer */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className={`flex flex-col items-center justify-center gap-1 py-1.5 px-3 rounded-2xl transition-all cursor-pointer ${
+              mobileMenuOpen
+                ? 'bg-teal-500/15 text-teal-300 border border-teal-500/30'
+                : 'text-slate-400 hover:text-cyan-300'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span className="text-[10px] font-mono tracking-tight font-medium">More</span>
+          </button>
+        </div>
       </nav>
 
       {/* Theme Selector Modal */}

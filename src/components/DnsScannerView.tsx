@@ -66,20 +66,20 @@ export const DnsScannerView: React.FC<DnsScannerViewProps> = ({ initialDomain = 
           </div>
         </div>
 
-        <form onSubmit={handleScanSubmit} className="flex gap-2">
+        <form onSubmit={handleScanSubmit} className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
             <input
               type="text"
               value={domainInput}
               onChange={(e) => setDomainInput(e.target.value)}
-              placeholder="Enter domain (e.g., google.com, cloudflare.com, github.com)..."
+              placeholder="Enter domain (e.g., google.com, cloudflare.com)..."
               className="w-full glass-input rounded-xl px-4 py-3 text-sm font-mono text-slate-100 placeholder-slate-500"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all disabled:opacity-50 whitespace-nowrap"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all disabled:opacity-50 whitespace-nowrap active:scale-95 cursor-pointer"
           >
             {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
             <span>{loading ? 'Resolving...' : 'Scan DNS'}</span>

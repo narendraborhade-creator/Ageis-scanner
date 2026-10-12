@@ -154,10 +154,10 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5 shrink-0 justify-end">
+        <div className="flex items-center gap-1.5 shrink-0 justify-end w-full sm:w-auto">
           <button
             type="submit"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all whitespace-nowrap cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all whitespace-nowrap cursor-pointer active:scale-95"
             title="Navigate in current tab"
           >
             <span>Navigate</span>
@@ -167,17 +167,17 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           <button
             type="button"
             onClick={handleOpenInNewTab}
-            className="flex items-center gap-1.5 px-3 py-2.5 bg-slate-900 border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 font-medium text-xs rounded-xl transition-all whitespace-nowrap cursor-pointer hover:bg-slate-850"
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-900 border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 font-medium text-xs rounded-xl transition-all whitespace-nowrap cursor-pointer hover:bg-slate-850 active:scale-95"
             title="Open in a New Browser Tab"
           >
             <Plus className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">New Tab</span>
+            <span className="inline sm:inline">New Tab</span>
           </button>
 
           <button
             type="button"
             onClick={handleQuickDns}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-2.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 text-xs rounded-xl transition-all whitespace-nowrap cursor-pointer"
+            className="flex items-center justify-center gap-1 px-2.5 py-2.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 text-xs rounded-xl transition-all whitespace-nowrap cursor-pointer active:scale-95"
             title="Audit DNS Records"
           >
             <span>DNS</span>
