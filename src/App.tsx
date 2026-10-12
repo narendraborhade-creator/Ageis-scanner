@@ -147,7 +147,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#030712] text-slate-100 cyber-grid flex flex-col selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#030712] text-slate-100 cyber-grid flex flex-col selection:bg-cyan-500 selection:text-slate-950">
       {/* Session Resumed Feedback Banner */}
       {sessionToast && (
         <div className="fixed top-20 right-4 z-50 max-w-md p-3.5 rounded-xl bg-cyan-950/95 border border-cyan-500/40 text-cyan-200 text-xs font-mono shadow-[0_0_25px_rgba(6,182,212,0.25)] backdrop-blur-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
@@ -176,7 +176,7 @@ export default function App() {
       />
 
       {/* Main App Container (with mobile bottom bar clearance and safe-area inset) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:py-8 space-y-5 md:space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:py-8 space-y-5 md:space-y-8 overflow-x-hidden">
         {activeTab === 'browser' && (
           <BrowserView
             initialUrl={browserInitialUrl}

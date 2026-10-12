@@ -216,12 +216,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* In-App PWA Install Action */}
             <PWAInstallButton />
 
-            {/* Cloudflare Turnstile Verification */}
+            {/* Cloudflare Turnstile Verification (Visible on sm+) */}
             {onOpenCloudflareVerify && (
               <button
                 type="button"
                 onClick={onOpenCloudflareVerify}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border bg-slate-900 border-amber-500/40 text-amber-300 hover:bg-amber-950/40 hover:border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
+                className="hidden xs:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border bg-slate-900 border-amber-500/40 text-amber-300 hover:bg-amber-950/40 hover:border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
                 title="Cloudflare Turnstile Verified: DDoS & Bot Protection Active"
               >
                 <Zap className="w-3.5 h-3.5 text-amber-400" />
@@ -230,11 +230,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Custom Visual Themes Switcher */}
+            {/* Custom Visual Themes Switcher (Visible on sm+; already inside mobile More drawer) */}
             <button
               type="button"
               onClick={() => setThemeModalOpen(true)}
-              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border bg-slate-900 border-slate-700/80 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-slate-850"
+              className="hidden xs:flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border bg-slate-900 border-slate-700/80 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-slate-850"
               title="Customize visual theme"
             >
               <Palette className="w-3.5 h-3.5 text-cyan-400" />

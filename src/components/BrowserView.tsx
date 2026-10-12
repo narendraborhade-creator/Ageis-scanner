@@ -953,7 +953,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           </div>
 
           {/* Address Preview Pill with Star Bookmark Action */}
-          <div className="flex-1 min-w-[200px] flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 font-mono text-xs">
+          <div className="flex-1 min-w-0 sm:min-w-[180px] flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 font-mono text-xs overflow-hidden">
             <div className="flex items-center gap-2 truncate">
               {activeTab.isHttps ? (
                 <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
