@@ -1,0 +1,6 @@
+{
+  "name": "Aegis 3D Safe Browser",
+  "description": "Futuristic 3D glassy web browser with real-time DNS scanning, website comparison, threat and vulnerability blocking, Gemini cyber copilot, and Science research indexing by Narendra Borhade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

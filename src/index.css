@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-cyber: 'Orbitron', sans-serif;
+    --theme-primary: #06b6d4;
+    --theme-primary-rgb: 6, 182, 212;
+    --theme-bg: #030712;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #030712;
+    color: #f1f5f9;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Glassmorphism primitives */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.glass-panel-glow {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.25), 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+.glass-input {
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  border-color: rgba(6, 182, 212, 0.6);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+  outline: none;
+}
+
+/* Cyber grid background */
+.cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(14, 165, 233, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(14, 165, 233, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.5);
+}
+
+/* CUSTOM THEME OVERRIDES */
+/* 1. Midnight OLED Theme */
+[data-theme="oled-dark"], body.theme-oled-dark {
+  background-color: #000000 !important;
+}
+[data-theme="oled-dark"] .glass-panel {
+  background: rgba(8, 8, 8, 0.85);
+  border-color: rgba(56, 189, 248, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+}
+[data-theme="oled-dark"] .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.06) 1px, transparent 1px);
+}
+
+/* 2. Hacker Matrix Theme */
+[data-theme="matrix"], body.theme-matrix {
+  background-color: #020b05 !important;
+}
+[data-theme="matrix"] .glass-panel {
+  background: rgba(4, 20, 10, 0.75);
+  border-color: rgba(34, 197, 94, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="matrix"] .glass-panel-glow {
+  background: rgba(4, 25, 12, 0.85);
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 25px -5px rgba(34, 197, 94, 0.25), 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="matrix"] .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(34, 197, 94, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 197, 94, 0.06) 1px, transparent 1px);
+}
+
+/* 3. Solarized Amber Theme */
+[data-theme="solar-amber"], body.theme-solar-amber {
+  background-color: #0c0a07 !important;
+}
+[data-theme="solar-amber"] .glass-panel {
+  background: rgba(22, 17, 10, 0.75);
+  border-color: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="solar-amber"] .glass-panel-glow {
+  background: rgba(26, 19, 11, 0.85);
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.25), 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="solar-amber"] .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(245, 158, 11, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 158, 11, 0.06) 1px, transparent 1px);
+}
+
+/* 4. Quantum Violet Theme */
+[data-theme="deep-violet"], body.theme-deep-violet {
+  background-color: #090314 !important;
+}
+[data-theme="deep-violet"] .glass-panel {
+  background: rgba(20, 10, 36, 0.75);
+  border-color: rgba(168, 85, 247, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="deep-violet"] .glass-panel-glow {
+  background: rgba(25, 12, 45, 0.85);
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.25), 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="deep-violet"] .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(168, 85, 247, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(168, 85, 247, 0.06) 1px, transparent 1px);
+}
+
+/* 5. Titanium Stealth Theme */
+[data-theme="titanium-slate"], body.theme-titanium-slate {
+  background-color: #0b1120 !important;
+}
+[data-theme="titanium-slate"] .glass-panel {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(96, 165, 250, 0.2);
+}
+[data-theme="titanium-slate"] .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(96, 165, 250, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(96, 165, 250, 0.05) 1px, transparent 1px);
+}
+
+/* 6. Crimson Protocol Theme */
+[data-theme="crimson-red"], body.theme-crimson-red {
+  background-color: #0d0507 !important;
+}
+[data-theme="crimson-red"] .glass-panel {
+  background: rgba(26, 10, 14, 0.75);
+  border-color: rgba(239, 68, 68, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="crimson-red"] .glass-panel-glow {
+  background: rgba(35, 12, 17, 0.85);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.25), 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="crimson-red"] .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(239, 68, 68, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(239, 68, 68, 0.06) 1px, transparent 1px);
+}
