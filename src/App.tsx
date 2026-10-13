@@ -436,8 +436,23 @@ export default function App() {
             )}
           </button>
 
-          {/* Active Extension Tab (renders dynamically when viewing an extension) */}
-          {activeTab !== 'browser' && activeExtensionDef && (
+          {/* About Us Tab (Always visible in browser tab strip) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('about')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-xs font-mono transition-all cursor-pointer h-full border-t border-x ${
+              activeTab === 'about'
+                ? 'bg-[#0f1523] text-cyan-300 border-slate-700/80 border-t-cyan-400 font-semibold shadow-sm'
+                : 'bg-slate-900/40 text-slate-400 hover:bg-slate-900/80 hover:text-slate-200 border-transparent'
+            }`}
+            title="About Aegis 3D: Architecture, Creators & Security Policy"
+          >
+            <Info className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'about' ? 'text-cyan-400' : 'text-slate-500'}`} />
+            <span className="truncate text-left">About Us</span>
+          </button>
+
+          {/* Active Extension Tab (renders dynamically when viewing other extension panels) */}
+          {activeTab !== 'browser' && activeTab !== 'about' && activeExtensionDef && (
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-xs font-mono bg-[#0f1523] text-cyan-300 border-slate-700/80 border-t border-t-cyan-400 font-semibold shadow-sm h-full group"
             >
