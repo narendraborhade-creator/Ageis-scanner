@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CyberScene3D } from './CyberScene3D';
 import { Omnibar } from './Omnibar';
 import { ReadLaterPanel } from './ReadLaterPanel';
 import { EnhancedVisualHistoryPanel } from './EnhancedVisualHistoryPanel';
@@ -679,139 +678,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const statusMode = activeTab.isQuarantined ? 'threat' : isScanning ? 'scanning' : 'safe';
 
   return (
-    <div className="space-y-6">
-      {/* 3D Holographic Cyber Hero Shield */}
-      <div className="relative glass-panel rounded-2xl p-5 border border-cyan-500/20 overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.1)]">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          {/* Left Column: 3D WebGL Canvas */}
-          <div className="lg:col-span-5 h-56 md:h-64 rounded-xl overflow-hidden glass-panel border border-cyan-500/20 relative">
-            <CyberScene3D statusMode={statusMode} className="w-full h-full" />
-            <div className="absolute bottom-2 left-3 text-[11px] font-mono text-cyan-300 flex items-center gap-1.5 bg-slate-950/80 px-2 py-0.5 rounded border border-cyan-500/20">
-              <Radio className="w-3 h-3 text-cyan-400 animate-pulse" />
-              <span>3D Quantum Threat Core: {statusMode.toUpperCase()}</span>
-            </div>
-          </div>
-
-          {/* Right Column: Omnibar & Real-Time Browser Telemetry */}
-          <div className="lg:col-span-7 space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs uppercase font-mono tracking-wider text-cyan-400 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Zero-Trust Omnibar & Multi-Tab Browser</span>
-                </span>
-                <span className="text-xs font-mono text-slate-400">
-                  Tabs: <strong className="text-cyan-300 font-bold">{tabs.length}</strong> · Bookmarks: <strong className="text-amber-400 font-bold">{bookmarks.length}</strong>
-                </span>
-              </div>
-
-              <Omnibar
-                currentUrl={activeTab.url}
-                onNavigate={handleNavigate}
-                onScanDns={onScanDns}
-                onNewTab={handleCreateNewTab}
-                latencyMs={activeTab.latencyMs}
-                isHttps={activeTab.isHttps}
-                threatStatus={activeTab.threatStatus}
-                metrics={activeTab.pageMetrics || calculatePageLoadMetrics(activeTab.url, activeTab.threatStatus, activeTab.latencyMs)}
-                onMetricsUpdate={(newM) => {
-                  setTabs((prev) =>
-                    prev.map((t) => (t.id === activeTab.id ? { ...t, pageMetrics: newM } : t))
-                  );
-                }}
-              />
-            </div>
-
-            {/* Quick Chrome-Style Bookmarks Bar */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-slate-800/80 text-xs font-mono scrollbar-none">
-              <span className="text-[11px] text-slate-500 flex items-center gap-1 shrink-0">
-                <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-                <span>Bookmarks:</span>
-              </span>
-
-              {bookmarks.length === 0 ? (
-                <span className="text-[11px] text-slate-500 italic">
-                  0 saved · Click the star (★) or Add to save pages
-                </span>
-              ) : (
-                bookmarks.slice(0, 6).map((bm) => (
-                  <button
-                    key={bm.id}
-                    type="button"
-                    onClick={() => handleNavigate(bm.url, false, false)}
-                    className="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 hover:border-amber-400/40 text-slate-300 hover:text-amber-300 text-[11px] transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer"
-                    title={bm.url}
-                  >
-                    <Star className="w-3 h-3 text-amber-400 fill-amber-400/20" />
-                    <span className="max-w-[120px] truncate">{bm.title}</span>
-                  </button>
-                ))
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSidebar('bookmarks');
-                  setShowAddBookmarkModal(true);
-                  setNewBmUrl(activeTab.url);
-                  setNewBmTitle(activeTab.title);
-                }}
-                className="px-2 py-1 rounded-md bg-slate-950 border border-slate-800 hover:border-cyan-500/40 text-slate-400 hover:text-cyan-300 text-[10px] transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 cursor-pointer"
-                title="Add Bookmark"
-              >
-                <Plus className="w-3 h-3 text-cyan-400" />
-                <span>Add</span>
-              </button>
-            </div>
-
-            {/* Live Security Metrics Strip for Active Tab */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-              <div className="glass-panel p-2.5 rounded-lg border border-slate-800">
-                <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-                  <Lock className="w-3 h-3 text-emerald-400" />
-                  <span>Protocol</span>
-                </div>
-                <div className="text-xs font-bold text-slate-100 font-mono mt-0.5">
-                  {activeTab.isHttps ? 'TLS 1.3 / HSTS' : 'Insecure HTTP'}
-                </div>
-              </div>
-
-              <div className="glass-panel p-2.5 rounded-lg border border-slate-800">
-                <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-                  <EyeOff className="w-3 h-3 text-cyan-400" />
-                  <span>Trackers Blocked</span>
-                </div>
-                <div className="text-xs font-bold text-cyan-300 font-mono mt-0.5 tabular-nums">
-                  {activeTab.trackersBlocked} Injected
-                </div>
-              </div>
-
-              <div className="glass-panel p-2.5 rounded-lg border border-slate-800">
-                <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-                  <Bug className="w-3 h-3 text-amber-400" />
-                  <span>Bugs & Vulns</span>
-                </div>
-                <div className="text-xs font-bold text-amber-300 font-mono mt-0.5 tabular-nums">
-                  {activeTab.bugsSanitized} Disarmed
-                </div>
-              </div>
-
-              <div className="glass-panel p-2.5 rounded-lg border border-slate-800">
-                <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-                  <Shield className="w-3 h-3 text-teal-400" />
-                  <span>SSL Grade</span>
-                </div>
-                <div className="text-xs font-bold text-emerald-400 font-mono mt-0.5">
-                  Grade {activeTab.sslGrade}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* CHROME-STYLE BROWSER WINDOW WITH MULTI-TAB STRIP & DEDICATED SIDEBARS */}
-      <div className="glass-panel rounded-2xl border border-cyan-500/20 overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-full">
+      {/* BROWSER WINDOW WITH MULTI-TAB STRIP & DEDICATED SIDEBARS */}
+      <div className="flex flex-col flex-1 overflow-hidden">
         {/* Google Chrome Style Tab Strip */}
         <div className="flex items-center px-2 pt-2 bg-slate-950/90 border-b border-slate-800/80 gap-1 overflow-x-auto scrollbar-none select-none">
           {tabs.map((tab) => {
@@ -1109,7 +978,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         </div>
 
         {/* Viewport & Slide-In Sidebars Split Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[460px]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
           {/* Main Web Viewport Area */}
           <div
             className={`transition-all duration-300 ${
@@ -1250,7 +1119,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
           {/* DEDICATED COLLAPSIBLE SIDEBAR COLUMN */}
           {activeSidebar === 'resource-monitor' ? (
-            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/90 flex flex-col h-[560px]">
+            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/90 flex flex-col h-full overflow-hidden">
               <ResourceMonitorSidebar
                 tabs={tabs}
                 activeTabId={activeTabId}
@@ -1273,7 +1142,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               />
             </div>
           ) : activeSidebar !== 'none' && (
-            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/90 flex flex-col h-[560px]">
+            <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/90 flex flex-col h-full overflow-hidden">
               {/* SIDEBAR HEADER */}
               <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
                 <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-300">

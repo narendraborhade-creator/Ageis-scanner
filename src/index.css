@@ -212,3 +212,77 @@ button, a, input, select {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Browser Chrome Styles */
+.browser-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.browser-titlebar {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.browser-titlebar button,
+.browser-titlebar input,
+.browser-titlebar a {
+  -webkit-app-region: no-drag;
+}
+
+.browser-toolbar {
+  flex-shrink: 0;
+}
+
+.browser-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.browser-statusbar {
+  flex-shrink: 0;
+}
+
+/* Extension panel animations */
+.extension-panel-enter {
+  animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Full viewport overrides */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Scrollbar styling for browser content */
+.browser-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.browser-content::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+.browser-content::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+.browser-content::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
