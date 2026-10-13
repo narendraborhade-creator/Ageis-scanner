@@ -965,6 +965,31 @@ export default function App() {
           </span>
         </div>
 
+        {/* Center / Contributors Credits */}
+        <div className="hidden xl:flex items-center gap-2 text-[10px] text-slate-500 truncate">
+          <span>Aegis 3D Safe Browser</span>
+          <span>·</span>
+          <span>Created by <strong className="text-slate-300 font-medium">Narendra Borhade</strong></span>
+          <span>·</span>
+          <span>Frontend by <strong className="text-cyan-300 font-medium">Aditya Gaikwad</strong></span>
+          <a
+            href="mailto:gaikwadaditya0309@gmail.com"
+            className="text-cyan-400/80 hover:text-cyan-300 hover:underline"
+            title="Email Frontend Developer Aditya Gaikwad"
+          >
+            (gaikwadaditya0309@gmail.com)
+          </a>
+          <span>·</span>
+          <span>Security by <strong className="text-teal-300 font-medium">Ghanshyam Jadhav</strong></span>
+          <a
+            href="mailto:ghanshamjadhav8210@gmail.com"
+            className="text-teal-400/80 hover:text-teal-300 hover:underline"
+            title="Email Security Contributor Ghanshyam Jadhav"
+          >
+            (ghanshamjadhav8210@gmail.com)
+          </a>
+        </div>
+
         {/* Right Status Actions & Shortlinks */}
         <div className="flex items-center gap-3 shrink-0 text-slate-400">
           <button
@@ -995,6 +1020,24 @@ export default function App() {
           >
             <RotateCcw className="w-3 h-3" />
             <span className="hidden sm:inline">Reset</span>
+          </button>
+          <span className="text-slate-600 hidden md:inline">|</span>
+          <button
+            type="button"
+            onClick={() => setActiveTab('extension')}
+            className="hover:text-cyan-300 transition-colors hidden md:inline cursor-pointer"
+            title="Chrome Extension & Vercel Export"
+          >
+            Extension
+          </button>
+          <span className="text-slate-600 hidden md:inline">|</span>
+          <button
+            type="button"
+            onClick={() => setActiveTab('about')}
+            className="hover:text-cyan-300 transition-colors hidden md:inline cursor-pointer text-slate-300"
+            title="Team & Security Policy"
+          >
+            Team
           </button>
         </div>
       </footer>
