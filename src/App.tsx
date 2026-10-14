@@ -121,11 +121,11 @@ const EXTENSIONS_LIST: ExtensionDefinition[] = [
   },
   {
     id: 'gemini-copilot',
-    title: 'Gemini AI Copilot',
-    category: 'Neural Assistant',
-    desc: 'Real-time AI page summarizer, cipher analyzer & exploit detector',
-    icon: Cpu,
-    color: 'text-amber-400 bg-amber-950/80 border-amber-500/30',
+    title: 'Aegis CyberBot',
+    category: 'Cyber Security AI',
+    desc: 'Specialized Python cybersecurity engine, exploit inspector & threat glossary',
+    icon: Shield,
+    color: 'text-cyan-400 bg-cyan-950/80 border-cyan-500/30',
   },
   {
     id: 'extension',

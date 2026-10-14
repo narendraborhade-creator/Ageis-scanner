@@ -207,6 +207,16 @@ export interface ChatMessage {
   timestamp: string;
   model: string;
   persona?: string;
+  matchedTerms?: string[];
+  threatAnalysis?: {
+    score: number;
+    severity: 'CLEAN' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    verdict: string;
+    entropy: number;
+    threats_count: number;
+    threats: Array<{ vector: string; description: string; weight: number; cwe: string }>;
+    deobfuscated_layers?: Array<{ type: string; content: string }>;
+  };
 }
 
 export interface UserAccount {

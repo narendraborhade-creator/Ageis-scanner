@@ -2,6 +2,8 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import { spawn, ChildProcess } from 'child_process';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 
@@ -12,6 +14,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PYTHON_PORT = 5005;
+const PYTHON_API_URL = `http://127.0.0.1:${PYTHON_PORT}`;
+let pythonProcess: ChildProcess | null = null;
 
 app.use(express.json());
 
@@ -25,42 +30,169 @@ const ai = new GoogleGenAI({
   },
 });
 
-// 1. Gemini Chat API (Server-side execution)
+// Helper: Query the local Python Cybersecurity Engine
+async function queryPythonCyberBot(
+  messages: any[],
+  personaId?: string,
+  systemInstruction?: string,
+  model?: string
+) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${PYTHON_API_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: (messages || []).map((m: any) => ({ role: m.role, content: m.content })),
+        persona_id: personaId || 'cyber-sentinel',
+        system_instruction: systemInstruction,
+        model: model || 'aegis-cyber-python',
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`Python CyberBot returned HTTP ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+// 1. AI Chat API (Specialized Python Cyber Engine + Gemini Fallback/Optional)
 app.post('/api/gemini/chat', async (req, res) => {
   try {
-    const { messages, systemInstruction, model } = req.body;
-    const selectedModel = model || 'gemini-3.8-flash';
+    const { messages, systemInstruction, model, personaId } = req.body;
+    const selectedModel = model || 'aegis-cyber-python';
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(200).json({
-        reply: "⚠️ Note: GEMINI_API_KEY is not configured yet in Settings > Secrets. However, Aegis 3D Safe Browser continues to operate with all local threat databases, DNS inspection engines, and Science skills enabled! You can attach your Gemini API key anytime.",
-        model: selectedModel,
-      });
+    // Route to specialized Python Cyber Engine if requested or if GEMINI_API_KEY is not set
+    const preferPython =
+      selectedModel.includes('python') ||
+      selectedModel.includes('aegis-cyber') ||
+      !process.env.GEMINI_API_KEY;
+
+    if (preferPython) {
+      try {
+        const pyResult = await queryPythonCyberBot(messages, personaId, systemInstruction, selectedModel);
+        return res.json({
+          reply: pyResult.reply,
+          model: 'Aegis Specialized Python CyberBot (Local)',
+          persona: pyResult.persona,
+          matchedTerms: pyResult.matched_terms,
+          threatAnalysis: pyResult.threat_analysis,
+        });
+      } catch (pyErr: any) {
+        console.warn('[Aegis Chat] Local Python CyberBot unreachable, evaluating Gemini...', pyErr.message);
+      }
     }
 
-    // Format contents for @google/genai
-    const contents = (messages || []).map((msg: { role: string; content: string }) => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
-    }));
+    // If Gemini API key is present and model is Gemini, try Gemini cloud
+    if (process.env.GEMINI_API_KEY) {
+      const contents = (messages || []).map((msg: { role: string; content: string }) => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }],
+      }));
 
-    const response = await ai.models.generateContent({
-      model: selectedModel,
-      contents,
-      config: {
-        systemInstruction: systemInstruction || "You are Aegis Cyber AI, a specialized threat intelligence, DNS safety, web vulnerability, and scientific research assistant for Aegis 3D Safe Browser built by Narendra Borhade.",
-        temperature: 0.7,
-      },
+      const response = await ai.models.generateContent({
+        model: selectedModel,
+        contents,
+        config: {
+          systemInstruction:
+            systemInstruction ||
+            'You are Aegis Cyber AI, a specialized threat intelligence, DNS safety, web vulnerability, and scientific research assistant for Aegis 3D Safe Browser built by Narendra Borhade.',
+          temperature: 0.7,
+        },
+      });
+
+      const reply = response.text || 'No response received from cyber intelligence model.';
+      return res.json({ reply, model: selectedModel });
+    }
+
+    // Default: Run Python CyberBot
+    const pyResult = await queryPythonCyberBot(messages, personaId, systemInstruction, selectedModel);
+    return res.json({
+      reply: pyResult.reply,
+      model: 'Aegis Specialized Python CyberBot (Local)',
+      persona: pyResult.persona,
+      matchedTerms: pyResult.matched_terms,
+      threatAnalysis: pyResult.threat_analysis,
     });
-
-    const reply = response.text || "No response received from cyber intelligence model.";
-    return res.json({ reply, model: selectedModel });
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    return res.status(500).json({
-      error: error.message || "Failed to process cyber intelligence prompt.",
-      reply: `[Aegis Neural Alert]: ${error.message || 'Unable to connect to intelligence cluster'}`
+    console.error('Chat API Error:', error);
+    try {
+      const pyFallback = await queryPythonCyberBot(req.body.messages, req.body.personaId, req.body.systemInstruction);
+      return res.json({
+        reply: pyFallback.reply,
+        model: 'Aegis Specialized Python CyberBot (Local Fallback)',
+        persona: pyFallback.persona,
+      });
+    } catch (fallbackErr: any) {
+      return res.status(500).json({
+        error: error.message || 'Failed to process cyber intelligence prompt.',
+        reply: `[Aegis Neural Alert]: ${error.message || 'Unable to connect to intelligence cluster'}`,
+      });
+    }
+  }
+});
+
+// Dedicated Python CyberBot Endpoints
+app.post('/api/cyber-bot/chat', async (req, res) => {
+  try {
+    const { messages, personaId, systemInstruction, model } = req.body;
+    const result = await queryPythonCyberBot(messages, personaId, systemInstruction, model);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(502).json({ error: err.message || 'Python CyberBot unavailable' });
+  }
+});
+
+app.post('/api/cyber-bot/analyze', async (req, res) => {
+  try {
+    const { payload } = req.body;
+    const response = await fetch(`${PYTHON_API_URL}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payload }),
     });
+    const data = await response.json();
+    return res.json(data);
+  } catch (err: any) {
+    return res.status(502).json({ error: err.message || 'Python CyberBot analyzer unavailable' });
+  }
+});
+
+app.get('/api/cyber-bot/terms', async (req, res) => {
+  try {
+    const response = await fetch(`${PYTHON_API_URL}/terms`);
+    const data = await response.json();
+    return res.json(data);
+  } catch (err: any) {
+    return res.status(502).json({ error: err.message || 'Python CyberBot terms service unavailable' });
+  }
+});
+
+app.get('/api/cyber-bot/term/:key', async (req, res) => {
+  try {
+    const response = await fetch(`${PYTHON_API_URL}/term/${encodeURIComponent(req.params.key)}`);
+    const data = await response.json();
+    return res.status(response.status).json(data);
+  } catch (err: any) {
+    return res.status(502).json({ error: err.message || 'Python CyberBot term service unavailable' });
+  }
+});
+
+app.get('/api/cyber-bot/health', async (req, res) => {
+  try {
+    const response = await fetch(`${PYTHON_API_URL}/health`);
+    const data = await response.json();
+    return res.json({ ...data, gateway: 'connected' });
+  } catch (err: any) {
+    return res.status(503).json({ status: 'offline', error: err.message, gateway: 'disconnected' });
   }
 });
 
@@ -641,8 +773,94 @@ app.get('/sw.js', (req, res) => {
   res.sendFile(swPath);
 });
 
+async function isPythonBackendHealthy(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1000);
+    const res = await fetch(`${PYTHON_API_URL}/health`, { signal: controller.signal });
+    clearTimeout(timeout);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function ensurePythonBackendRunning() {
+  if (await isPythonBackendHealthy()) {
+    console.log(`[Aegis CyberBot] Python cybersecurity engine is already running at ${PYTHON_API_URL}`);
+    return;
+  }
+
+  const isWin = process.platform === 'win32';
+  const venvPython = isWin
+    ? path.resolve(__dirname, '.venv', 'Scripts', 'python.exe')
+    : path.resolve(__dirname, '.venv', 'bin', 'python');
+
+  const pythonCmd = fs.existsSync(venvPython) ? venvPython : (isWin ? 'python' : 'python3');
+
+  console.log(`[Aegis CyberBot] Launching Python Cyber Intelligence Server using: ${pythonCmd}...`);
+  try {
+    pythonProcess = spawn(
+      pythonCmd,
+      ['-m', 'uvicorn', 'python_backend.main:app', '--host', '127.0.0.1', '--port', String(PYTHON_PORT)],
+      {
+        cwd: __dirname,
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }
+    );
+
+    pythonProcess.stdout?.on('data', (d) => {
+      console.log(`[Python Engine]: ${d.toString().trim()}`);
+    });
+
+    pythonProcess.stderr?.on('data', (d) => {
+      console.log(`[Python Engine Info]: ${d.toString().trim()}`);
+    });
+
+    pythonProcess.on('exit', (code) => {
+      console.log(`[Aegis CyberBot] Python engine process exited (code ${code})`);
+      pythonProcess = null;
+    });
+
+    for (let i = 0; i < 15; i++) {
+      await new Promise((r) => setTimeout(r, 350));
+      if (await isPythonBackendHealthy()) {
+        console.log(`[Aegis CyberBot] Specialized Python Cybersecurity Engine ready on ${PYTHON_API_URL}!`);
+        break;
+      }
+    }
+  } catch (err) {
+    console.warn('[Aegis CyberBot] Failed to spawn Python backend process:', err);
+  }
+}
+
+function cleanupProcesses() {
+  if (pythonProcess && !pythonProcess.killed) {
+    console.log('[Aegis CyberBot] Terminating Python process cleanly...');
+    try {
+      pythonProcess.kill();
+    } catch {}
+    pythonProcess = null;
+  }
+}
+
+process.on('SIGINT', () => {
+  cleanupProcesses();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  cleanupProcesses();
+  process.exit(0);
+});
+process.on('exit', () => {
+  cleanupProcesses();
+});
+
 // Vite middleware or production static files
 async function startServer() {
+  await ensurePythonBackendRunning();
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
