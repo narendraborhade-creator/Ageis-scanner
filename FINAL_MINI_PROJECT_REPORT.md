@@ -15,9 +15,9 @@ ON
 
 | Detail Item | Information |
 | :--- | :--- |
-| **Group No.** | Group 07 |
+| **Group No.** | Group 02 |
 | **Student Name(s)** | 1. Narendra Borhade<br>2. Aditya Gaikwad<br>3. Ghanshyam Jadhav |
-| **Roll No. / PRN / Seat No.** | MCA-2026-007 / PRN: 72149823B / Exam Seat: 40921 |
+| **Roll No. / PRN / Seat No.** | MCA-2026-002 / PRN: 72149823B / Exam Seat: 40921 |
 | **Class / Division** | MCA – Division A |
 | **Project Guide** | Prof. [Project Guide Name] |
 | **Academic Year** | 2026-27 |
@@ -31,7 +31,7 @@ ON
 **Samarth Vidya Sankul, Vishnupuri, Talegaon Dabhade, Pune - 410507**  
 **DEPARTMENT OF COMPUTER APPLICATION**
 
-This is to certify that **Narendra Borhade**, **Aditya Gaikwad**, and **Ghanshyam Jadhav**, Roll No. / PRN: **MCA-2026-007 / 72149823B**, of **Master of Computer Applications (MCA)** have satisfactorily completed the Mini Project entitled:
+This is to certify that **Narendra Borhade**, **Aditya Gaikwad**, and **Ghanshyam Jadhav**, Roll No. / PRN: **MCA-2026-002 / 72149823B**, of **Master of Computer Applications (MCA)** have satisfactorily completed the Mini Project entitled:
 
 > **“AEGIS 3D SAFE BROWSER: AN AUTONOMOUS ZERO-TRUST WEB ISOLATION, CRYPTOGRAPHIC DNS INSPECTION, AND HARDWARE-ACCELERATED CYBERSECURITY THREAT WORKSTATION”**
 
@@ -58,9 +58,9 @@ We understand that any form of plagiarism, fabrication of results, or misreprese
 
 | Sr. No. | Student Name | Roll No. / PRN | Signature |
 | :---: | :--- | :--- | :---: |
-| 1 | **Narendra Borhade** | MCA-2026-07A | _______________________ |
-| 2 | **Aditya Gaikwad** | MCA-2026-07B | _______________________ |
-| 3 | **Ghanshyam Jadhav** | MCA-2026-07C | _______________________ |
+| 1 | **Narendra Borhade** | MCA-2026-02A | _______________________ |
+| 2 | **Aditya Gaikwad** | MCA-2026-02B | _______________________ |
+| 3 | **Ghanshyam Jadhav** | MCA-2026-02C | _______________________ |
 
 **Place**: Talegaon Dabhade, Pune  
 **Date**: 19 / 10 / 2026
