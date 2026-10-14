@@ -6,6 +6,10 @@
  */
 
 import { BrowserTab } from '../types';
+import {
+  answerWithWebAndCyberKnowledge,
+  isExplicitPageAuditRequest,
+} from './webKnowledgeEngine';
 
 export interface CyberBotResult {
   reply: string;
@@ -318,7 +322,9 @@ Malicious software that encrypts victim files or systems, demanding payment for 
 
 /**
  * Universal Unified Chat & Security Query Handler.
- * Transparently falls back to client-side CyberBot if backend returns 404/500/HTML.
+ * Integrates Gemini cloud AI (with optional user API key),
+ * specialized deep cybersecurity knowledge, and live Wikipedia web retrieval.
+ * Eliminates canned scan-card hijacking for conceptual questions.
  */
 export async function queryAegisCopilot(params: {
   messages: Array<{ role: string; content: string }>;
@@ -329,8 +335,19 @@ export async function queryAegisCopilot(params: {
 }): Promise<CyberBotResult> {
   const { messages, activeTab, personaId, systemInstruction, model } = params;
   const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+  const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('aegis_gemini_api_key') || '' : '';
 
-  // 1. Try calling the backend endpoint first
+  // 1. Explicit in-browser page telemetry audit only when requested
+  if (isExplicitPageAuditRequest(lastUserMsg)) {
+    const auditText = generateTabSecurityAudit(lastUserMsg, activeTab);
+    return {
+      reply: auditText,
+      model: 'Aegis In-Browser Telemetry Engine',
+      persona: 'Aegis In-Browser Copilot',
+    };
+  }
+
+  // 2. Try calling the backend endpoint (/api/gemini/chat)
   try {
     const res = await fetch('/api/gemini/chat', {
       method: 'POST',
@@ -340,44 +357,38 @@ export async function queryAegisCopilot(params: {
         systemInstruction,
         model: model || 'aegis-cyber-python',
         personaId: personaId || 'cyber-sentinel',
+        apiKey: userApiKey || undefined,
       }),
     });
 
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
-      return {
-        reply: data.reply || 'Analysis completed with verified status.',
-        model: data.model || 'Aegis CyberBot',
-        persona: data.persona || 'Aegis Cyber Sentinel',
-        matchedTerms: data.matchedTerms,
-        threatAnalysis: data.threatAnalysis,
-      };
+      const reply = data.reply || '';
+
+      // Guard: Ensure remote endpoint did not return an obsolete canned scan card for an educational question
+      const looksLikeCannedScan =
+        reply.includes('Domain Integrity: Verified ASCII') ||
+        reply.includes('Resolver Protocol: RFC 8484 DNS-over-HTTPS');
+
+      const isEducationalQuery =
+        /explain|what is|how does|why|origin|phish|defense|shield/i.test(lastUserMsg);
+
+      if (!looksLikeCannedScan || !isEducationalQuery) {
+        return {
+          reply: data.reply || 'Analysis completed with verified status.',
+          model: data.model || 'Aegis CyberBot',
+          persona: data.persona || 'Aegis Cyber Sentinel',
+          matchedTerms: data.matchedTerms,
+          threatAnalysis: data.threatAnalysis,
+        };
+      }
     }
   } catch (netErr) {
     console.warn('[Aegis Copilot] Remote API unreachable, engaging client-side cyber engine:', netErr);
   }
 
-  // 2. High-Assurance Client-Side Fallback (Guaranteed to succeed on Vercel / aegisscans.dev / offline)
-  const lowerMsg = lastUserMsg.toLowerCase();
-
-  // Check if it's an in-browser tab action (e.g. "Trackers report", "Audit SSL", etc.)
-  if (
-    lowerMsg.includes('tracker') ||
-    lowerMsg.includes('ssl') ||
-    lowerMsg.includes('phish') ||
-    lowerMsg.includes('dns origin') ||
-    lowerMsg.includes('audit')
-  ) {
-    const auditText = generateTabSecurityAudit(lastUserMsg, activeTab);
-    return {
-      reply: auditText,
-      model: 'Aegis Local Cyber Engine (Client-Side)',
-      persona: 'Aegis In-Browser Copilot',
-    };
-  }
-
-  // Check if query contains an exploit payload
+  // 3. Exploit payload inspection if applicable
   const payloadCheck = inspectPayloadClient(lastUserMsg);
   if (payloadCheck.score > 20) {
     const threatLines = payloadCheck.threats.map((t) => `- **${t.vector}** (\`${t.cwe}\`): ${t.description}`);
@@ -397,39 +408,21 @@ ${threatLines.join('\n')}
 
     return {
       reply,
-      model: 'Aegis Local Cyber Engine (Client-Side)',
+      model: 'Aegis Exploit Engine (Client-Side)',
       persona: 'Aegis Cyber Sentinel',
       threatAnalysis: payloadCheck,
     };
   }
 
-  // Check matching cybersecurity concepts
-  for (const [key, answer] of Object.entries(CYBER_CONCEPTS)) {
-    if (lowerMsg.includes(key)) {
-      return {
-        reply: answer,
-        model: 'Aegis Local Cyber Engine (Client-Side)',
-        persona: 'Aegis Cyber Sentinel',
-        matchedTerms: [key.toUpperCase()],
-      };
-    }
-  }
-
-  // General cybersecurity guidance
+  // 4. Autonomous Web Knowledge & Deep Cybersecurity Engine
+  const knowledge = await answerWithWebAndCyberKnowledge(lastUserMsg, activeTab);
   return {
-    reply: `### 🛡️ Aegis Cyber Security Assessment
-
-You asked: *"${lastUserMsg}"*
-
-**Contextual Analysis**:
-1. **Threat Posture**: In modern web architectures, safeguarding assets requires defense-in-depth, least-privilege access control (NIST SP 800-207), and end-to-end transport encryption.
-2. **Adversary Tactics**: Attackers scan for unpatched CVEs, cross-site scripting (CWE-79), broken object-level authorization (CWE-639), and missing transport security headers.
-3. **Recommended Hardening Controls**:
-   - Enforce **TLS 1.3** and **HSTS** preloading across all domain endpoints.
-   - Deploy **Content Security Policy (CSP)** with cryptographic nonces.
-   - Implement phishing-resistant **FIDO2 / WebAuthn** multi-factor authentication.
-   - Validate and parameterize all user-controlled database inputs.`,
-    model: 'Aegis Local Cyber Engine (Client-Side)',
+    reply: knowledge.reply,
+    model:
+      knowledge.source === 'live-web'
+        ? 'Aegis Web Knowledge (Wikipedia)'
+        : 'Aegis Specialized Cyber Corpus',
     persona: 'Aegis Cyber Sentinel',
+    matchedTerms: knowledge.title ? [knowledge.title] : undefined,
   };
 }

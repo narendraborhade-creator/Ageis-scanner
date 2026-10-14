@@ -91,26 +91,32 @@ app.post('/api/gemini/chat', async (req, res) => {
       }
     }
 
-    // If Gemini API key is present and model is Gemini, try Gemini cloud
-    if (process.env.GEMINI_API_KEY) {
-      const contents = (messages || []).map((msg: { role: string; content: string }) => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }],
-      }));
+    // If Gemini API key is present (server env or client-provided), try Gemini cloud
+    const activeApiKey = req.body.apiKey || process.env.GEMINI_API_KEY;
+    if (activeApiKey) {
+      try {
+        const clientAi = activeApiKey === process.env.GEMINI_API_KEY ? ai : new GoogleGenAI({ apiKey: activeApiKey });
+        const contents = (messages || []).map((msg: { role: string; content: string }) => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }],
+        }));
 
-      const response = await ai.models.generateContent({
-        model: selectedModel,
-        contents,
-        config: {
-          systemInstruction:
-            systemInstruction ||
-            'You are Aegis Cyber AI, a specialized threat intelligence, DNS safety, web vulnerability, and scientific research assistant for Aegis 3D Safe Browser built by Narendra Borhade.',
-          temperature: 0.7,
-        },
-      });
+        const response = await clientAi.models.generateContent({
+          model: selectedModel.includes('gemini') ? selectedModel : 'gemini-2.5-flash',
+          contents,
+          config: {
+            systemInstruction:
+              systemInstruction ||
+              'You are Aegis Cyber AI, a specialized threat intelligence, DNS safety, web vulnerability, and scientific research assistant for Aegis 3D Safe Browser built by Narendra Borhade.',
+            temperature: 0.7,
+          },
+        });
 
-      const reply = response.text || 'No response received from cyber intelligence model.';
-      return res.json({ reply, model: selectedModel });
+        const reply = response.text || 'No response received from cyber intelligence model.';
+        return res.json({ reply, model: selectedModel.includes('gemini') ? selectedModel : 'gemini-2.5-flash' });
+      } catch (geminiErr: any) {
+        console.warn('[Aegis Chat] Gemini API error, falling back to local Python engine:', geminiErr.message);
+      }
     }
 
     // Default: Run Python CyberBot

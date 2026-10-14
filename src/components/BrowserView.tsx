@@ -80,6 +80,7 @@ import {
   Moon,
   Sun,
   Mail,
+  Key,
 } from 'lucide-react';
 
 interface BrowserViewProps {
@@ -212,13 +213,18 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     {
       id: 'ai-init',
       role: 'assistant',
-      text: 'Aegis In-Browser Assistant initialized. I am monitoring your active tabs and can analyze real-time DNS records, SSL cipher suites, or phishing indicators for this page.',
+      text: 'Aegis Cybersecurity Sentinel initialized. Ask any cybersecurity question, explore attack vectors (DNS Origin, Phishing & AitM, Zero Trust, Exploit Payloads), or audit current page telemetry.',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
+  const [hasUserApiKey, setHasUserApiKey] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && Boolean(localStorage.getItem('aegis_gemini_api_key'));
+  });
+  const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
+  const [apiKeyInput, setApiKeyInput] = useState<string>('');
 
   // Hover-state tab preview card state (snapshot thumbnail popup)
   const [hoveredTab, setHoveredTab] = useState<{
@@ -1712,19 +1718,40 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               {/* 4. IN-BROWSER AI ASSISTANT VIEW */}
               {activeSidebar === 'ai' && (
                 <div className="flex-1 flex flex-col overflow-hidden p-3 space-y-2">
-                  {/* Active Page Context Banner */}
+                  {/* Active Page Context Banner & Engine Mode */}
                   <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-400 flex items-center justify-between">
-                    <span className="truncate max-w-[200px]">Context: {activeTab.domain}</span>
-                    <span className="text-emerald-400 font-bold">Grade {activeTab.sslGrade}</span>
+                    <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="truncate">{activeTab.domain}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApiKeyInput(localStorage.getItem('aegis_gemini_api_key') || '');
+                          setShowApiKeyModal(true);
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 border transition-colors cursor-pointer ${
+                          hasUserApiKey
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Configure Google Gemini Cloud API Key (Optional)"
+                      >
+                        <Key className="w-2.5 h-2.5" />
+                        <span>{hasUserApiKey ? 'Gemini 2.5' : 'Cyber Engine'}</span>
+                      </button>
+                      <span className="text-emerald-400 font-bold">{activeTab.sslGrade}</span>
+                    </div>
                   </div>
 
                   {/* Quick AI Action Chips */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[10px] font-mono scrollbar-none">
                     {[
-                      'Audit SSL security',
-                      'Check phishing risk',
-                      'Explain DNS origin',
-                      'Trackers report',
+                      'Explain DNS Origin & Shielding',
+                      'How Phishing Works & Prevention',
+                      'TLS 1.3 & Post-Quantum Security',
+                      'Audit Active Tab Telemetry',
                     ].map((chip) => (
                       <button
                         key={chip}
@@ -1795,7 +1822,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       type="text"
                       value={aiInput}
                       onChange={(e) => setAiInput(e.target.value)}
-                      placeholder={`Ask Copilot about ${activeTab.domain}...`}
+                      placeholder="Ask about cybersecurity, DNS origin, phishing, or active tab..."
                       className="w-full glass-input rounded-lg px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500"
                     />
                     <button
@@ -1812,6 +1839,96 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* Optional Gemini API Key Configuration Modal */}
+      {showApiKeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-2xl bg-slate-900/95 border border-slate-800 p-6 shadow-2xl shadow-cyan-950/50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-100">AI Intelligence Engine Settings</h3>
+                  <p className="text-xs text-slate-400">Optional Google Gemini API Key</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowApiKeyModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 mb-3 leading-relaxed">
+              By default, Aegis runs its built-in <strong>Specialized Cybersecurity & Live Web Knowledge Engine</strong> (Wikipedia + Deep Security Corpus). If you have a Google Gemini API Key, you can add it here to enable Google's flagship Gemini models directly.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                  Google Gemini API Key (Stored in LocalStorage)
+                </label>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full glass-input rounded-lg px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 border border-slate-700 focus:border-amber-500/60"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                {hasUserApiKey ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('aegis_gemini_api_key');
+                      setHasUserApiKey(false);
+                      setApiKeyInput('');
+                      setShowApiKeyModal(false);
+                    }}
+                    className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                  >
+                    Clear Key & Use Cyber Engine
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-slate-500 font-mono">No key saved (Using Cyber Engine)</span>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKeyModal(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 bg-slate-800 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (apiKeyInput.trim()) {
+                        localStorage.setItem('aegis_gemini_api_key', apiKeyInput.trim());
+                        setHasUserApiKey(true);
+                      } else {
+                        localStorage.removeItem('aegis_gemini_api_key');
+                        setHasUserApiKey(false);
+                      }
+                      setShowApiKeyModal(false);
+                    }}
+                    className="px-4 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer"
+                  >
+                    Save Key
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Smart Tab Grouping Modal */}
       <SmartTabGroupModal

@@ -124,6 +124,23 @@ CYBER_TERMS: Dict[str, Dict[str, Any]] = {
         ],
         "considerations": "Bypasses legacy local network DNS sinkholes and enterprise filtering unless centralized DoH policies are deployed."
     },
+    "dns_origin": {
+        "title": "DNS Origin Server & Origin IP Shielding",
+        "acronym": "Origin Shielding",
+        "category": "Perimeter Defense & CDN Architecture",
+        "definition": "An Origin Server is the backend physical server or cluster where web applications execute and data resides, situated behind edge reverse proxies (such as Cloudflare, Fastly, Akamai, or AWS CloudFront). The DNS Origin maps the domain directly to the actual origin host machine IP.",
+        "mechanics": "When reverse proxy CDNs are enabled, public DNS A/AAAA records resolve to CDN anycast edge IP addresses. The edge proxy receives client traffic, performs WAF filtering and caching, and proxies legitimate requests to the origin server. However, if the origin IP is leaked in historical DNS records, MX records, or SPF headers, attackers bypass the CDN entirely.",
+        "threat_vectors": [
+            "Direct-to-Origin DDoS: Flooding the origin server IP directly to bypass CDN traffic scrubbing centers.",
+            "WAF Bypass: Direct HTTP requests to the origin machine completely skip edge Web Application Firewall rules.",
+            "Historical DNS Reconnaissance: Querying historical DNS archives (SecurityTrails, Censys, Shodan) to find previous pre-CDN A records."
+        ],
+        "defense": [
+            "Zero Open Inbound Ports: Deploy tunnel daemons (Cloudflare Argo Tunnel / cloudflared, AWS PrivateLink) with no listening public ports.",
+            "Ingress Firewall Whitelisting: Restrict incoming firewall traffic on ports 80/443 strictly to CDN IP CIDRs.",
+            "Authenticated Origin Pulls (mTLS): Enforce mutual TLS authentication requiring CDN client certificates on the web server."
+        ]
+    },
     "dnssec": {
         "title": "Domain Name System Security Extensions (DNSSEC)",
         "acronym": "DNSSEC",
@@ -555,6 +572,10 @@ TERM_ALIASES: Dict[str, str] = {
     "doh": "doh",
     "dns over https": "doh",
     "dns-over-https": "doh",
+    "dns origin": "dns_origin",
+    "origin server": "dns_origin",
+    "origin ip": "dns_origin",
+    "origin shielding": "dns_origin",
     "dnssec": "dnssec",
     "dns security extensions": "dnssec",
     "hsts": "hsts",

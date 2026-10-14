@@ -176,6 +176,12 @@ def generate_cyber_response(
             if "mechanics" in term:
                 lines.append(f"**Technical Mechanics**:\n{term['mechanics']}\n")
 
+            if "threat_vectors" in term:
+                lines.append("**Primary Threat Vectors & Adversary Tradecraft**:")
+                for tv in term["threat_vectors"]:
+                    lines.append(f"- {tv}")
+                lines.append("")
+
             if "prevention" in term:
                 lines.append("**Defensive Hardening & Prevention Measures**:")
                 for prev in term["prevention"]:
