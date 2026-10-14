@@ -7,8 +7,12 @@ import {
   saveStoredDbConfig,
   registerNewUser,
   loginUser,
+  logoutAll,
+  createGuestAccount,
+  loginWithGmail,
+  isGuestModeActive,
 } from '../services/authStorage';
-import { User, Lock, Mail, Database, Shield, CheckCircle2, AlertCircle, LogOut, RefreshCw, Key, KeyRound, Zap, ShieldCheck } from 'lucide-react';
+import { User, Lock, Mail, Database, Shield, CheckCircle2, AlertCircle, LogOut, RefreshCw, Key, KeyRound, Zap, ShieldCheck, EyeOff } from 'lucide-react';
 import { PasswordVaultManager } from './PasswordVaultManager';
 import { CloudflareVerificationModal } from './CloudflareVerificationModal';
 import { testCloudflareD1Database } from '../services/cloudflareVerificationService';
@@ -64,9 +68,26 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
   };
 
   const handleLogout = () => {
-    saveStoredUser(null);
+    logoutAll();
     onUserChange(null);
-    setStatusMessage({ type: 'success', text: 'Logged out successfully.' });
+    setStatusMessage({ type: 'success', text: 'Logged out successfully. All sessions cleared.' });
+  };
+
+  const handleUseAsGuest = () => {
+    const guest = createGuestAccount();
+    onUserChange(guest);
+    setStatusMessage({ type: 'success', text: 'Zero-Trace Guest session activated. No credentials stored.' });
+  };
+
+  const handleGmailLogin = (email: string) => {
+    setStatusMessage(null);
+    try {
+      const user = loginWithGmail(email);
+      onUserChange(user);
+      setStatusMessage({ type: 'success', text: `Signed in as ${user.name} (${user.email})` });
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Gmail login failed' });
+    }
   };
 
   const handleSaveDbConfig = () => {
@@ -336,6 +357,32 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
             >
               Sign In to Account
             </button>
+
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-slate-800"></div>
+              <span className="flex-shrink mx-3 text-[10px] font-mono text-slate-500 uppercase tracking-wider">or fast authentication</span>
+              <div className="flex-grow border-t border-slate-800"></div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleGmailLogin(loginEmail || 'narendra.via.mail@gmail.com')}
+                className="py-2.5 px-3 rounded-xl bg-slate-900 border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 hover:bg-slate-850 font-mono text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Mail className="w-3.5 h-3.5 text-red-400" />
+                <span>Log in with Gmail</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUseAsGuest}
+                className="py-2.5 px-3 rounded-xl bg-slate-900 border border-teal-500/30 hover:border-teal-400 text-teal-300 hover:bg-slate-850 font-mono text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <EyeOff className="w-3.5 h-3.5 text-teal-400" />
+                <span>Use as a Guest</span>
+              </button>
+            </div>
           </form>
         </div>
       )}

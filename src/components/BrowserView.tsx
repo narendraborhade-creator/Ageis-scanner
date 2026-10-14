@@ -28,6 +28,15 @@ import { TabHoverPreviewCard } from './TabHoverPreviewCard';
 import { TabSnapshotThumbnail } from './TabSnapshotThumbnail';
 import { autoGroupTabs } from '../services/resourceMonitorService';
 import { queryAegisCopilot } from '../services/cyberBotService';
+import { LinkAuthPromptModal } from './LinkAuthPromptModal';
+import {
+  isGuestModeActive,
+  setGuestModeActive,
+  createGuestAccount,
+  loginWithGmail,
+  getAuthPromptPreference,
+} from '../services/authStorage';
+import { UserAccount } from '../types';
 import {
   Shield,
   ShieldAlert,
@@ -70,6 +79,7 @@ import {
   Cpu,
   Moon,
   Sun,
+  Mail,
 } from 'lucide-react';
 
 interface BrowserViewProps {
@@ -78,6 +88,9 @@ interface BrowserViewProps {
   onOpenScience: (query: string) => void;
   initialUrl?: string;
   onTabsCountChange?: (count: number) => void;
+  currentUser?: UserAccount | null;
+  onUserChange?: (user: UserAccount | null) => void;
+  onOpenAuthView?: () => void;
 }
 
 // Accurate Initial State: Exactly 1 default tab
@@ -107,6 +120,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   onOpenScience,
   initialUrl,
   onTabsCountChange,
+  currentUser,
+  onUserChange,
+  onOpenAuthView,
 }) => {
   const [tabs, setTabs] = useState<BrowserTab[]>(() => {
     const session = getStoredSessionState();
@@ -143,6 +159,16 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
   // Read Later queue state
   const [readLaterItems, setReadLaterItems] = useState<ReadLaterItem[]>(() => getStoredReadLaterList());
+
+  // Link Auth Prompt Modal & Address Bar Editing State
+  const [showLinkAuthModal, setShowLinkAuthModal] = useState<boolean>(false);
+  const [pendingNav, setPendingNav] = useState<{
+    url: string;
+    inNewTab: boolean;
+    openExternal: boolean;
+  } | null>(null);
+  const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
+  const [urlInputValue, setUrlInputValue] = useState<string>('');
 
   useEffect(() => {
     const handleReadLaterChange = () => {
@@ -343,7 +369,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     return domain;
   };
 
-  const handleNavigate = (rawUrl: string, inNewTab = false, openExternal = true) => {
+  const executeNavigate = (rawUrl: string, inNewTab = false, openExternal = true) => {
     let target = rawUrl.trim();
 
     // If search keyword without dot or protocol, route to Science or Web Search
@@ -423,6 +449,66 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
       setIsScanning(false);
     }, 400);
+  };
+
+  /**
+   * Universal Security-Gated Link Handler:
+   * Whenever a user clicks on any link or enters a URL, if not explicitly authenticated with Gmail
+   * and not in an active session, prompts them to use as Guest or log in with Gmail!
+   */
+  const handleNavigate = (rawUrl: string, inNewTab = false, openExternal = true) => {
+    let target = rawUrl.trim();
+    if (!target.includes('.') && !target.startsWith('http')) {
+      onOpenScience(target);
+      return;
+    }
+    if (!/^https?:\/\//i.test(target)) {
+      target = `https://${target}`;
+    }
+
+    const isAuthPromptSessionDone = sessionStorage.getItem('aegis_auth_prompt_dismissed') === 'true';
+    const pref = getAuthPromptPreference();
+    const isExplicitlyAuthenticated = !!currentUser && !currentUser.email.endsWith('@aegis.local');
+    const isGuestActive = isGuestModeActive();
+
+    const shouldPrompt =
+      (!isExplicitlyAuthenticated && !isGuestActive) ||
+      (!isAuthPromptSessionDone && pref === 'session') ||
+      pref === 'always';
+
+    if (shouldPrompt) {
+      setPendingNav({ url: target, inNewTab, openExternal });
+      setShowLinkAuthModal(true);
+      return;
+    }
+
+    executeNavigate(target, inNewTab, openExternal);
+  };
+
+  const handleConfirmGuest = (rememberForSession: boolean) => {
+    if (rememberForSession) {
+      sessionStorage.setItem('aegis_auth_prompt_dismissed', 'true');
+    }
+    const guest = createGuestAccount();
+    onUserChange?.(guest);
+    setShowLinkAuthModal(false);
+    if (pendingNav) {
+      executeNavigate(pendingNav.url, pendingNav.inNewTab, pendingNav.openExternal);
+      setPendingNav(null);
+    }
+  };
+
+  const handleConfirmGmail = (email: string, rememberForSession: boolean) => {
+    if (rememberForSession) {
+      sessionStorage.setItem('aegis_auth_prompt_dismissed', 'true');
+    }
+    const loggedIn = loginWithGmail(email);
+    onUserChange?.(loggedIn);
+    setShowLinkAuthModal(false);
+    if (pendingNav) {
+      executeNavigate(pendingNav.url, pendingNav.inNewTab, pendingNav.openExternal);
+      setPendingNav(null);
+    }
   };
 
   const handleCreateNewTab = () => {
@@ -818,18 +904,93 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </button>
           </div>
 
-          {/* Address Preview Pill with Star Bookmark Action */}
-          <div className="flex-1 min-w-0 sm:min-w-[180px] flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 font-mono text-xs overflow-hidden">
-            <div className="flex items-center gap-2 truncate">
+          {/* Identity & Session Status Badge */}
+          {currentUser && !currentUser.email.endsWith('@aegis.local') ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPendingNav({ url: activeTab.url, inNewTab: false, openExternal: false });
+                setShowLinkAuthModal(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 transition-colors text-[11px] font-mono shrink-0 cursor-pointer shadow-sm"
+              title={`Logged in as ${currentUser.email}. Click to change identity or switch to Guest.`}
+            >
+              <Mail className="w-3 h-3 text-cyan-400 shrink-0" />
+              <span className="hidden sm:inline max-w-[120px] truncate">{currentUser.email}</span>
+              <span className="sm:hidden">Gmail</span>
+            </button>
+          ) : isGuestModeActive() ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPendingNav({ url: activeTab.url, inNewTab: false, openExternal: false });
+                setShowLinkAuthModal(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-950/60 border border-teal-500/40 text-teal-300 hover:bg-teal-900/60 transition-colors text-[11px] font-mono shrink-0 cursor-pointer shadow-sm"
+              title="Browsing as Guest. Click to log in with Gmail."
+            >
+              <EyeOff className="w-3 h-3 text-teal-400 shrink-0" />
+              <span className="hidden sm:inline">Guest Mode</span>
+              <span className="sm:hidden">Guest</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setPendingNav({ url: activeTab.url, inNewTab: false, openExternal: false });
+                setShowLinkAuthModal(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/60 transition-colors text-[11px] font-mono shrink-0 cursor-pointer animate-pulse"
+              title="Not authenticated. Click to choose Guest or Gmail."
+            >
+              <Shield className="w-3 h-3 text-amber-400 shrink-0" />
+              <span>Select Mode</span>
+            </button>
+          )}
+
+          {/* Interactive Address Bar Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const val = (urlInputValue || activeTab.url).trim();
+              if (val) {
+                handleNavigate(val, false, false);
+                setIsEditingUrl(false);
+              }
+            }}
+            className="flex-1 min-w-0 sm:min-w-[200px] flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 focus-within:border-cyan-400 font-mono text-xs overflow-hidden transition-all shadow-inner"
+          >
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               {activeTab.isHttps ? (
                 <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
               ) : (
                 <ShieldAlert className="w-3 h-3 text-rose-400 shrink-0" />
               )}
-              <span className="text-slate-200 truncate">{activeTab.url}</span>
+              <input
+                type="text"
+                value={isEditingUrl ? urlInputValue : activeTab.url}
+                onFocus={() => {
+                  setIsEditingUrl(true);
+                  setUrlInputValue(activeTab.url);
+                }}
+                onBlur={() => {
+                  setTimeout(() => setIsEditingUrl(false), 250);
+                }}
+                onChange={(e) => setUrlInputValue(e.target.value)}
+                placeholder="Enter URL or search term..."
+                className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none truncate font-mono text-xs"
+              />
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0 ml-1">
+              {isEditingUrl && (
+                <button
+                  type="submit"
+                  className="px-2 py-0.5 rounded bg-cyan-500 text-slate-950 font-bold text-[10px] hover:bg-cyan-400 cursor-pointer"
+                >
+                  Go
+                </button>
+              )}
               {/* Quick Save to Read Later Action */}
               <button
                 type="button"
@@ -867,7 +1028,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
               </button>
             </div>
-          </div>
+          </form>
 
           {/* Tools & Sidebars Toggles (Responsive scrollable ribbon on phones) */}
           <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-full pb-1 scrollbar-none py-0.5">
@@ -1709,6 +1870,18 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           }}
         />
       )}
+
+      {/* Universal Link Security & Identity Verification Modal */}
+      <LinkAuthPromptModal
+        isOpen={showLinkAuthModal}
+        targetUrl={pendingNav?.url || activeTab.url}
+        onClose={() => {
+          setShowLinkAuthModal(false);
+          setPendingNav(null);
+        }}
+        onContinueAsGuest={handleConfirmGuest}
+        onLoginWithGmail={handleConfirmGmail}
+      />
     </div>
   );
 };

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { NavTab, UserAccount } from './types';
-import { getStoredUser } from './services/authStorage';
+import { getStoredUser, isGuestModeActive } from './services/authStorage';
 import {
   getStoredSessionState,
   saveSessionState,
@@ -529,12 +529,30 @@ export default function App() {
             className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
               activeTab === 'auth'
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                : user && !user.email.endsWith('@aegis.local')
+                ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60'
+                : isGuestModeActive()
+                ? 'bg-teal-950/60 border-teal-500/40 text-teal-300 hover:bg-teal-900/60'
                 : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-cyan-500/40 hover:bg-slate-800'
             }`}
-            title={user ? `Signed in as ${user.name}` : 'Sign In to Aegis Vault'}
+            title={user && !user.email.endsWith('@aegis.local') ? `Signed in as ${user.name} (${user.email})` : isGuestModeActive() ? 'Browsing as Guest (Zero-Trace)' : 'Sign In to Aegis Vault'}
           >
-            <User className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden md:inline max-w-[80px] truncate">{user ? user.name : 'Sign In'}</span>
+            {user && !user.email.endsWith('@aegis.local') ? (
+              <>
+                <User className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden md:inline max-w-[85px] truncate">{user.name}</span>
+              </>
+            ) : isGuestModeActive() ? (
+              <>
+                <EyeOff className="w-3.5 h-3.5 text-teal-400" />
+                <span className="hidden md:inline">Guest</span>
+              </>
+            ) : (
+              <>
+                <User className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden md:inline">Sign In / Guest</span>
+              </>
+            )}
           </button>
 
           {/* Mobile Menu Toggle Button */}
@@ -861,6 +879,9 @@ export default function App() {
               onOpenCompare={handleOpenCompareFromBrowser}
               onOpenScience={handleOpenScienceFromBrowser}
               onTabsCountChange={setBrowserOpenTabsCount}
+              currentUser={user}
+              onUserChange={setUser}
+              onOpenAuthView={() => setActiveTab('auth')}
             />
           </div>
         )}
