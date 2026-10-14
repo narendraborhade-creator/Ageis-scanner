@@ -38,6 +38,7 @@
    - 4.6 Web Crypto AES-256-GCM Hardware-Backed Password Vault
    - 4.7 Multi-Cloud Hybrid Database Architecture (Cloudflare D1, Firebase, MongoDB)
    - 4.8 Identity Security, Anti-Autofill, & PWA Service Worker Engine
+   - 4.9 Production User Interface Screens & Operational Telemetry
 7. [Chapter 5: Testing and Results](#chapter-5-testing-and-results)
    - 5.1 Testing Methodologies
    - 5.2 Unit and Static Analysis Verification
@@ -67,6 +68,11 @@
 - **Figure 4.1**: Three.js WebGL Holographic Particle & Shield Coordinate System.
 - **Figure 4.2**: AES-256-GCM PBKDF2 Key Derivation and Ciphertext Payload Architecture.
 - **Figure 4.3**: Hybrid Edge-to-Cloud Multi-Database Federation Model.
+- **Figure 4.4**: Production Output Screen 1 – Active Safe Browsing View (`wikipedia.org`) with In-Browser AI Copilot & Real-Time Security Badges.
+- **Figure 4.5**: Production Output Screen 2 – Universal Global Command Palette (`Ctrl+K`) & Security Workspace Switcher Modal.
+- **Figure 4.6**: Production Output Screen 3 – Core Engineering & Research Team Directory (`aegis://about`).
+- **Figure 4.7**: Production Output Screen 4 – Hardened User Authentication, Cloud Database Vault & Anti-Autofill Session Portal (`aegis://auth`).
+- **Figure 4.8**: Production Output Screen 5 – Aegis CyberBot Specialized Python AI Threat Intelligence & Exploit Inspector Engine (`aegis://gemini-copilot`).
 - **Figure 5.1**: Latency Distribution Curve: Cloudflare vs. Google DNS Resolution.
 - **Figure 5.2**: Resource Utilization Comparison (CPU/RAM Footprint) vs. Standard Chromium Instances.
 
@@ -398,7 +404,37 @@ To protect the creator's administrative identity and prevent browser password ma
 - **Zero Default Persistence**: Form state variables are initialized strictly as empty strings (`""`).
 - **Autofill Suppression**: All form elements are decorated with `autoComplete="off"`, non-standard attribute naming, `autoComplete="new-password"` on password fields, and vendor flags (`data-lpignore="true"`).
 - **Proactive DOM Purge**: A multi-interval `useEffect` cleanses DOM values 50ms, 200ms, and 500ms post-mount to eradicate asynchronous browser password-manager injections.
-- **Service Worker Lifecycle (`public/sw.js` v2)**: Implements `aegis-shell-v2` and `aegis-static-v2` caches with automated stale cache purging on `activate` and proactive `registration.update()` checks.
+### 4.9 Production User Interface Screens & Operational Telemetry
+
+Below are the primary production execution screens captured directly from the live deployed application at `https://www.aegisscans.dev/`:
+
+#### 4.9.1 Production Screen 1: Safe Browsing View (`wikipedia.org`) with In-Browser AI Copilot & Real-Time Security Badges
+![Figure 4.4: Active Safe Browsing View with Real-Time In-Browser AI Copilot Telemetry](public/docs_assets/screen1_safe_browser_copilot.png)
+*Figure 4.4: Safe Browsing View (`wikipedia.org`) displaying zero-trust verification banner, isolated iframe container, 24ms edge latency, active TLS 1.3, CSP enforcement, clean cookies, clickjacking defense, and the integrated Gemini AI Copilot side-panel.*
+
+---
+
+#### 4.9.2 Production Screen 2: Universal Global Command Palette (`Ctrl+K` / `Cmd+K`)
+![Figure 4.5: Universal Global Command Palette and Security Workspace Switcher Modal](public/docs_assets/screen2_command_palette.png)
+*Figure 4.5: Global Command Palette modal overlaid on the 3D particle cyber scene, offering instant keyboard navigation across diagnostic tools, theme selectors, and contributor views.*
+
+---
+
+#### 4.9.3 Production Screen 3: Core Engineering & Research Team Directory (`aegis://about`)
+![Figure 4.6: Core Engineering & Research Team Directory](public/docs_assets/screen3_about_team.png)
+*Figure 4.6: Academic contributor directory of Group 02 (Narendra Borhade, Aditya Gaikwad, Ghanshyam Jadhav), highlighting system architecture contributions and external researcher contact channels.*
+
+---
+
+#### 4.9.4 Production Screen 4: Hardened User Authentication, Cloud Database Vault & Anti-Autofill Session Portal (`aegis://auth`)
+![Figure 4.7: Hardened User Authentication, Cloud Database Vault & Anti-Autofill Session Portal](public/docs_assets/screen4_auth_vault.png)
+*Figure 4.7: Authentication portal showing hardened empty input fields (anti-autofill compliant), 256-bit AES session indicator, Guest user sandbox mode, Cloudflare Turnstile bot verification, and multi-cloud DB configuration.*
+
+---
+
+#### 4.9.5 Production Screen 5: Aegis CyberBot Specialized Python AI Threat Intelligence & Exploit Inspector Engine (`aegis://gemini-copilot`)
+![Figure 4.8: Aegis CyberBot Specialized Python AI Threat Intelligence & Exploit Inspector Engine](public/docs_assets/screen5_cyberbot_python.png)
+*Figure 4.8: Specialized cybersecurity intelligence assistant interface displaying active Python AI Engine fallback status, interactive cyber sentinel greeting, and one-click quick action chips for CVE-2024-3094, Python port scanning, and CSP policy auditing.*
 
 ---
 
