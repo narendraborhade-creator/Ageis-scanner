@@ -201,17 +201,6 @@ export const LinkAuthPromptModal: React.FC<LinkAuthPromptModalProps> = ({
                 />
               </div>
 
-              {/* Quick 1-click option for Narendra Borhade */}
-              <div className="flex items-center justify-between text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => setGmailInput('narendra.via.mail@gmail.com')}
-                  className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
-                >
-                  Quick fill: narendra.via.mail@gmail.com
-                </button>
-              </div>
-
               <button
                 type="submit"
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold font-mono text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"

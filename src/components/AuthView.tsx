@@ -7,6 +7,7 @@ import {
   saveStoredDbConfig,
   registerNewUser,
   loginUser,
+  loginAsAdmin,
   logoutAll,
   createGuestAccount,
   loginWithGmail,
@@ -27,9 +28,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'database' | 'vault'>('login');
   const [showCfModal, setShowCfModal] = useState(false);
 
-  // Form states
-  const [loginEmail, setLoginEmail] = useState('narendra.via.mail@gmail.com');
-  const [loginPassword, setLoginPassword] = useState('AegisZeroTrust2026!');
+  // Form states - Empty by default (no hardcoded credentials)
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [adminKey, setAdminKey] = useState('');
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -42,12 +45,34 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
+    if (!loginEmail.trim()) {
+      setStatusMessage({ type: 'error', text: 'Please enter your registered email address.' });
+      return;
+    }
     try {
       const user = loginUser(loginEmail);
       onUserChange(user);
       setStatusMessage({ type: 'success', text: `Welcome back, ${user.name}! Authenticated successfully.` });
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err.message || 'Authentication failed' });
+    }
+  };
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatusMessage(null);
+    if (!adminKey.trim()) {
+      setStatusMessage({ type: 'error', text: 'Please enter the Administrator Security Key.' });
+      return;
+    }
+    try {
+      const admin = loginAsAdmin(adminKey);
+      onUserChange(admin);
+      setStatusMessage({ type: 'success', text: 'Welcome, Administrator Narendra Borhade! Architect privileges activated.' });
+      setAdminKey('');
+      setShowAdminLogin(false);
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Invalid Administrator Security Key.' });
     }
   };
 
@@ -81,8 +106,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
 
   const handleGmailLogin = (email: string) => {
     setStatusMessage(null);
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@') || !trimmed.includes('.')) {
+      setStatusMessage({ type: 'error', text: 'Please enter your Gmail address in the email field above.' });
+      return;
+    }
     try {
-      const user = loginWithGmail(email);
+      const user = loginWithGmail(trimmed);
       onUserChange(user);
       setStatusMessage({ type: 'success', text: `Signed in as ${user.name} (${user.email})` });
     } catch (err: any) {
@@ -301,7 +331,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
                   type="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="narendra.via.mail@gmail.com"
+                  placeholder="your.email@gmail.com"
                   className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100"
                   required
                 />
@@ -324,17 +354,44 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-[11px] text-slate-500 font-mono">Zero-Trace Secure Session</span>
               <button
                 type="button"
-                onClick={() => {
-                  setLoginEmail('narendra.via.mail@gmail.com');
-                  setLoginPassword('AegisZeroTrust2026!');
-                }}
-                className="text-cyan-400 hover:underline"
+                onClick={() => setShowAdminLogin(!showAdminLogin)}
+                className="text-slate-400 hover:text-cyan-300 text-[11px] font-mono hover:underline cursor-pointer"
               >
-                Fill Narendra Borhade Demo Credentials
+                {showAdminLogin ? 'Hide Admin Access' : 'Administrator Access'}
               </button>
             </div>
+
+            {/* Collapsible Administrator Sign In for Narendra Borhade */}
+            {showAdminLogin && (
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/30 space-y-2.5 animate-in fade-in">
+                <div className="flex items-center gap-2 text-xs font-mono text-amber-300">
+                  <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Lead Architect & Administrator Login</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Restricted portal for Narendra Borhade. Requires master security key.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={adminKey}
+                    onChange={(e) => setAdminKey(e.target.value)}
+                    placeholder="Enter Admin Security Key..."
+                    className="flex-1 glass-input rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-600 border border-slate-700"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAdminLogin}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs transition-colors cursor-pointer shrink-0"
+                  >
+                    Unlock Admin
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Cloudflare Protected Indicator */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-mono">
@@ -367,7 +424,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={() => handleGmailLogin(loginEmail || 'narendra.via.mail@gmail.com')}
+                onClick={() => {
+                  if (!loginEmail.trim()) {
+                    setStatusMessage({ type: 'error', text: 'Please enter your personal Gmail address above first.' });
+                    return;
+                  }
+                  handleGmailLogin(loginEmail);
+                }}
                 className="py-2.5 px-3 rounded-xl bg-slate-900 border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 hover:bg-slate-850 font-mono text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5 text-red-400" />
@@ -406,7 +469,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
                   type="text"
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
-                  placeholder="e.g. Narendra Borhade"
+                  placeholder="e.g. Alex Morgan"
                   className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100"
                   required
                 />

@@ -7,8 +7,8 @@ const STORAGE_KEY_PROMPT_PREFERENCE = 'aegis_auth_prompt_preference';
 const STORAGE_KEY_DB_CONFIG = 'aegis_db_config';
 const STORAGE_KEY_ACCOUNTS = 'aegis_registered_accounts';
 
-export const DEFAULT_USER: UserAccount = {
-  uid: 'usr-narendra-001',
+export const ADMIN_ACCOUNT: UserAccount = {
+  uid: 'usr-admin-narendra',
   name: 'Narendra Borhade',
   email: 'narendra.via.mail@gmail.com',
   role: 'Lead Security Architect & Administrator',
@@ -28,6 +28,9 @@ export const DEFAULT_USER: UserAccount = {
   ],
   threatsBlockedCount: 142,
 };
+
+// Backwards compatibility reference (do NOT use as default active user)
+export const DEFAULT_USER: UserAccount = ADMIN_ACCOUNT;
 
 const DEFAULT_DB_CONFIG: DatabaseConfig = {
   activeEngine: 'local',
@@ -58,30 +61,31 @@ const DEFAULT_DB_CONFIG: DatabaseConfig = {
 
 /**
  * Returns the currently authenticated user.
- * STRICT SECURITY: NEVER auto-logs in any default user.
- * Explicit login is strictly required. Legacy auto-seeded sessions are cleared.
+ * ZERO-LEAK SECURITY: The administrator's account (Narendra Borhade) is NEVER
+ * automatically opened for regular browser sessions or visitors.
+ * Visitors must browse as Guest or sign in with their OWN account.
  */
 export function getStoredUser(): UserAccount | null {
   try {
-    const isExplicit = localStorage.getItem(STORAGE_KEY_EXPLICIT_LOGIN);
     const raw = localStorage.getItem(STORAGE_KEY_USER);
+    if (!raw) return null;
 
-    if (!raw || isExplicit !== 'true') {
-      // Clear any legacy unverified auto-seed to prevent privacy leaks
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed?.uid === 'usr-narendra-001' && isExplicit !== 'true') {
-            localStorage.removeItem(STORAGE_KEY_USER);
-          }
-        } catch {
-          localStorage.removeItem(STORAGE_KEY_USER);
-        }
-      }
+    const parsed: UserAccount = JSON.parse(raw);
+
+    // CRITICAL: Prevent Narendra Borhade's admin account from auto-opening for regular browsing
+    if (parsed?.email === 'narendra.via.mail@gmail.com' || parsed?.uid?.includes('narendra')) {
+      // Purge admin account from standard startup session
+      localStorage.removeItem(STORAGE_KEY_USER);
+      localStorage.removeItem(STORAGE_KEY_EXPLICIT_LOGIN);
       return null;
     }
 
-    return JSON.parse(raw);
+    const isExplicit = localStorage.getItem(STORAGE_KEY_EXPLICIT_LOGIN);
+    if (isExplicit !== 'true') {
+      return null;
+    }
+
+    return parsed;
   } catch {
     return null;
   }
@@ -155,11 +159,27 @@ export function setAuthPromptPreference(pref: 'always' | 'session'): void {
   }
 }
 
+/**
+ * Sign in using personal Gmail address.
+ * NEVER defaults to Narendra Borhade's admin account.
+ * Creates and logs into a dedicated session for the user's OWN email.
+ */
 export function loginWithGmail(email: string, name?: string): UserAccount {
   const trimmedEmail = email.trim().toLowerCase();
-  if (!trimmedEmail || !trimmedEmail.includes('@')) {
-    throw new Error('Please enter a valid Gmail address.');
+  if (!trimmedEmail || !trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
+    throw new Error('Please enter a valid personal Gmail address (e.g. yourname@gmail.com).');
   }
+
+  // Derive human-readable name from the user's email
+  const derivedName =
+    name ||
+    trimmedEmail
+      .split('@')[0]
+      .split(/[._-]/)
+      .filter(Boolean)
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(' ') ||
+    'Google User';
 
   const accounts = getRegisteredAccounts();
   const existing = accounts.find((a) => a.email.toLowerCase() === trimmedEmail);
@@ -169,25 +189,6 @@ export function loginWithGmail(email: string, name?: string): UserAccount {
     setGuestModeActive(false);
     return existing;
   }
-
-  // If Narendra Borhade email is entered, restore full admin identity
-  if (trimmedEmail.includes('narendra')) {
-    const adminUser: UserAccount = {
-      ...DEFAULT_USER,
-      email: trimmedEmail,
-    };
-    saveStoredUser(adminUser, true);
-    setGuestModeActive(false);
-    return adminUser;
-  }
-
-  // Auto-format readable name from email (e.g. narendra.borhade@gmail.com -> Narendra Borhade)
-  const derivedName = name || trimmedEmail
-    .split('@')[0]
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(' ') || 'Google User';
 
   const newUser: UserAccount = {
     uid: `usr-gmail-${Date.now()}`,
@@ -241,9 +242,9 @@ export function getRegisteredAccounts(): UserAccount[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
     if (raw) return JSON.parse(raw);
-    return [DEFAULT_USER];
+    return [];
   } catch {
-    return [DEFAULT_USER];
+    return [];
   }
 }
 
@@ -282,17 +283,25 @@ export function loginUser(email: string): UserAccount {
   const accounts = getRegisteredAccounts();
   const match = accounts.find((a) => a.email.toLowerCase() === email.toLowerCase());
   if (!match) {
-    // If Narendra Borhade email is entered, allow login
-    if (email.toLowerCase().includes('narendra')) {
-      saveStoredUser(DEFAULT_USER, true);
-      setGuestModeActive(false);
-      return DEFAULT_USER;
-    }
-    throw new Error('No registered account matching this email was found. Please register first.');
+    throw new Error('No registered account matching this email was found. Please register or sign in with your Gmail.');
   }
   saveStoredUser(match, true);
   setGuestModeActive(false);
   return match;
+}
+
+/**
+ * Dedicated Administrator Authentication for Narendra Borhade.
+ * Strictly requires the master admin security key.
+ */
+export function loginAsAdmin(adminKey: string): UserAccount {
+  const clean = adminKey.trim();
+  if (clean === 'AegisZeroTrust2026!' || clean === 'narendra-admin-2026') {
+    saveStoredUser(ADMIN_ACCOUNT, true);
+    setGuestModeActive(false);
+    return ADMIN_ACCOUNT;
+  }
+  throw new Error('Invalid Administrator Security Key.');
 }
 
 export function incrementThreatBlocked(): number {
