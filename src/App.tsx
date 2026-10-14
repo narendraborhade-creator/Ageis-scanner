@@ -953,9 +953,9 @@ export default function App() {
       {/* =========================================================================
           ZONE 5: BROWSER STATUS BAR
           ========================================================================= */}
-      <footer className="h-7 bg-[#070a13] border-t border-slate-800/80 text-[11px] font-mono text-slate-400 px-3 flex items-center justify-between select-none shrink-0 z-30">
+      <footer className="min-h-7 py-0.5 bg-[#070a13] border-t border-slate-800/80 text-[11px] font-mono text-slate-400 px-3 flex flex-wrap items-center justify-between gap-y-1 gap-x-2 select-none shrink-0 z-30">
         {/* Left Telemetry Indicators */}
-        <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+        <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
           <span className="flex items-center gap-1.5 text-emerald-400 font-semibold shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Secure</span>
@@ -965,19 +965,19 @@ export default function App() {
             <Lock className="w-3 h-3 text-cyan-400" />
             <span>SSL: <strong className="text-emerald-400">A+</strong></span>
           </span>
-          <span className="text-slate-600 hidden sm:inline">|</span>
-          <span className="text-slate-400 hidden sm:inline shrink-0">
+          <span className="text-slate-600 hidden lg:inline">|</span>
+          <span className="text-slate-400 hidden lg:inline shrink-0">
             Latency: <strong className="text-cyan-300">24ms</strong>
           </span>
-          <span className="text-slate-600 hidden md:inline">|</span>
-          <span className="text-slate-400 hidden md:inline shrink-0">
+          <span className="text-slate-600 hidden xl:inline">|</span>
+          <span className="text-slate-400 hidden xl:inline shrink-0">
             Trackers: <strong className="text-amber-400">6 blocked</strong>
           </span>
         </div>
 
-        {/* Center / Contributors Credits - Prominently showing all contributors */}
-        <div className="hidden md:flex items-center gap-1.5 text-[10px] text-slate-400 shrink-0 mx-2">
-          <span className="text-slate-500">Created by</span>
+        {/* Center / Contributors Credits - Prominently showing all contributors across all devices */}
+        <div className="flex items-center flex-wrap gap-1.5 text-[10px] text-slate-400 shrink-0">
+          <span className="text-slate-500 hidden sm:inline">Created by</span>
           <a
             href="mailto:narendra.via.mail@gmail.com"
             className="text-slate-200 font-medium hover:text-white hover:underline transition-colors"
@@ -986,7 +986,7 @@ export default function App() {
             Narendra Borhade
           </a>
           <span className="text-slate-600">·</span>
-          <span className="text-slate-500">Frontend:</span>
+          <span className="text-slate-500 hidden sm:inline">Frontend:</span>
           <a
             href="mailto:gaikwadaditya0309@gmail.com"
             className="text-cyan-300 font-medium hover:text-cyan-200 hover:underline transition-colors"
@@ -995,13 +995,13 @@ export default function App() {
             Aditya Gaikwad
           </a>
           <span className="text-slate-600">·</span>
-          <span className="text-teal-400 font-semibold flex items-center gap-1">
-            <Shield className="w-2.5 h-2.5 text-teal-400 shrink-0" />
+          <span className="text-teal-400 font-bold flex items-center gap-1">
+            <Shield className="w-3 h-3 text-teal-400 shrink-0 fill-teal-400/20" />
             Security:
           </span>
           <a
             href="mailto:ghanshamjadhav8210@gmail.com"
-            className="text-teal-300 font-bold hover:text-teal-200 hover:underline transition-colors bg-teal-950/70 px-1.5 py-0.5 rounded border border-teal-500/40 flex items-center gap-1"
+            className="text-teal-300 font-bold hover:text-teal-100 hover:underline transition-colors bg-teal-950/80 px-2 py-0.5 rounded-md border border-teal-500/50 flex items-center gap-1 shadow-[0_0_8px_rgba(20,184,166,0.25)]"
             title="Core Security & Systems: Ghanshyam Jadhav (ghanshamjadhav8210@gmail.com)"
           >
             Ghanshyam Jadhav

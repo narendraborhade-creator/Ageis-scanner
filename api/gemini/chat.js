@@ -5,7 +5,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -32,13 +32,13 @@ export default async function handler(req: any, res: any) {
           apiKey: process.env.GEMINI_API_KEY,
         });
 
-        const contents = (messages || []).map((msg: any) => ({
+        const contents = (messages || []).map((msg) => ({
           role: msg.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: msg.content || msg.text || '' }],
         }));
 
         const response = await ai.models.generateContent({
-          model: model || 'gemini-3.8-flash',
+          model: model || 'gemini-2.5-flash',
           contents,
           config: {
             systemInstruction: systemInstruction || 'You are Aegis Cyber AI, a specialized cybersecurity and threat analysis intelligence assistant.',
@@ -49,16 +49,16 @@ export default async function handler(req: any, res: any) {
         const reply = response.text || 'Intelligence response compiled.';
         return res.status(200).json({
           reply,
-          model: model || 'gemini-3.8-flash',
+          model: model || 'gemini-2.5-flash',
           persona: personaId || 'Aegis Cyber Sentinel',
         });
-      } catch (geminiErr: any) {
+      } catch (geminiErr) {
         console.warn('Gemini cloud API error on Vercel, engaging fallback:', geminiErr.message);
       }
     }
 
     // High-fidelity Cybersecurity Engine Fallback
-    const lower = lastMsg.toLowerCase();
+    const lower = String(lastMsg).toLowerCase();
     let reply = `### 🛡️ Aegis Cyber Security Intelligence Assessment
 
 **Inquiry Context**: "${lastMsg}"
@@ -98,7 +98,7 @@ export default async function handler(req: any, res: any) {
       model: 'Aegis Specialized CyberBot (Vercel Edge)',
       persona: 'Aegis Cyber Sentinel',
     });
-  } catch (error: any) {
+  } catch (error) {
     return res.status(200).json({
       reply: `[Aegis CyberBot]: Processed security query for active session. Error context: ${error.message}`,
       model: 'Aegis Specialized CyberBot',
