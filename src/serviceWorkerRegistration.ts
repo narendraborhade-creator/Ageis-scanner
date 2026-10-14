@@ -55,6 +55,13 @@ export function registerServiceWorker(): void {
 
       console.log('[Aegis SW] Service Worker registered with scope:', registration.scope);
 
+      // Actively query for updated worker and cache busting
+      try {
+        await registration.update();
+      } catch (e) {
+        // Ignore background network errors
+      }
+
       // Check if this registration is already active and caching
       if (registration.active) {
         currentStatus.isOfflineReady = true;

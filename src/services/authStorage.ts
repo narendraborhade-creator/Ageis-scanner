@@ -241,7 +241,12 @@ export function saveStoredDbConfig(config: DatabaseConfig): void {
 export function getRegisteredAccounts(): UserAccount[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const list: UserAccount[] = JSON.parse(raw);
+      return Array.isArray(list)
+        ? list.filter((a) => a.email !== 'narendra.via.mail@gmail.com' && !a.uid?.includes('narendra'))
+        : [];
+    }
     return [];
   } catch {
     return [];

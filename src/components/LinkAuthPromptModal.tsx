@@ -189,14 +189,29 @@ export const LinkAuthPromptModal: React.FC<LinkAuthPromptModalProps> = ({
               </span>
             </div>
 
-            <form onSubmit={handleGmailSubmit} className="space-y-2.5">
+            <form onSubmit={handleGmailSubmit} autoComplete="off" className="space-y-2.5">
+              <input
+                type="text"
+                name="fake_user_modal_anti_fill"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }}
+              />
               <div className="relative">
                 <Mail className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="email"
+                  name="aegis_gate_gmail"
                   value={gmailInput}
                   onChange={(e) => setGmailInput(e.target.value)}
                   placeholder="Enter your email (e.g. yourname@gmail.com)"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="w-full glass-input rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-500 focus:border-cyan-400"
                 />
               </div>

@@ -1,10 +1,10 @@
 // Aegis 3D Safe Browser - Core Service Worker
-// Version: 1.0.0
+// Version: 1.1.0
 // Caches essential static assets and the core browser shell for offline execution
 
-const SHELL_CACHE_NAME = 'aegis-shell-v1';
-const STATIC_CACHE_NAME = 'aegis-static-v1';
-const FONT_CACHE_NAME = 'aegis-fonts-v1';
+const SHELL_CACHE_NAME = 'aegis-shell-v2';
+const STATIC_CACHE_NAME = 'aegis-static-v2';
+const FONT_CACHE_NAME = 'aegis-fonts-v2';
 
 const CORE_SHELL_ASSETS = [
   '/',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserAccount, DatabaseConfig } from '../types';
 import {
   getStoredUser,
@@ -28,7 +28,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'database' | 'vault'>('login');
   const [showCfModal, setShowCfModal] = useState(false);
 
-  // Form states - Empty by default (no hardcoded credentials)
+  // Form states - Guaranteed empty by default (no prefilled credentials)
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [adminKey, setAdminKey] = useState('');
@@ -37,6 +37,37 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+
+  // Proactively purge any browser autofill values on mount and tab switch
+  useEffect(() => {
+    setLoginEmail('');
+    setLoginPassword('');
+    setAdminKey('');
+    setRegName('');
+    setRegEmail('');
+    setRegPassword('');
+
+    const clearInputs = () => {
+      const emailEl = document.getElementById('aegis-login-email-input') as HTMLInputElement | null;
+      const passEl = document.getElementById('aegis-login-password-input') as HTMLInputElement | null;
+      if (emailEl && (emailEl.value || emailEl.defaultValue)) {
+        emailEl.value = '';
+      }
+      if (passEl && (passEl.value || passEl.defaultValue)) {
+        passEl.value = '';
+      }
+    };
+
+    const t1 = setTimeout(clearInputs, 50);
+    const t2 = setTimeout(clearInputs, 200);
+    const t3 = setTimeout(clearInputs, 500);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [authMode]);
 
   const [dbConfig, setDbConfig] = useState<DatabaseConfig>(getStoredDbConfig);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -322,17 +353,43 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
             Authenticate to sync your security bookmarks, DNS audits, and threat quarantine logs.
           </p>
 
-          <form onSubmit={handleLogin} className="space-y-4 max-w-lg">
+          <form onSubmit={handleLogin} autoComplete="off" className="space-y-4 max-w-lg">
+            {/* Decoy hidden inputs to divert Chromium / Edge / Safari autofill heuristics */}
+            <input
+              type="text"
+              name="fake_username_anti_autofill"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }}
+            />
+            <input
+              type="password"
+              name="fake_password_anti_autofill"
+              tabIndex={-1}
+              autoComplete="new-password"
+              aria-hidden="true"
+              style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: 'none' }}
+            />
+
             <div>
               <label className="block text-xs font-mono text-cyan-400 mb-1">Email Address</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
+                  id="aegis-login-email-input"
+                  name="aegis_auth_email_field"
                   type="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="your.email@gmail.com"
-                  className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100 placeholder-slate-500"
                   required
                 />
               </div>
@@ -343,11 +400,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
+                  id="aegis-login-password-input"
+                  name="aegis_auth_pwd_field"
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100 placeholder-slate-500"
                   required
                 />
               </div>
@@ -460,16 +525,22 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
             Create an encrypted identity stored in your selected database (Firebase, MongoDB Atlas, or Local).
           </p>
 
-          <form onSubmit={handleRegister} className="space-y-4 max-w-lg">
+          <form onSubmit={handleRegister} autoComplete="off" className="space-y-4 max-w-lg">
             <div>
               <label className="block text-xs font-mono text-cyan-400 mb-1">Full Name</label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type="text"
+                  name="aegis_reg_name"
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
                   placeholder="e.g. Alex Morgan"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100"
                   required
                 />
@@ -482,9 +553,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type="email"
+                  name="aegis_reg_email"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
                   placeholder="your.email@example.com"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100"
                   required
                 />
@@ -497,9 +574,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
                   type="password"
+                  name="aegis_reg_pwd"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   placeholder="Minimum 8 characters"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono text-slate-100"
                   required
                 />

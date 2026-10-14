@@ -178,13 +178,13 @@ export function generateSecurePassword(options: {
   return arr.join('');
 }
 
-// Initial pre-seeded credentials for immediate demo verification
+// Initial pre-seeded credentials for immediate demo verification (generic security examples)
 const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' | 'strength'>[] = [
   {
     title: 'GitHub Enterprise Portal',
     url: 'https://github.com',
     domain: 'github.com',
-    username: 'narendra-dev',
+    username: 'security-analyst',
     password: 'ghp_AegisSecToken99283#ZeroTrust',
     category: 'Developer',
     notes: 'SSH deployment key & PAT token. Rotated every 90 days.',
@@ -193,7 +193,7 @@ const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' |
     title: 'Cloudflare Zero Trust Dashboard',
     url: 'https://dash.cloudflare.com',
     domain: 'cloudflare.com',
-    username: 'narendra.via.mail@gmail.com',
+    username: 'ops.auditor@aegis-browser.internal',
     password: 'Cf_Shield*ZeroTrust2026_SecureKey!',
     category: 'Cloud',
     notes: 'DoH gateway configuration, WAF custom rules, and edge worker tokens.',
@@ -211,15 +211,24 @@ const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' |
     title: 'Corporate Kubernetes Bastion',
     url: 'https://bastion.corp.local',
     domain: 'corp.local',
-    username: 'sysadmin-narendra',
+    username: 'cluster-bastion-admin',
     password: 'K8s_Bastion#RootSecret_4096_Key!',
     category: 'Developer',
     notes: 'Internal cluster egress proxy. Protected by Hardware FIDO2 2FA.',
   },
 ];
 
+const VAULT_CLEAN_MIGRATION_V2 = 'aegis_vault_cleaned_v2';
+
 // Initialize default encrypted vault in localStorage if absent
 export async function ensureVaultInitialized(): Promise<boolean> {
+  const isMigrated = localStorage.getItem(VAULT_CLEAN_MIGRATION_V2);
+  if (!isMigrated) {
+    // Purge old seed vault that may have held personal demo records
+    localStorage.removeItem(VAULT_STORAGE_KEY);
+    localStorage.setItem(VAULT_CLEAN_MIGRATION_V2, 'true');
+  }
+
   const existing = localStorage.getItem(VAULT_STORAGE_KEY);
   if (existing) return true;
 
