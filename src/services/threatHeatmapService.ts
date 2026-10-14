@@ -155,7 +155,8 @@ Return a concise JSON object with these keys:
       }),
     });
 
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       const json = await res.json();
       const rawText = json.reply || '';
       // Try extract JSON from markdown fences or text

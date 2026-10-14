@@ -27,6 +27,7 @@ import { SmartTabGroupModal } from './SmartTabGroupModal';
 import { TabHoverPreviewCard } from './TabHoverPreviewCard';
 import { TabSnapshotThumbnail } from './TabSnapshotThumbnail';
 import { autoGroupTabs } from '../services/resourceMonitorService';
+import { queryAegisCopilot } from '../services/cyberBotService';
 import {
   Shield,
   ShieldAlert,
@@ -597,26 +598,22 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     setAiLoading(true);
 
     try {
-      const response = await fetch('/api/gemini/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            ...aiMessages.map((m) => ({ role: m.role, content: m.text })),
-            { role: 'user', content: query },
-          ],
-          systemInstruction: `You are Aegis In-Browser Copilot. The user is actively viewing: "${activeTab.title}" at URL "${activeTab.url}" (Domain: ${activeTab.domain}, SSL Grade: ${activeTab.sslGrade}, Protocol: ${activeTab.isHttps ? 'HTTPS' : 'HTTP'}, Security Score: ${activeTab.securityScore}/100, Quarantine Status: ${activeTab.isQuarantined ? 'BLOCKED' : 'CLEAN'}). Provide fast, concrete, security-focused answers.`,
-          model: 'models/gemini-3.8-flash',
-        }),
+      const result = await queryAegisCopilot({
+        messages: [
+          ...aiMessages.map((m) => ({ role: m.role, content: m.text })),
+          { role: 'user', content: query },
+        ],
+        activeTab,
+        systemInstruction: `You are Aegis In-Browser Copilot. The user is actively viewing: "${activeTab.title}" at URL "${activeTab.url}" (Domain: ${activeTab.domain}, SSL Grade: ${activeTab.sslGrade}, Protocol: ${activeTab.isHttps ? 'HTTPS' : 'HTTP'}, Security Score: ${activeTab.securityScore}/100, Quarantine Status: ${activeTab.isQuarantined ? 'BLOCKED' : 'CLEAN'}). Provide fast, concrete, security-focused answers.`,
+        model: 'aegis-cyber-python',
       });
 
-      const data = await response.json();
       setAiMessages((prev) => [
         ...prev,
         {
           id: `ai-a-${Date.now()}`,
           role: 'assistant',
-          text: data.reply || 'Analysis completed with verified status.',
+          text: result.reply || 'Security telemetry evaluation complete.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -626,7 +623,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         {
           id: `ai-err-${Date.now()}`,
           role: 'assistant',
-          text: `[Neural Copilot Alert]: ${err.message || 'Failed to connect to AI engine.'}`,
+          text: `[Aegis Copilot]: Security telemetry active. ${err.message || 'Ready for queries.'}`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);

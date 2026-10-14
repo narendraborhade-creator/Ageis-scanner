@@ -955,53 +955,56 @@ export default function App() {
           ========================================================================= */}
       <footer className="h-7 bg-[#070a13] border-t border-slate-800/80 text-[11px] font-mono text-slate-400 px-3 flex items-center justify-between select-none shrink-0 z-30">
         {/* Left Telemetry Indicators */}
-        <div className="flex items-center gap-3 overflow-x-auto scrollbar-none whitespace-nowrap">
-          <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+        <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+          <span className="flex items-center gap-1.5 text-emerald-400 font-semibold shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Secure</span>
           </span>
           <span className="text-slate-600">|</span>
-          <span className="text-slate-300 flex items-center gap-1">
+          <span className="text-slate-300 flex items-center gap-1 shrink-0">
             <Lock className="w-3 h-3 text-cyan-400" />
             <span>SSL: <strong className="text-emerald-400">A+</strong></span>
           </span>
           <span className="text-slate-600 hidden sm:inline">|</span>
-          <span className="text-slate-400 hidden sm:inline">
+          <span className="text-slate-400 hidden sm:inline shrink-0">
             Latency: <strong className="text-cyan-300">24ms</strong>
           </span>
           <span className="text-slate-600 hidden md:inline">|</span>
-          <span className="text-slate-400 hidden md:inline">
+          <span className="text-slate-400 hidden md:inline shrink-0">
             Trackers: <strong className="text-amber-400">6 blocked</strong>
-          </span>
-          <span className="text-slate-600 hidden lg:inline">|</span>
-          <span className="text-slate-400 hidden lg:inline flex items-center gap-1">
-            <span>TLS:</span>
-            <span className="text-teal-300 font-bold">ML-KEM-768</span>
           </span>
         </div>
 
-        {/* Center / Contributors Credits */}
-        <div className="hidden xl:flex items-center gap-2 text-[10px] text-slate-500 truncate">
-          <span>Aegis 3D Safe Browser</span>
-          <span>·</span>
-          <span>Created by <strong className="text-slate-300 font-medium">Narendra Borhade</strong></span>
-          <span>·</span>
-          <span>Frontend by <strong className="text-cyan-300 font-medium">Aditya Gaikwad</strong></span>
+        {/* Center / Contributors Credits - Prominently showing all contributors */}
+        <div className="hidden md:flex items-center gap-1.5 text-[10px] text-slate-400 shrink-0 mx-2">
+          <span className="text-slate-500">Created by</span>
+          <a
+            href="mailto:narendra.via.mail@gmail.com"
+            className="text-slate-200 font-medium hover:text-white hover:underline transition-colors"
+            title="Narendra Borhade (narendra.via.mail@gmail.com)"
+          >
+            Narendra Borhade
+          </a>
+          <span className="text-slate-600">·</span>
+          <span className="text-slate-500">Frontend:</span>
           <a
             href="mailto:gaikwadaditya0309@gmail.com"
-            className="text-cyan-400/80 hover:text-cyan-300 hover:underline"
-            title="Email Frontend Developer Aditya Gaikwad"
+            className="text-cyan-300 font-medium hover:text-cyan-200 hover:underline transition-colors"
+            title="Aditya Gaikwad (gaikwadaditya0309@gmail.com)"
           >
-            (gaikwadaditya0309@gmail.com)
+            Aditya Gaikwad
           </a>
-          <span>·</span>
-          <span>Security by <strong className="text-teal-300 font-medium">Ghanshyam Jadhav</strong></span>
+          <span className="text-slate-600">·</span>
+          <span className="text-teal-400 font-semibold flex items-center gap-1">
+            <Shield className="w-2.5 h-2.5 text-teal-400 shrink-0" />
+            Security:
+          </span>
           <a
             href="mailto:ghanshamjadhav8210@gmail.com"
-            className="text-teal-400/80 hover:text-teal-300 hover:underline"
-            title="Email Security Contributor Ghanshyam Jadhav"
+            className="text-teal-300 font-bold hover:text-teal-200 hover:underline transition-colors bg-teal-950/70 px-1.5 py-0.5 rounded border border-teal-500/40 flex items-center gap-1"
+            title="Core Security & Systems: Ghanshyam Jadhav (ghanshamjadhav8210@gmail.com)"
           >
-            (ghanshamjadhav8210@gmail.com)
+            Ghanshyam Jadhav
           </a>
         </div>
 
