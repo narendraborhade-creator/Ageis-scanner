@@ -35,12 +35,14 @@ export const DEFAULT_USER: UserAccount = ADMIN_ACCOUNT;
 const DEFAULT_DB_CONFIG: DatabaseConfig = {
   activeEngine: 'local',
   mongoConfig: {
-    uri: 'mongodb+srv://user:password@aegis-cluster.mongodb.net/aegis_browser?retryWrites=true&w=majority',
+    // 🛡️ Sentinel: Removed hardcoded MongoDB URI secret to prevent exposure. Uses env var.
+    uri: import.meta.env.VITE_MONGO_URI || '',
     databaseName: 'aegis_safe_search',
     isConnected: false,
   },
   firebaseConfig: {
-    apiKey: 'AIzaSyDemoAegisSecurityKeyForClientValidation',
+    // 🛡️ Sentinel: Removed hardcoded Firebase API key to prevent exposure. Uses env var.
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
     authDomain: 'aegis-safe-browser.firebaseapp.com',
     projectId: 'aegis-safe-browser-2026',
     firestoreDatabaseId: '(default)',
@@ -50,7 +52,8 @@ const DEFAULT_DB_CONFIG: DatabaseConfig = {
     accountId: 'cf_acc_9837a1b490f288ec',
     d1DatabaseId: 'd1-db-948194-cf-prod',
     d1DatabaseName: 'aegis_auth_d1_vault',
-    apiToken: 'cf_sec_token_098a83d726b1c94',
+    // 🛡️ Sentinel: Removed hardcoded Cloudflare token to prevent exposure. Uses env var.
+    apiToken: import.meta.env.VITE_CLOUDFLARE_API_TOKEN || '',
     kvNamespaceId: 'AEGIS_AUTH_KV_TOKENS',
     turnstileSiteKey: '0x4AAAAAAATurnstileDemoSiteKey',
     isConnected: true,
@@ -301,7 +304,9 @@ export function loginUser(email: string): UserAccount {
  */
 export function loginAsAdmin(adminKey: string): UserAccount {
   const clean = adminKey.trim();
-  if (clean === 'AegisZeroTrust2026!' || clean === 'narendra-admin-2026') {
+  // 🛡️ Sentinel: Removed hardcoded Admin key. Validates using securely injected env var.
+  const adminSecret = import.meta.env.VITE_ADMIN_SECRET_KEY;
+  if (adminSecret && clean === adminSecret) {
     saveStoredUser(ADMIN_ACCOUNT, true);
     setGuestModeActive(false);
     return ADMIN_ACCOUNT;

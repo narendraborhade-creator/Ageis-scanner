@@ -178,6 +178,8 @@ export function generateSecurePassword(options: {
   return arr.join('');
 }
 
+// 🛡️ Sentinel: Removed hardcoded demo passwords to prevent credential leakage.
+// Replaced with '[REDACTED]' placeholder to uphold Zero Trust.
 // Initial pre-seeded credentials for immediate demo verification (generic security examples)
 const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' | 'strength'>[] = [
   {
@@ -185,7 +187,7 @@ const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' |
     url: 'https://github.com',
     domain: 'github.com',
     username: 'security-analyst',
-    password: 'ghp_AegisSecToken99283#ZeroTrust',
+    password: '[REDACTED]',
     category: 'Developer',
     notes: 'SSH deployment key & PAT token. Rotated every 90 days.',
   },
@@ -194,7 +196,7 @@ const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' |
     url: 'https://dash.cloudflare.com',
     domain: 'cloudflare.com',
     username: 'ops.auditor@aegis-browser.internal',
-    password: 'Cf_Shield*ZeroTrust2026_SecureKey!',
+    password: '[REDACTED]',
     category: 'Cloud',
     notes: 'DoH gateway configuration, WAF custom rules, and edge worker tokens.',
   },
@@ -203,7 +205,7 @@ const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' |
     url: 'https://admin.google.com',
     domain: 'google.com',
     username: 'admin@aegis-browser.internal',
-    password: 'GSuite-Passphrase$AES256GCM#Hardened',
+    password: '[REDACTED]',
     category: 'Logins',
     notes: 'Primary SAML single sign-on anchor for security testing.',
   },
@@ -212,7 +214,7 @@ const SEED_CREDENTIALS: Omit<VaultCredential, 'id' | 'createdAt' | 'updatedAt' |
     url: 'https://bastion.corp.local',
     domain: 'corp.local',
     username: 'cluster-bastion-admin',
-    password: 'K8s_Bastion#RootSecret_4096_Key!',
+    password: '[REDACTED]',
     category: 'Developer',
     notes: 'Internal cluster egress proxy. Protected by Hardware FIDO2 2FA.',
   },
