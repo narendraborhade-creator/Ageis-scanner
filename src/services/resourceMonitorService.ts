@@ -370,3 +370,12 @@ export function ungroupAll(tabs: BrowserTab[]): BrowserTab[] {
   });
 }
 
+/**
+ * Closes all tabs belonging to a group
+ */
+export function closeTabsInGroup(
+  tabs: BrowserTab[],
+  groupId: string
+): BrowserTab[] {
+  return tabs.filter((t) => t.groupId !== groupId);
+}
