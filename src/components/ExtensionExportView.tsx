@@ -159,7 +159,27 @@ function renderTabs() {
   tabs.forEach(tab => {
     const el = document.createElement('div');
     el.className = 'tab' + (tab.id === activeId ? ' active' : '');
-    el.innerHTML = '<span>' + tab.title + '</span><button class="tab-close" data-id="' + tab.id + '">×</button>';
+
+    // Secure DOM creation to prevent DOM XSS from untrusted tab.title
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = tab.title;
+    el.appendChild(titleSpan);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.setAttribute('data-id', tab.id);
+    closeBtn.textContent = '×';
+    const span = document.createElement('span');
+    span.textContent = tab.title;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.dataset.id = String(tab.id);
+    closeBtn.textContent = '×';
+
+    el.appendChild(span);
+    el.appendChild(closeBtn);
+
     el.onclick = (e) => {
       if (e.target.classList.contains('tab-close')) return;
       activeId = tab.id;

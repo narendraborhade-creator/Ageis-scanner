@@ -141,12 +141,6 @@ export function seedRecommendedBookmarks(): BookmarkItem[] {
   return RECOMMENDED_SAMPLE_BOOKMARKS;
 }
 
-export function isUrlBookmarked(url: string): boolean {
-  if (!url) return false;
-  const bookmarks = getStoredBookmarks();
-  return bookmarks.some((b) => b.url.toLowerCase() === url.toLowerCase().trim());
-}
-
 export function toggleBookmark(item: {
   title: string;
   url: string;
