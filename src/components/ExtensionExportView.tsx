@@ -169,6 +169,15 @@ function renderTabs() {
     closeBtn.className = 'tab-close';
     closeBtn.setAttribute('data-id', tab.id);
     closeBtn.textContent = '×';
+    const span = document.createElement('span');
+    span.textContent = tab.title;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.dataset.id = String(tab.id);
+    closeBtn.textContent = '×';
+
+    el.appendChild(span);
     el.appendChild(closeBtn);
 
     el.onclick = (e) => {
