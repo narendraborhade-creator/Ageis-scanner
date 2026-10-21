@@ -160,6 +160,15 @@ function renderTabs() {
     const el = document.createElement('div');
     el.className = 'tab' + (tab.id === activeId ? ' active' : '');
 
+    // Secure DOM creation to prevent DOM XSS from untrusted tab.title
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = tab.title;
+    el.appendChild(titleSpan);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.setAttribute('data-id', tab.id);
+    closeBtn.textContent = '×';
     const span = document.createElement('span');
     span.textContent = tab.title;
 
