@@ -18,6 +18,32 @@ const PYTHON_PORT = 5005;
 const PYTHON_API_URL = `http://127.0.0.1:${PYTHON_PORT}`;
 let pythonProcess: ChildProcess | null = null;
 
+
+function isAllowedUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    const hostname = url.hostname.toLowerCase();
+
+    // Block common internal/local hostnames and IPs
+    const blockedPatterns = [
+      /^localhost$/,
+      /^127\./,
+      /^169\.254\./,
+      /^10\./,
+      /^192\.168\./,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^0\.0\.0\.0$/,
+      /^\[?::1\]?$/,
+      /.*\.local$/
+    ];
+
+    return !blockedPatterns.some(pattern => pattern.test(hostname));
+  } catch {
+    return false;
+  }
+}
+
+
 app.use(express.json());
 
 // Initialize GoogleGenAI SDK on server side
@@ -258,6 +284,10 @@ app.get('/api/inspect/website', async (req, res) => {
       targetUrl = `https://${targetUrl}`;
     }
 
+    if (!isAllowedUrl(targetUrl)) {
+      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+    }
+
     const startTime = Date.now();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -345,6 +375,10 @@ app.get('/api/security/vulnerability-scan', async (req, res) => {
     let targetUrl = (req.query.url as string || 'https://cloudflare.com').trim();
     if (!targetUrl) targetUrl = 'https://cloudflare.com';
     if (!/^https?:\/\//i.test(targetUrl)) targetUrl = `https://${targetUrl}`;
+
+    if (!isAllowedUrl(targetUrl)) {
+      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+    }
 
     const isHttps = targetUrl.startsWith('https://');
     const domain = targetUrl.replace(/^https?:\/\//i, '').split('/')[0].split('?')[0];
