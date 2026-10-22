@@ -2089,20 +2089,28 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </div>
                 </div>
 
-                {/* The Real In-Browser Web Iframe */}
+                {/* Viewport: Native Chromium Webview in Desktop App, or Zero-Trust Proxy Sandbox in Web */}
                 <div className="flex-1 w-full h-full relative overflow-hidden bg-white">
                   {isScanning && (
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 animate-pulse z-20" />
                   )}
-                  <iframe
-                    key={`${activeTab.id}-${refreshKey}`}
-                    src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
-                    title={activeTab.title}
-                    className="w-full h-full border-0 bg-white"
-                    sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    onLoad={() => setIsScanning(false)}
-                  />
+                  {typeof window !== 'undefined' && (window as any).isAegisDesktop ? (
+                    <webview
+                      key={`desktop-webview-${activeTab.id}-${refreshKey}`}
+                      src={activeTab.url}
+                      className="w-full h-full border-0 bg-white"
+                    />
+                  ) : (
+                    <iframe
+                      key={`${activeTab.id}-${refreshKey}`}
+                      src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
+                      title={activeTab.title}
+                      className="w-full h-full border-0 bg-white"
+                      sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      onLoad={() => setIsScanning(false)}
+                    />
+                  )}
                 </div>
               </div>
             )}

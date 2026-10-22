@@ -440,3 +440,12 @@ export interface LiveAttackEvent {
   quarantined: boolean;
   latencyMs: number;
 }
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: any;
+    }
+  }
+}
+
