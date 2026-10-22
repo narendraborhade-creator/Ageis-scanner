@@ -171,7 +171,7 @@ export default function App() {
   const [dnsTargetDomain, setDnsTargetDomain] = useState(() => initialSession?.dnsTargetDomain || 'cloudflare.com');
   const [compareSiteA, setCompareSiteA] = useState(() => initialSession?.compareSiteA || 'cloudflare.com');
   const [scienceInitialQuery, setScienceInitialQuery] = useState(() => initialSession?.scienceQuery || 'AlphaFold structural biology');
-  const [browserInitialUrl, setBrowserInitialUrl] = useState(() => initialSession?.browser?.omnibarInput || 'https://cloudflare.com');
+  const [browserInitialUrl, setBrowserInitialUrl] = useState(() => initialSession?.browser?.omnibarInput || 'aegis://newtab');
   const [browserOpenTabsCount, setBrowserOpenTabsCount] = useState(() => initialSession?.browser?.tabs?.length ?? 1);
   const [sessionToast, setSessionToast] = useState<string | null>(null);
   const [showCfModal, setShowCfModal] = useState<boolean>(false);
@@ -187,7 +187,7 @@ export default function App() {
   const [urlInputValue, setUrlInputValue] = useState<string>(() => {
     return initialSession?.activeNavTab && initialSession.activeNavTab !== 'browser'
       ? `aegis://${initialSession.activeNavTab}`
-      : initialSession?.browser?.omnibarInput || 'https://cloudflare.com';
+      : initialSession?.browser?.omnibarInput || 'aegis://newtab';
   });
 
   // Global Ctrl+K / Cmd+K Command Palette Keyboard Shortcut Listener

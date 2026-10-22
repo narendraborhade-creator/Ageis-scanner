@@ -130,25 +130,47 @@ interface BrowserViewProps {
   onOpenAuthView?: () => void;
 }
 
-// Accurate Initial State: Exactly 1 default tab
+// Helper to parse Aegis Secure Search URLs: aegis://search?q=...&category=...
+function parseSearchUrl(url: string) {
+  try {
+    const clean = (url || '').trim();
+    if (!clean.startsWith('aegis://search')) {
+      return { isSearch: false, query: '', category: 'all' as 'all' | 'news' | 'tech' | 'videos' | 'science' };
+    }
+    const fake = clean.replace('aegis://search', 'https://aegis.local/search');
+    const parsed = new URL(fake);
+    const q = parsed.searchParams.get('q') || '';
+    const cat = (parsed.searchParams.get('category') || 'all') as 'all' | 'news' | 'tech' | 'videos' | 'science';
+    return { isSearch: true, query: q, category: cat };
+  } catch {
+    const qMatch = url.match(/[?&]q=([^&]+)/i);
+    return {
+      isSearch: url.startsWith('aegis://search'),
+      query: qMatch ? decodeURIComponent(qMatch[1]) : '',
+      category: 'all' as const,
+    };
+  }
+}
+
+// Accurate Initial State: Starts cleanly on Aegis Safe Search Start Page (Zero external network dependencies or iframe loops)
 const DEFAULT_TABS: BrowserTab[] = [
   {
-    id: 'tab-cloudflare',
-    title: 'Cloudflare: Web Security & DNS',
-    url: 'https://cloudflare.com',
-    domain: 'cloudflare.com',
+    id: 'tab-newtab',
+    title: 'Aegis Safe Search',
+    url: 'aegis://newtab',
+    domain: 'aegis.local',
     isHttps: true,
     threatStatus: 'clean',
-    trackersBlocked: 6,
-    bugsSanitized: 2,
-    latencyMs: 24,
-    securityScore: 98,
+    trackersBlocked: 0,
+    bugsSanitized: 0,
+    latencyMs: 1,
+    securityScore: 100,
     sslGrade: 'A+',
     isQuarantined: false,
     isPinned: false,
-    pageMetrics: calculatePageLoadMetrics('https://cloudflare.com', 'clean', 24),
+    pageMetrics: calculatePageLoadMetrics('aegis://newtab', 'clean', 1),
     createdAt: Date.now(),
-    historyStack: ['https://cloudflare.com'],
+    historyStack: ['aegis://newtab'],
     historyIndex: 0,
   },
 ];
@@ -224,23 +246,76 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const [ytLoading, setYtLoading] = useState<boolean>(false);
   const [ytSearchInput, setYtSearchInput] = useState<string>('');
 
+  // In-Browser Secure Web Search Engine States
+  const [searchResults, setSearchResults] = useState<Array<{
+    title: string;
+    url: string;
+    domain: string;
+    snippet: string;
+    securityScore: number;
+    sslGrade: string;
+    threatStatus: 'clean' | 'warning';
+    isHttps: boolean;
+  }>>([]);
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [searchCategory, setSearchCategory] = useState<'all' | 'news' | 'tech' | 'videos' | 'science'>('all');
+  const [searchQueryInput, setSearchQueryInput] = useState<string>('');
+
   // Active Tab & In-Browser Link Interceptor
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
   const ytInfo = parseYouTubeUrl(activeTab.url);
+  const searchInfo = parseSearchUrl(activeTab.url);
   const canGoBack = (activeTab.historyIndex ?? 0) > 0;
   const canGoForward = (activeTab.historyIndex ?? 0) < ((activeTab.historyStack?.length ?? 1) - 1);
 
   // In-Browser Link Click & Form Submission Interceptor:
   // Listens to postMessage events from the proxied iframe and opens them directly in this browser!
+  // Strictly debounced to prevent loop storms or automated window openings.
   useEffect(() => {
+    let lastNavTime = 0;
     const handleWindowMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'AEGIS_NAVIGATE' && typeof e.data.url === 'string') {
-        executeNavigate(e.data.url, false, false);
+        const targetUrl = e.data.url.trim();
+        if (!targetUrl || targetUrl.startsWith('javascript:') || targetUrl === 'about:blank') {
+          return;
+        }
+        const now = Date.now();
+        if (now - lastNavTime < 1200) {
+          return;
+        }
+        if (targetUrl === activeTab.url) {
+          return;
+        }
+        lastNavTime = now;
+        executeNavigate(targetUrl, false, false);
       }
     };
     window.addEventListener('message', handleWindowMessage);
     return () => window.removeEventListener('message', handleWindowMessage);
-  }, [activeTabId, tabs]);
+  }, [activeTab.url]);
+
+  // Synchronize In-Browser Secure Search results when visiting aegis://search
+  useEffect(() => {
+    if (searchInfo.isSearch) {
+      const q = searchInfo.query.trim();
+      setSearchQueryInput(q);
+      setSearchCategory(searchInfo.category);
+      if (!q) {
+        setSearchResults([]);
+        return;
+      }
+      setSearchLoading(true);
+      fetch(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(searchInfo.category)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && Array.isArray(data.results)) {
+            setSearchResults(data.results);
+          }
+        })
+        .catch((err) => console.warn('Aegis Search API error:', err))
+        .finally(() => setSearchLoading(false));
+    }
+  }, [activeTab.url, searchInfo.isSearch, searchInfo.query, searchInfo.category]);
 
   // Fetch YouTube video search/recommendations when visiting YouTube
   useEffect(() => {
@@ -282,7 +357,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   };
 
   const handleGoHome = () => {
-    executeNavigate('https://cloudflare.com', false, false);
+    executeNavigate('aegis://newtab', false, false);
   };
 
   useEffect(() => {
@@ -479,6 +554,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   };
 
   const getCleanTitle = (url: string) => {
+    if (url === 'aegis://newtab') return 'Aegis Safe Search & 3D Core';
+    const sInfo = parseSearchUrl(url);
+    if (sInfo.isSearch) {
+      return sInfo.query ? `Aegis Search: ${sInfo.query}` : 'Aegis Secure Search';
+    }
     const domain = formatDomain(url);
     const yt = parseYouTubeUrl(url);
     if (yt.isYouTube) {
@@ -503,19 +583,23 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     targetHistoryIndex?: number
   ) => {
     let target = rawUrl.trim();
+    if (!target) return;
 
-    // If search keyword without dot or protocol:
-    if (!target.includes('.') && !target.startsWith('http') && !target.startsWith('aegis://')) {
-      if (target.toLowerCase().includes('youtube')) {
-        const query = target.replace(/youtube/gi, '').trim() || 'trending';
-        target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-      } else {
-        target = `https://duckduckgo.com/?q=${encodeURIComponent(target)}`;
+    const sInfo = parseSearchUrl(target);
+    if (!sInfo.isSearch && !target.startsWith('aegis://')) {
+      const isExplicitUrl = /^https?:\/\//i.test(target) ||
+        (!target.includes(' ') && target.includes('.') && !target.endsWith('.') && !target.startsWith('.'));
+
+      if (!isExplicitUrl) {
+        if (target.toLowerCase().includes('youtube')) {
+          const query = target.replace(/youtube/gi, '').trim() || 'trending';
+          target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        } else {
+          target = `aegis://search?q=${encodeURIComponent(target)}`;
+        }
+      } else if (!/^https?:\/\//i.test(target)) {
+        target = `https://${target}`;
       }
-    }
-
-    if (!/^https?:\/\//i.test(target) && !target.startsWith('aegis://')) {
-      target = `https://${target}`;
     }
 
     const domain = formatDomain(target);
@@ -644,21 +728,21 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const handleCreateNewTab = () => {
     const newTab: BrowserTab = {
       id: `tab-${Date.now()}`,
-      title: 'New Tab',
-      url: 'https://cloudflare.com',
-      domain: 'cloudflare.com',
+      title: 'Aegis Safe Search',
+      url: 'aegis://newtab',
+      domain: 'aegis.local',
       isHttps: true,
       threatStatus: 'clean',
       trackersBlocked: 0,
       bugsSanitized: 0,
-      latencyMs: 25,
-      securityScore: 98,
+      latencyMs: 1,
+      securityScore: 100,
       sslGrade: 'A+',
       isQuarantined: false,
       isPinned: false,
-      pageMetrics: calculatePageLoadMetrics('https://cloudflare.com', 'clean', 25),
+      pageMetrics: calculatePageLoadMetrics('aegis://newtab', 'clean', 1),
       createdAt: Date.now(),
-      historyStack: ['https://cloudflare.com'],
+      historyStack: ['aegis://newtab'],
       historyIndex: 0,
     };
     setTabs((prev) => [...prev, newTab]);
@@ -1668,7 +1752,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 </div>
 
                 {/* Start Page Search Omnibar */}
-                <div className="w-full max-w-xl mx-auto">
+                <div className="w-full max-w-xl mx-auto space-y-3">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -1682,16 +1766,51 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       type="text"
                       value={urlInputValue}
                       onChange={(e) => setUrlInputValue(e.target.value)}
-                      placeholder="Search web, enter URL, or search YouTube videos..."
+                      placeholder="Search the web securely or enter URL..."
                       className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1.5"
                     />
                     <button
                       type="submit"
                       className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs font-mono cursor-pointer shrink-0 transition-all shadow-md"
                     >
-                      Search
+                      Safe Search
                     </button>
                   </form>
+
+                  {/* Search Mode Quick Switchers */}
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap text-xs font-mono">
+                    {[
+                      { id: 'all', label: 'All Web', icon: Globe },
+                      { id: 'news', label: 'News', icon: Activity },
+                      { id: 'tech', label: 'Tech & Dev', icon: Cpu },
+                      { id: 'videos', label: 'Videos (YouTube)', icon: Play },
+                      { id: 'science', label: 'Science', icon: Sparkles },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            const query = (urlInputValue || '').trim();
+                            if (query) {
+                              if (item.id === 'videos') {
+                                handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, false, false);
+                              } else {
+                                handleNavigate(`aegis://search?q=${encodeURIComponent(query)}&category=${item.id}`, false, false);
+                              }
+                            } else {
+                              setUrlInputValue(item.id === 'videos' ? 'trending tech' : item.id === 'science' ? 'quantum computing' : 'cybersecurity');
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 transition-colors flex items-center gap-1.5 cursor-pointer text-[11px]"
+                        >
+                          <Icon className="w-3 h-3 text-cyan-400" />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Quick Shortcuts Grid */}
@@ -1722,6 +1841,215 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+            ) : searchInfo.isSearch ? (
+              /* =========================================================================
+                 IN-BROWSER SECURE WEB SEARCH ENGINE RESULTS VIEW
+                 ========================================================================= */
+              <div className="relative w-full h-full flex flex-col bg-[#050811] overflow-y-auto scrollbar-thin p-3 sm:p-6 space-y-5">
+                {/* Search Top Filter Header */}
+                <div className="w-full max-w-4xl mx-auto space-y-3">
+                  {/* Search Input Bar */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (searchQueryInput.trim()) {
+                        executeNavigate(`aegis://search?q=${encodeURIComponent(searchQueryInput.trim())}&category=${searchCategory}`, false, false);
+                      }
+                    }}
+                    className="flex items-center bg-slate-900/90 border border-slate-700 hover:border-cyan-500 focus-within:border-cyan-400 rounded-2xl p-2 shadow-2xl transition-all shadow-cyan-950/20"
+                  >
+                    <Search className="w-5 h-5 text-cyan-400 ml-3 mr-2 shrink-0" />
+                    <input
+                      type="text"
+                      value={searchQueryInput}
+                      onChange={(e) => setSearchQueryInput(e.target.value)}
+                      placeholder="Search the web securely..."
+                      className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1"
+                    />
+                    {searchQueryInput && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQueryInput('')}
+                        className="p-1 rounded text-slate-400 hover:text-slate-200 mr-1 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs font-mono cursor-pointer shrink-0 transition-all shadow-md"
+                    >
+                      Search
+                    </button>
+                  </form>
+
+                  {/* Category Pills & Security Status */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
+                      {[
+                        { id: 'all', label: 'All Web', icon: Globe },
+                        { id: 'news', label: 'News', icon: Activity },
+                        { id: 'tech', label: 'Tech & Dev', icon: Cpu },
+                        { id: 'videos', label: 'Videos', icon: Play },
+                        { id: 'science', label: 'Science', icon: Sparkles },
+                      ].map((cat) => {
+                        const Icon = cat.icon;
+                        const isSelected = searchCategory === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setSearchCategory(cat.id as any);
+                              const q = searchQueryInput.trim() || searchInfo.query;
+                              if (cat.id === 'videos') {
+                                executeNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`, false, false);
+                              } else {
+                                executeNavigate(`aegis://search?q=${encodeURIComponent(q)}&category=${cat.id}`, false, false);
+                              }
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all cursor-pointer whitespace-nowrap text-xs ${
+                              isSelected
+                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)] font-bold'
+                                : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            <span>{cat.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Zero-Trace Protected</span>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-slate-400">0 Ads / Popups</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search Results Container */}
+                <div className="w-full max-w-4xl mx-auto space-y-4">
+                  {searchLoading ? (
+                    <div className="space-y-4 pt-2">
+                      <div className="text-xs font-mono text-cyan-400 animate-pulse flex items-center gap-2">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Scanning and verifying secure web results...</span>
+                      </div>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/80 space-y-2 animate-pulse">
+                          <div className="h-4 bg-slate-800 rounded w-1/3"></div>
+                          <div className="h-5 bg-slate-800 rounded w-3/4"></div>
+                          <div className="h-3 bg-slate-800 rounded w-full"></div>
+                          <div className="h-3 bg-slate-800 rounded w-2/3"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="text-xs font-mono text-slate-400 flex items-center justify-between border-b border-slate-800/80 pb-2">
+                        <span>
+                          Found <strong className="text-cyan-300 font-bold">{searchResults.length}</strong> verified safe web results
+                        </span>
+                        <span className="text-slate-500 hidden sm:inline">
+                          Filtered for malicious redirects & popups
+                        </span>
+                      </div>
+
+                      {searchResults.map((item, idx) => (
+                        <div
+                          key={`${item.url}-${idx}`}
+                          className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-cyan-500/40 hover:bg-slate-900 transition-all shadow-sm group space-y-2"
+                        >
+                          {/* Domain & Security Badges Header */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                            <div className="flex items-center gap-2 truncate">
+                              <div className="w-5 h-5 rounded-md bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                                <Globe className="w-3 h-3" />
+                              </div>
+                              <span className="text-slate-300 font-semibold truncate">{item.domain}</span>
+                              <span className="text-slate-600">·</span>
+                              <span className="text-emerald-400 text-[10px] bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold">
+                                SSL {item.sslGrade}
+                              </span>
+                              <span className="text-cyan-400 text-[10px] bg-cyan-950/80 border border-cyan-500/30 px-1.5 py-0.5 rounded font-bold">
+                                Score {item.securityScore}/100
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleNavigate(item.url, false, false)}
+                                className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 transition-colors text-xs font-mono flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>Visit Site</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleNavigate(item.url, true, false)}
+                                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
+                                title="Open in new tab"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Result Title */}
+                          <h3
+                            onClick={() => handleNavigate(item.url, false, false)}
+                            className="text-base font-bold text-cyan-300 hover:text-cyan-200 group-hover:underline cursor-pointer leading-snug"
+                          >
+                            {item.title}
+                          </h3>
+
+                          {/* URL Display */}
+                          <div className="text-xs text-slate-400 font-mono truncate">
+                            {item.url}
+                          </div>
+
+                          {/* Snippet Description */}
+                          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                            {item.snippet}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    /* Empty Search Fallback */
+                    <div className="p-8 text-center space-y-4 rounded-2xl bg-slate-900/40 border border-slate-800">
+                      <Search className="w-10 h-10 text-cyan-400 mx-auto opacity-70" />
+                      <div className="space-y-1">
+                        <h3 className="text-base font-bold text-slate-100">No Direct Results Found</h3>
+                        <p className="text-xs text-slate-400 font-mono">
+                          Try searching with different keywords or launch directly with top safe search engines:
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                        {[
+                          { name: 'DuckDuckGo Safe', url: `https://duckduckgo.com/?q=${encodeURIComponent(searchQueryInput)}` },
+                          { name: 'Wikipedia', url: `https://en.wikipedia.org/wiki/${encodeURIComponent(searchQueryInput)}` },
+                          { name: 'GitHub Code', url: `https://github.com/search?q=${encodeURIComponent(searchQueryInput)}` },
+                          { name: 'YouTube Video', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQueryInput)}` },
+                        ].map((engine) => (
+                          <button
+                            key={engine.name}
+                            type="button"
+                            onClick={() => handleNavigate(engine.url, false, false)}
+                            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-mono cursor-pointer transition-colors"
+                          >
+                            {engine.name} →
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -1771,7 +2099,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
                     title={activeTab.title}
                     className="w-full h-full border-0 bg-white"
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+                    sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     onLoad={() => setIsScanning(false)}
                   />
