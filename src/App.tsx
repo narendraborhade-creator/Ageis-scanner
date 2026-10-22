@@ -602,25 +602,18 @@ export default function App() {
       </header>
 
       {/* =========================================================================
-          ZONE 2: ADDRESS BAR & TOOLBAR
+          ZONE 2: ADDRESS BAR & TOOLBAR (Displayed when exploring extension tabs)
           ========================================================================= */}
-      <section className="h-11 sm:h-12 bg-[#0b101c] border-b border-slate-800/90 px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 select-none shrink-0 relative z-20">
+      {activeTab !== 'browser' && (
+        <>
+          <section className="h-11 sm:h-12 bg-[#0b101c] border-b border-slate-800/90 px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 select-none shrink-0 relative z-20">
         {/* Navigation Buttons: Back, Forward, Reload */}
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            onClick={() => {
-              if (activeTab !== 'browser') {
-                setActiveTab('browser');
-              }
-            }}
-            disabled={activeTab === 'browser'}
-            className={`p-1.5 rounded-lg border transition-colors ${
-              activeTab !== 'browser'
-                ? 'bg-slate-900 border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 hover:border-cyan-500/40 cursor-pointer shadow-sm'
-                : 'bg-slate-950/40 border-slate-900 text-slate-600 cursor-not-allowed'
-            }`}
-            title={activeTab !== 'browser' ? 'Return to Browser' : 'Back'}
+            onClick={() => setActiveTab('browser')}
+            className="p-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 hover:border-cyan-500/40 cursor-pointer shadow-sm transition-colors"
+            title="Return to Browser"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -652,23 +645,13 @@ export default function App() {
         >
           {/* Security Indicator Icon */}
           <div className="flex items-center gap-1.5 mr-2 shrink-0">
-            {activeTab === 'browser' ? (
-              <span
-                className="flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded"
-                title="TLS 1.3 Verified Connection"
-              >
-                <Lock className="w-3 h-3 text-emerald-400" />
-                <span className="hidden sm:inline">Secure</span>
-              </span>
-            ) : (
-              <span
-                className="flex items-center gap-1 text-[11px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-1.5 py-0.5 rounded"
-                title="Aegis Sandboxed Internal Protocol"
-              >
-                <Puzzle className="w-3 h-3 text-cyan-400" />
-                <span className="hidden sm:inline">Aegis Internal</span>
-              </span>
-            )}
+            <span
+              className="flex items-center gap-1 text-[11px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-1.5 py-0.5 rounded"
+              title="Aegis Sandboxed Internal Protocol"
+            >
+              <Puzzle className="w-3 h-3 text-cyan-400" />
+              <span className="hidden sm:inline">Aegis Internal</span>
+            </span>
           </div>
 
           {/* Editable URL Input */}
@@ -682,11 +665,6 @@ export default function App() {
 
           {/* Right badges inside address bar */}
           <div className="flex items-center gap-1.5 shrink-0 ml-1">
-            {activeTab === 'browser' && (
-              <span className="hidden md:inline text-[10px] font-mono text-teal-400 bg-teal-950/50 border border-teal-500/30 px-1.5 py-0.5 rounded">
-                SSL A+
-              </span>
-            )}
             {/* Bookmark Star Toggle */}
             <button
               type="button"
@@ -694,7 +672,7 @@ export default function App() {
                 setIsBookmarked((prev) => !prev);
                 setSessionToast(
                   !isBookmarked
-                    ? `Added "${activeTab === 'browser' ? browserInitialUrl : `aegis://${activeTab}`}" to Bookmarks (★)`
+                    ? `Added "aegis://${activeTab}" to Bookmarks (★)`
                     : 'Removed from Bookmarks'
                 );
                 setTimeout(() => setSessionToast(null), 3000);
@@ -715,7 +693,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => {
-              setSessionToast(`Saved "${activeTab === 'browser' ? browserInitialUrl : `aegis://${activeTab}`}" to Reading Queue (📖)`);
+              setSessionToast(`Saved "aegis://${activeTab}" to Reading Queue (📖)`);
               setTimeout(() => setSessionToast(null), 3000);
             }}
             className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border bg-slate-900 border-slate-700/80 text-slate-300 hover:text-amber-300 hover:border-amber-500/40 hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-mono"
@@ -730,11 +708,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setIsExtensionsMenuOpen((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border ${
-                isExtensionsMenuOpen || activeTab !== 'browser'
-                  ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-semibold'
-                  : 'bg-slate-900 border-slate-700/80 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-slate-800'
-              }`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer border bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-semibold"
               title="Aegis Security Extensions & Tools"
             >
               <Puzzle className="w-4 h-4 text-cyan-400" />
@@ -865,6 +839,8 @@ export default function App() {
           </button>
         ))}
       </section>
+        </>
+      )}
 
       {/* =========================================================================
           ZONE 4: MAIN CONTENT (Full Viewport, No max-width, Scrollable)

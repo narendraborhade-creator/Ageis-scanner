@@ -143,7 +143,7 @@ export const CyberScene3D: React.FC<CyberScene3DProps> = ({
     dirLight2.position.set(-5, -5, -2);
     scene.add(dirLight2);
 
-    // Mouse Interaction (Tilt lerp)
+    // Mouse & Mobile Touch Interaction (Tilt lerp)
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
@@ -156,8 +156,17 @@ export const CyberScene3D: React.FC<CyberScene3DProps> = ({
       mouseY = ((event.clientY - rect.top) / rect.height - 0.5) * 1.5;
     };
 
+    const onTouchMove = (event: TouchEvent) => {
+      if (!interactive || !event.touches.length) return;
+      const touch = event.touches[0];
+      const rect = container.getBoundingClientRect();
+      mouseX = ((touch.clientX - rect.left) / rect.width - 0.5) * 2.0;
+      mouseY = ((touch.clientY - rect.top) / rect.height - 0.5) * 2.0;
+    };
+
     if (interactive) {
       window.addEventListener('mousemove', onMouseMove);
+      container.addEventListener('touchmove', onTouchMove, { passive: true });
     }
 
     // Animation Loop
@@ -219,6 +228,7 @@ export const CyberScene3D: React.FC<CyberScene3DProps> = ({
       window.removeEventListener('resize', handleResize);
       if (interactive) {
         window.removeEventListener('mousemove', onMouseMove);
+        container.removeEventListener('touchmove', onTouchMove);
       }
       canvas.removeEventListener('webglcontextlost', handleContextLost);
       canvas.removeEventListener('webglcontextrestored', handleContextRestored);

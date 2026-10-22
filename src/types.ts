@@ -33,6 +33,8 @@ export interface BrowserTab {
   lastActiveAt?: number;
   pageMetrics?: PageLoadMetrics;
   snapshotThumbnail?: string;
+  historyStack?: string[];
+  historyIndex?: number;
   createdAt: number;
 }
 

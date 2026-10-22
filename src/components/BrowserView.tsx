@@ -81,7 +81,43 @@ import {
   Sun,
   Mail,
   Key,
+  Home,
+  Play,
+  Volume2,
+  Compass,
 } from 'lucide-react';
+import { CyberScene3D } from './CyberScene3D';
+
+function parseYouTubeUrl(url: string) {
+  try {
+    const clean = (url || '').trim().toLowerCase();
+    const isYt = clean.includes('youtube.com') || clean.includes('youtu.be');
+    if (!isYt) return { isYouTube: false, videoId: null as string | null, isSearch: false, searchQuery: '' };
+
+    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/i);
+    if (shortMatch) return { isYouTube: true, videoId: shortMatch[1], isSearch: false, searchQuery: '' };
+
+    const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
+    if (watchMatch) return { isYouTube: true, videoId: watchMatch[1], isSearch: false, searchQuery: '' };
+
+    const embedMatch = url.match(/(?:shorts|embed)\/([a-zA-Z0-9_-]{11})/i);
+    if (embedMatch) return { isYouTube: true, videoId: embedMatch[1], isSearch: false, searchQuery: '' };
+
+    const searchMatch = url.match(/[?&]search_query=([^&]+)/i);
+    if (searchMatch) {
+      return {
+        isYouTube: true,
+        videoId: null,
+        isSearch: true,
+        searchQuery: decodeURIComponent(searchMatch[1].replace(/\+/g, ' ')),
+      };
+    }
+
+    return { isYouTube: true, videoId: null, isSearch: false, searchQuery: '' };
+  } catch {
+    return { isYouTube: false, videoId: null, isSearch: false, searchQuery: '' };
+  }
+}
 
 interface BrowserViewProps {
   onScanDns: (domain: string) => void;
@@ -112,6 +148,8 @@ const DEFAULT_TABS: BrowserTab[] = [
     isPinned: false,
     pageMetrics: calculatePageLoadMetrics('https://cloudflare.com', 'clean', 24),
     createdAt: Date.now(),
+    historyStack: ['https://cloudflare.com'],
+    historyIndex: 0,
   },
 ];
 
@@ -170,6 +208,82 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   } | null>(null);
   const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
   const [urlInputValue, setUrlInputValue] = useState<string>('');
+
+  // Real In-Browser Rendering & YouTube States
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [show3DScannerModal, setShow3DScannerModal] = useState<boolean>(false);
+  const [ytVideos, setYtVideos] = useState<Array<{
+    id: string;
+    title: string;
+    channel: string;
+    views: string;
+    published: string;
+    thumbnail: string;
+    url: string;
+  }>>([]);
+  const [ytLoading, setYtLoading] = useState<boolean>(false);
+  const [ytSearchInput, setYtSearchInput] = useState<string>('');
+
+  // Active Tab & In-Browser Link Interceptor
+  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+  const ytInfo = parseYouTubeUrl(activeTab.url);
+  const canGoBack = (activeTab.historyIndex ?? 0) > 0;
+  const canGoForward = (activeTab.historyIndex ?? 0) < ((activeTab.historyStack?.length ?? 1) - 1);
+
+  // In-Browser Link Click & Form Submission Interceptor:
+  // Listens to postMessage events from the proxied iframe and opens them directly in this browser!
+  useEffect(() => {
+    const handleWindowMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'AEGIS_NAVIGATE' && typeof e.data.url === 'string') {
+        executeNavigate(e.data.url, false, false);
+      }
+    };
+    window.addEventListener('message', handleWindowMessage);
+    return () => window.removeEventListener('message', handleWindowMessage);
+  }, [activeTabId, tabs]);
+
+  // Fetch YouTube video search/recommendations when visiting YouTube
+  useEffect(() => {
+    if (ytInfo.isYouTube) {
+      const q = ytInfo.videoId
+        ? (activeTab.title && !activeTab.title.includes('YouTube') ? activeTab.title : 'trending tech science')
+        : (ytInfo.searchQuery || 'trending tech science');
+      setYtLoading(true);
+      fetch(`/api/youtube/search?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && Array.isArray(data.videos)) {
+            setYtVideos(data.videos);
+          }
+        })
+        .catch((err) => console.warn('YouTube search API error:', err))
+        .finally(() => setYtLoading(false));
+    }
+  }, [activeTab.url, activeTab.title]);
+
+  const handleGoBack = () => {
+    if (!canGoBack || !activeTab.historyStack) return;
+    const nextIdx = (activeTab.historyIndex ?? 0) - 1;
+    const targetUrl = activeTab.historyStack[nextIdx];
+    executeNavigate(targetUrl, false, false, true, nextIdx);
+  };
+
+  const handleGoForward = () => {
+    if (!canGoForward || !activeTab.historyStack) return;
+    const nextIdx = (activeTab.historyIndex ?? 0) + 1;
+    const targetUrl = activeTab.historyStack[nextIdx];
+    executeNavigate(targetUrl, false, false, true, nextIdx);
+  };
+
+  const handleReload = () => {
+    setIsScanning(true);
+    setRefreshKey((prev) => prev + 1);
+    setTimeout(() => setIsScanning(false), 450);
+  };
+
+  const handleGoHome = () => {
+    executeNavigate('https://cloudflare.com', false, false);
+  };
 
   useEffect(() => {
     const handleReadLaterChange = () => {
@@ -322,7 +436,6 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   }, []);
 
   // Current active tab object
-  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
   const isCurrentBookmarked = bookmarks.some(
     (b) => b.url.toLowerCase() === activeTab.url.toLowerCase().trim()
@@ -367,40 +480,62 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
   const getCleanTitle = (url: string) => {
     const domain = formatDomain(url);
+    const yt = parseYouTubeUrl(url);
+    if (yt.isYouTube) {
+      if (yt.videoId) return `YouTube Video (${yt.videoId})`;
+      if (yt.searchQuery) return `YouTube: ${yt.searchQuery}`;
+      return 'YouTube: Web Video Portal';
+    }
     if (domain.includes('github')) return 'GitHub: Where the world builds';
     if (domain.includes('cloudflare')) return 'Cloudflare: Web Security & DNS';
     if (domain.includes('ncbi') || domain.includes('pubmed')) return 'NCBI / PubMed Literature';
     if (domain.includes('wikipedia')) return 'Wikipedia, the free encyclopedia';
+    if (domain.includes('duckduckgo')) return 'DuckDuckGo Search';
     if (domain.includes('google')) return 'Google Safe Search';
-    return domain;
+    return domain || 'New Tab';
   };
 
-  const executeNavigate = (rawUrl: string, inNewTab = false, openExternal = true) => {
+  const executeNavigate = (
+    rawUrl: string,
+    inNewTab = false,
+    openExternal = false,
+    isHistoryNav = false,
+    targetHistoryIndex?: number
+  ) => {
     let target = rawUrl.trim();
 
-    // If search keyword without dot or protocol, route to Science or Web Search
-    if (!target.includes('.') && !target.startsWith('http')) {
-      onOpenScience(target);
-      return;
+    // If search keyword without dot or protocol:
+    if (!target.includes('.') && !target.startsWith('http') && !target.startsWith('aegis://')) {
+      if (target.toLowerCase().includes('youtube')) {
+        const query = target.replace(/youtube/gi, '').trim() || 'trending';
+        target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+      } else {
+        target = `https://duckduckgo.com/?q=${encodeURIComponent(target)}`;
+      }
     }
 
-    if (!/^https?:\/\//i.test(target)) {
+    if (!/^https?:\/\//i.test(target) && !target.startsWith('aegis://')) {
       target = `https://${target}`;
     }
 
     const domain = formatDomain(target);
     const isHttps = target.startsWith('https://');
 
-    // Launch in separate page / window if requested
-    if (openExternal) {
-      try {
-        window.open(target, '_blank', 'noopener,noreferrer');
-      } catch (err) {
-        console.warn('Could not launch external browser window:', err);
-      }
-    }
-
     setIsScanning(true);
+
+    // Compute history stack
+    let newStack = activeTab.historyStack ? [...activeTab.historyStack] : [activeTab.url];
+    let newIndex = activeTab.historyIndex ?? 0;
+
+    if (isHistoryNav && typeof targetHistoryIndex === 'number') {
+      newIndex = targetHistoryIndex;
+    } else if (!inNewTab) {
+      newStack = [...newStack.slice(0, newIndex + 1), target];
+      newIndex = newStack.length - 1;
+    } else {
+      newStack = [target];
+      newIndex = 0;
+    }
 
     setTimeout(() => {
       const threatCheck = analyzeUrlThreats(target);
@@ -431,6 +566,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         isPinned: activeTab.isPinned || false,
         pageMetrics,
         createdAt: Date.now(),
+        historyStack: newStack,
+        historyIndex: newIndex,
       };
 
       // Record to LocalStorage History
@@ -454,41 +591,28 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       }
 
       setIsScanning(false);
-    }, 400);
+    }, 300);
   };
 
   /**
    * Universal Security-Gated Link Handler:
-   * Whenever a user clicks on any link or enters a URL, if not explicitly authenticated with Gmail
-   * and not in an active session, prompts them to use as Guest or log in with Gmail!
+   * Always navigates directly inside the browser tab, maintaining seamless in-browser browsing.
    */
-  const handleNavigate = (rawUrl: string, inNewTab = false, openExternal = true) => {
+  const handleNavigate = (rawUrl: string, inNewTab = false, openExternal = false) => {
     let target = rawUrl.trim();
-    if (!target.includes('.') && !target.startsWith('http')) {
-      onOpenScience(target);
-      return;
+    if (!target.includes('.') && !target.startsWith('http') && !target.startsWith('aegis://')) {
+      if (target.toLowerCase().includes('youtube')) {
+        const query = target.replace(/youtube/gi, '').trim() || 'trending';
+        target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+      } else {
+        target = `https://duckduckgo.com/?q=${encodeURIComponent(target)}`;
+      }
     }
-    if (!/^https?:\/\//i.test(target)) {
+    if (!/^https?:\/\//i.test(target) && !target.startsWith('aegis://')) {
       target = `https://${target}`;
     }
 
-    const isAuthPromptSessionDone = sessionStorage.getItem('aegis_auth_prompt_dismissed') === 'true';
-    const pref = getAuthPromptPreference();
-    const isExplicitlyAuthenticated = !!currentUser && !currentUser.email.endsWith('@aegis.local');
-    const isGuestActive = isGuestModeActive();
-
-    const shouldPrompt =
-      (!isExplicitlyAuthenticated && !isGuestActive) ||
-      (!isAuthPromptSessionDone && pref === 'session') ||
-      pref === 'always';
-
-    if (shouldPrompt) {
-      setPendingNav({ url: target, inNewTab, openExternal });
-      setShowLinkAuthModal(true);
-      return;
-    }
-
-    executeNavigate(target, inNewTab, openExternal);
+    executeNavigate(target, inNewTab, false);
   };
 
   const handleConfirmGuest = (rememberForSession: boolean) => {
@@ -499,7 +623,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     onUserChange?.(guest);
     setShowLinkAuthModal(false);
     if (pendingNav) {
-      executeNavigate(pendingNav.url, pendingNav.inNewTab, pendingNav.openExternal);
+      executeNavigate(pendingNav.url, pendingNav.inNewTab, false);
       setPendingNav(null);
     }
   };
@@ -512,7 +636,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     onUserChange?.(loggedIn);
     setShowLinkAuthModal(false);
     if (pendingNav) {
-      executeNavigate(pendingNav.url, pendingNav.inNewTab, pendingNav.openExternal);
+      executeNavigate(pendingNav.url, pendingNav.inNewTab, false);
       setPendingNav(null);
     }
   };
@@ -534,6 +658,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       isPinned: false,
       pageMetrics: calculatePageLoadMetrics('https://cloudflare.com', 'clean', 25),
       createdAt: Date.now(),
+      historyStack: ['https://cloudflare.com'],
+      historyIndex: 0,
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
@@ -562,6 +688,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         isQuarantined: false,
         isPinned: false,
         createdAt: Date.now(),
+        historyStack: ['https://cloudflare.com'],
+        historyIndex: 0,
       };
       setTabs([resetTab]);
       setActiveTabId(resetTab.id);
@@ -885,28 +1013,49 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
         {/* Chrome Navigation Toolbar with History, Bookmarks, Tabs, and AI Copilot Buttons */}
         <div className="flex flex-wrap items-center justify-between px-4 py-2 bg-slate-900/70 border-b border-slate-800 gap-3">
-          {/* Navigation controls */}
-          <div className="flex items-center gap-1.5 shrink-0 text-slate-400">
+          {/* Navigation controls: Back, Forward, Reload, Home */}
+          <div className="flex items-center gap-1 shrink-0 text-slate-400">
             <button
-              onClick={() => handleNavigate('https://cloudflare.com', false, false)}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
-              title="Previous"
+              type="button"
+              disabled={!canGoBack}
+              onClick={handleGoBack}
+              className={`p-1.5 rounded transition-colors ${
+                canGoBack
+                  ? 'hover:bg-slate-800 text-slate-200 hover:text-cyan-300 cursor-pointer'
+                  : 'text-slate-600 cursor-not-allowed opacity-40'
+              }`}
+              title="Back"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => handleNavigate('https://github.com', false, false)}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
-              title="Next"
+              type="button"
+              disabled={!canGoForward}
+              onClick={handleGoForward}
+              className={`p-1.5 rounded transition-colors ${
+                canGoForward
+                  ? 'hover:bg-slate-800 text-slate-200 hover:text-cyan-300 cursor-pointer'
+                  : 'text-slate-600 cursor-not-allowed opacity-40'
+              }`}
+              title="Forward"
             >
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => handleNavigate(activeTab.url, false, false)}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-cyan-300 transition-colors cursor-pointer"
+              type="button"
+              onClick={handleReload}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-cyan-300 transition-colors cursor-pointer text-slate-300"
               title="Reload Page"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-cyan-400' : ''}`} />
+            </button>
+            <button
+              type="button"
+              onClick={handleGoHome}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-cyan-300 transition-colors cursor-pointer text-slate-300"
+              title="Home / Start Page"
+            >
+              <Home className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -1038,15 +1187,15 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
           {/* Tools & Sidebars Toggles (Responsive scrollable ribbon on phones) */}
           <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-full pb-1 scrollbar-none py-0.5">
-            {/* Open in Separate Real Browser Window */}
+            {/* 3D Shape Scanner HUD Button */}
             <button
               type="button"
-              onClick={handleLaunchExternalWindow}
+              onClick={() => setShow3DScannerModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]"
-              title="Open in Separate Browser Window"
+              title="Open 3D Shape Scanner Holographic HUD"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Open in Real Window</span>
+              <Shield className="w-3.5 h-3.5 text-cyan-400" />
+              <span>3D Scanner</span>
             </button>
 
             {/* Read Later Queue Sidebar Button */}
@@ -1141,6 +1290,35 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           </div>
         </div>
 
+        {/* Quick Bookmarks Ribbon */}
+        <div className="h-8 bg-[#060a14] border-b border-slate-800/80 px-3 flex items-center gap-1.5 text-xs font-mono overflow-x-auto scrollbar-none select-none shrink-0 z-10">
+          <span className="text-[11px] text-slate-500 flex items-center gap-1 mr-1 shrink-0">
+            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+            <span className="hidden md:inline">Bookmarks:</span>
+          </span>
+          {[
+            { title: 'YouTube', url: 'https://www.youtube.com' },
+            { title: 'Cloudflare', url: 'https://cloudflare.com' },
+            { title: 'Wikipedia', url: 'https://en.wikipedia.org' },
+            { title: 'DuckDuckGo', url: 'https://duckduckgo.com' },
+            { title: 'GitHub', url: 'https://github.com' },
+            { title: 'PubMed Research', url: 'https://ncbi.nlm.nih.gov' },
+            { title: 'arXiv Preprints', url: 'https://arxiv.org' },
+            ...bookmarks.slice(0, 5),
+          ].map((bm) => (
+            <button
+              key={bm.title}
+              type="button"
+              onClick={() => handleNavigate(bm.url, false, false)}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800/80 text-slate-300 hover:text-cyan-300 text-[11px] transition-colors whitespace-nowrap shrink-0 group border border-transparent hover:border-slate-700 cursor-pointer"
+              title={bm.url}
+            >
+              <Globe className="w-3 h-3 text-slate-400 group-hover:text-cyan-400" />
+              <span>{bm.title}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Viewport & Slide-In Sidebars Split Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
           {/* Main Web Viewport Area */}
@@ -1171,7 +1349,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                   <button
-                    onClick={() => handleNavigate('https://cloudflare.com', false, false)}
+                    onClick={() => handleNavigate('aegis://newtab', false, false)}
                     className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-colors cursor-pointer"
                   >
                     Return to Safe Browsing
@@ -1190,92 +1368,413 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </button>
                 </div>
               </div>
-            ) : (
-              /* SAFE BROWSING VERIFIED PREVIEW */
-              <div className="p-6 sm:p-8 space-y-6 bg-slate-950/40">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/60 border border-cyan-500/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                        <span>{activeTab.domain}</span>
-                        <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/20">
-                          Zero-Trust Verified
+            ) : ytInfo.isYouTube && ytInfo.videoId ? (
+              /* =========================================================================
+                 IN-BROWSER YOUTUBE VIDEO PLAYER VIEW
+                 ========================================================================= */
+              <div className="relative w-full h-full flex flex-col bg-[#050811] overflow-y-auto scrollbar-thin p-3 sm:p-5 space-y-4">
+                {/* Main YouTube Embedded Video Player Card */}
+                <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden border border-slate-800 bg-black shadow-2xl">
+                  <div className="relative w-full aspect-video bg-black">
+                    <iframe
+                      key={`yt-player-${ytInfo.videoId}-${refreshKey}`}
+                      src={`https://www.youtube-nocookie.com/embed/${ytInfo.videoId}?autoplay=1&enablejsapi=1&rel=0`}
+                      title={activeTab.title || 'YouTube Video Player'}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      allowFullScreen
+                    />
+                  </div>
+
+                  {/* Video Meta & In-Browser Actions */}
+                  <div className="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                    <div className="space-y-1 max-w-xl">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+                        <span>{activeTab.title}</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-950/80 text-red-400 border border-red-500/30">
+                          YouTube Web
                         </span>
                       </h3>
-                      <p className="text-xs text-slate-400">
-                        Encrypted TLS 1.3 handshake verified · No credential harvesters detected · Content sandbox active
+                      <p className="text-xs text-slate-400 font-mono">
+                        Playing in Aegis In-Browser Sandbox · TLS 1.3 Verified · Zero-Trust Container
                       </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleToggleActiveBookmark}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${
+                          isCurrentBookmarked
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-amber-300'
+                        }`}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
+                        <span>{isCurrentBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleToggleReadLater}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${
+                          isCurrentInReadLater
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-cyan-300'
+                        }`}
+                      >
+                        <BookOpen className={`w-3.5 h-3.5 ${isCurrentInReadLater ? 'text-cyan-400 fill-cyan-400/20' : ''}`} />
+                        <span>{isCurrentInReadLater ? 'In Watch Later' : 'Watch Later'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShow3DScannerModal(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 text-xs font-mono transition-colors cursor-pointer"
+                      >
+                        <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>3D Scanner HUD</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Search Inside YouTube */}
+                <div className="w-full max-w-5xl mx-auto flex items-center gap-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (ytSearchInput.trim()) {
+                        handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(ytSearchInput.trim())}`, false, false);
+                      }
+                    }}
+                    className="flex-1 flex items-center bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono focus-within:border-cyan-500 shadow-inner"
+                  >
+                    <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+                    <input
+                      type="text"
+                      value={ytSearchInput}
+                      onChange={(e) => setYtSearchInput(e.target.value)}
+                      placeholder="Search more YouTube videos..."
+                      className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs cursor-pointer ml-2"
+                    >
+                      Search
+                    </button>
+                  </form>
+                </div>
+
+                {/* Recommended & Related Videos Grid */}
+                <div className="w-full max-w-5xl mx-auto space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-200 font-mono flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                      <span>Recommended & Related Videos</span>
+                    </h4>
+                    {ytLoading && (
+                      <span className="text-[11px] font-mono text-cyan-400 flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <span>Fetching related videos...</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {ytVideos.map((video) => (
+                      <div
+                        key={video.id}
+                        onClick={() => handleNavigate(`https://www.youtube.com/watch?v=${video.id}`, false, false)}
+                        className="group rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 p-2 space-y-2 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-black/40"
+                      >
+                        <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-950">
+                          <img
+                            src={video.thumbnail}
+                            alt={video.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                        </div>
+                        <div className="space-y-1">
+                          <h5 className="text-xs font-semibold text-slate-200 group-hover:text-cyan-300 line-clamp-2 leading-snug">
+                            {video.title}
+                          </h5>
+                          <div className="text-[11px] text-slate-400 truncate">{video.channel}</div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                            <span>{video.views}</span>
+                            <span>{video.published}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : ytInfo.isYouTube && !ytInfo.videoId ? (
+              /* =========================================================================
+                 IN-BROWSER YOUTUBE PORTAL & SEARCH VIEW
+                 ========================================================================= */
+              <div className="relative w-full h-full flex flex-col bg-[#050811] overflow-y-auto scrollbar-thin p-4 sm:p-6 space-y-6">
+                <div className="w-full max-w-5xl mx-auto space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500">
+                        <Globe className="w-5 h-5 text-red-500" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                          <span>YouTube Safe Web Player</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-950/80 text-red-400 border border-red-500/30">
+                            In-Browser
+                          </span>
+                        </h2>
+                        <p className="text-xs text-slate-400 font-mono">
+                          Watch any YouTube video right inside Aegis 3D Safe Browser with zero tracking
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* Big Search Bar */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const q = ytSearchInput.trim() || 'trending tech';
+                      handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, false, false);
+                    }}
+                    className="flex items-center bg-slate-900 border border-slate-800 focus-within:border-red-500 rounded-2xl p-1.5 shadow-xl transition-all"
+                  >
+                    <Search className="w-5 h-5 text-slate-400 ml-3 mr-2 shrink-0" />
+                    <input
+                      type="text"
+                      value={ytSearchInput}
+                      onChange={(e) => setYtSearchInput(e.target.value)}
+                      placeholder="Search videos, tutorials, music, cyber security, coding..."
+                      className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1.5"
+                    />
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs font-mono transition-colors cursor-pointer shrink-0"
+                    >
+                      Search
+                    </button>
+                  </form>
+
+                  {/* Quick Topic Chips */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs font-mono">
+                    {[
+                      'Cybersecurity',
+                      'Web Development',
+                      'Three.js 3D',
+                      'Computer Networks',
+                      'Artificial Intelligence',
+                      'Science & Physics',
+                      'Music & Lofi',
+                    ].map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => {
+                          setYtSearchInput(chip);
+                          handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(chip)}`, false, false);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-red-500/40 text-slate-300 hover:text-white whitespace-nowrap transition-colors cursor-pointer"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Videos Grid */}
+                <div className="w-full max-w-5xl mx-auto space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-200 font-mono">
+                      {ytInfo.searchQuery ? `Search Results for "${ytInfo.searchQuery}"` : 'Trending & Recommended Videos'}
+                    </h3>
+                    {ytLoading && (
+                      <span className="text-xs font-mono text-cyan-400 flex items-center gap-1.5">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Loading videos...</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {ytVideos.map((video) => (
+                      <div
+                        key={video.id}
+                        onClick={() => handleNavigate(`https://www.youtube.com/watch?v=${video.id}`, false, false)}
+                        className="group rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-red-500/50 p-2.5 space-y-2.5 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-red-950/20"
+                      >
+                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
+                          <img
+                            src={video.thumbnail}
+                            alt={video.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-bold text-slate-200 group-hover:text-red-400 line-clamp-2 leading-snug">
+                            {video.title}
+                          </h4>
+                          <div className="text-[11px] text-slate-400 truncate">{video.channel}</div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/80">
+                            <span>{video.views}</span>
+                            <span>{video.published}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (activeTab.url === 'aegis://newtab' || (activeTab.title === 'New Tab' && (!activeTab.historyStack || activeTab.historyStack.length <= 1))) ? (
+              /* =========================================================================
+                 NEW TAB / 3D SHAPE SCANNER START PAGE
+                 ========================================================================= */
+              <div className="relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#030712] via-[#050b18] to-[#030712] overflow-y-auto scrollbar-thin p-4 sm:p-8 space-y-8">
+                {/* 3D Cyber Core & Shape Scanner */}
+                <div className="relative w-full max-w-xl mx-auto flex flex-col items-center">
+                  <div className="w-full h-44 sm:h-56 relative rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-950/60 shadow-[0_0_35px_rgba(6,182,212,0.15)]">
+                    <CyberScene3D statusMode={statusMode} interactive={true} className="w-full h-full" />
+                    <div className="absolute top-2.5 left-3 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30">
+                        3D Shape Scanner · 60 FPS WebGL
+                      </span>
+                    </div>
+                    <div className="absolute bottom-2.5 right-3 flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded">
+                        Drag to rotate 3D core
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Brand Title */}
+                  <div className="text-center mt-4 space-y-1">
+                    <h2 className="text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">
+                      AEGIS 3D SAFE BROWSER
+                    </h2>
+                    <p className="text-xs text-slate-400 font-mono max-w-md mx-auto">
+                      Zero-trust content sandbox, quantum DNS defense & in-browser media player
+                    </p>
+                  </div>
+                </div>
+
+                {/* Start Page Search Omnibar */}
+                <div className="w-full max-w-xl mx-auto">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const v = (urlInputValue || '').trim();
+                      if (v) handleNavigate(v, false, false);
+                    }}
+                    className="flex items-center bg-slate-900/90 border border-slate-700 hover:border-cyan-500 focus-within:border-cyan-400 rounded-2xl p-2 shadow-2xl transition-all shadow-cyan-950/20"
+                  >
+                    <Search className="w-5 h-5 text-cyan-400 ml-3 mr-2 shrink-0" />
+                    <input
+                      type="text"
+                      value={urlInputValue}
+                      onChange={(e) => setUrlInputValue(e.target.value)}
+                      placeholder="Search web, enter URL, or search YouTube videos..."
+                      className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1.5"
+                    />
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs font-mono cursor-pointer shrink-0 transition-all shadow-md"
+                    >
+                      Search
+                    </button>
+                  </form>
+                </div>
+
+                {/* Quick Shortcuts Grid */}
+                <div className="w-full max-w-xl mx-auto space-y-2.5">
+                  <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider text-center">
+                    Top Sites & Safe Shortcuts
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+                    {[
+                      { title: 'YouTube', url: 'https://www.youtube.com', desc: 'In-Browser Player', icon: Globe, color: 'text-red-400' },
+                      { title: 'Wikipedia', url: 'https://en.wikipedia.org', desc: 'Free Encyclopedia', icon: Globe, color: 'text-cyan-400' },
+                      { title: 'Cloudflare', url: 'https://cloudflare.com', desc: 'Zero Trust & DNS', icon: Shield, color: 'text-amber-400' },
+                      { title: 'DuckDuckGo', url: 'https://duckduckgo.com', desc: 'Private Search', icon: Search, color: 'text-teal-400' },
+                      { title: 'GitHub', url: 'https://github.com', desc: 'Open Source Code', icon: Globe, color: 'text-indigo-400' },
+                      { title: 'PubMed', url: 'https://ncbi.nlm.nih.gov', desc: 'Biomedical Science', icon: Activity, color: 'text-emerald-400' },
+                      { title: 'arXiv', url: 'https://arxiv.org', desc: 'Physics & AI Preprints', icon: Activity, color: 'text-rose-400' },
+                      { title: 'Google Search', url: 'https://google.com', desc: 'Web Search', icon: Search, color: 'text-blue-400' },
+                    ].map((site) => (
+                      <button
+                        key={site.title}
+                        type="button"
+                        onClick={() => handleNavigate(site.url, false, false)}
+                        className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-850 flex flex-col items-center justify-center text-center space-y-1 transition-all group cursor-pointer"
+                      >
+                        <site.icon className={`w-5 h-5 ${site.color} group-hover:scale-110 transition-transform`} />
+                        <span className="font-bold text-slate-200 group-hover:text-cyan-300">{site.title}</span>
+                        <span className="text-[10px] text-slate-400">{site.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* =========================================================================
+                 REAL WEB VIEWPORT (PROXIED IFRAME WITH IN-PAGE CLICK INTERCEPTION)
+                 ========================================================================= */
+              <div className="relative w-full h-full flex flex-col bg-slate-950 overflow-hidden min-h-[500px]">
+                {/* Security & Sandbox Status Ribbon */}
+                <div className="px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 text-[11px] font-mono flex items-center justify-between gap-2 shrink-0 select-none">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-emerald-400 font-semibold">{activeTab.domain}</span>
+                    <span className="text-slate-500">·</span>
+                    <span className="text-slate-400 truncate hidden sm:inline">{activeTab.url}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
+                      Zero-Trust Sandbox Active
+                    </span>
                     <button
                       type="button"
-                      onClick={handleLaunchExternalWindow}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-cyan-300 hover:text-cyan-200 bg-cyan-950/40 border border-cyan-500/30 rounded-lg hover:border-cyan-400 transition-colors cursor-pointer"
+                      onClick={() => setShow3DScannerModal(true)}
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-cyan-950 text-cyan-400 border border-cyan-500/30 text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Inspect 3D Shape Scanner HUD"
                     >
-                      <span>Launch in Separate Window</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <Shield className="w-3 h-3" />
+                      <span>3D Scanner</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleReload}
+                      className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 cursor-pointer"
+                      title="Reload Page"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isScanning ? 'animate-spin text-cyan-400' : ''}`} />
                     </button>
                   </div>
                 </div>
 
-                {/* Sandboxed Safe Simulation Rendering Container */}
-                <div className="relative rounded-xl border border-slate-800 bg-slate-950 p-6 min-h-[340px] flex flex-col items-center justify-center text-center space-y-4">
-                  <div className="max-w-lg space-y-2">
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
-                      <Shield className="w-7 h-7" />
-                    </div>
-                    <h4 className="text-lg font-semibold text-slate-100 font-mono">
-                      {activeTab.title}
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed font-mono">
-                      Target Host: <code className="text-cyan-300 font-semibold">{activeTab.url}</code>
-                    </p>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      You are browsing in an isolated container that strips third-party tracking beacons, blocks malicious JavaScript vectors, and audits DNS records continuously.
-                    </p>
-                  </div>
-
-                  {/* Actions Bar */}
-                  <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-                    <button
-                      type="button"
-                      onClick={handleLaunchExternalWindow}
-                      className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-lg transition-all cursor-pointer"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Open Separate Page ({activeTab.domain})</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleCreateNewTab}
-                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-cyan-300 text-xs font-mono transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ Open New Browser Tab</span>
-                    </button>
-                  </div>
-
-                  {/* Active Security Badges */}
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-4 text-xs font-mono text-slate-400">
-                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-                      CSP: Enforced
-                    </span>
-                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-                      Cookies: SameSite Strict
-                    </span>
-                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-                      X-Frame-Options: SAMEORIGIN
-                    </span>
-                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800">
-                      DNSSEC: Cryptographically Signed
-                    </span>
-                  </div>
+                {/* The Real In-Browser Web Iframe */}
+                <div className="flex-1 w-full h-full relative overflow-hidden bg-white">
+                  {isScanning && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 animate-pulse z-20" />
+                  )}
+                  <iframe
+                    key={`${activeTab.id}-${refreshKey}`}
+                    src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
+                    title={activeTab.title}
+                    className="w-full h-full border-0 bg-white"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    onLoad={() => setIsScanning(false)}
+                  />
                 </div>
               </div>
             )}
@@ -1986,6 +2485,151 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             }, 120);
           }}
         />
+      )}
+
+      {/* Mobile Navigation Bottom Action Bar (Fixed for Phones & Tablets) */}
+      <div className="lg:hidden flex items-center justify-around px-2 py-2.5 bg-slate-950/95 border-t border-slate-800 text-slate-300 text-xs font-mono shrink-0 z-30 select-none shadow-[0_-5px_15px_rgba(0,0,0,0.4)] backdrop-blur-md">
+        <button
+          type="button"
+          disabled={!canGoBack}
+          onClick={handleGoBack}
+          className={`p-2 rounded-xl transition-colors ${
+            canGoBack ? 'hover:bg-slate-800 text-slate-100 active:bg-slate-700' : 'text-slate-600 opacity-40'
+          }`}
+          title="Back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          disabled={!canGoForward}
+          onClick={handleGoForward}
+          className={`p-2 rounded-xl transition-colors ${
+            canGoForward ? 'hover:bg-slate-800 text-slate-100 active:bg-slate-700' : 'text-slate-600 opacity-40'
+          }`}
+          title="Forward"
+        >
+          <ArrowRight className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={handleReload}
+          className="p-2 rounded-xl hover:bg-slate-800 text-cyan-400 active:bg-slate-700"
+          title="Reload"
+        >
+          <RefreshCw className={`w-5 h-5 ${isScanning ? 'animate-spin' : ''}`} />
+        </button>
+        <button
+          type="button"
+          onClick={handleGoHome}
+          className="p-2 rounded-xl hover:bg-slate-800 text-slate-100 active:bg-slate-700"
+          title="Start Page"
+        >
+          <Home className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSidebar(activeSidebar === 'tabs' ? 'none' : 'tabs')}
+          className="p-1.5 px-3 rounded-xl bg-slate-900 border border-slate-700 text-cyan-300 font-bold active:bg-slate-800"
+          title="Open Tabs"
+        >
+          {tabs.length}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShow3DScannerModal(true)}
+          className="p-2 rounded-xl hover:bg-slate-800 text-cyan-400 active:bg-slate-700"
+          title="3D Shape Scanner"
+        >
+          <Shield className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* 3D Shape Scanner Interactive Holographic HUD Modal */}
+      {show3DScannerModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="3D Shape Scanner HUD"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShow3DScannerModal(false);
+          }}
+        >
+          <div className="w-full max-w-xl bg-slate-950 border border-cyan-500/40 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.3)] overflow-hidden flex flex-col ring-1 ring-cyan-500/20">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-slate-900/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                  <Shield className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100 font-mono flex items-center gap-2">
+                    <span>Aegis 3D Shape Scanner HUD</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-400 border border-cyan-500/30">
+                      WebGL 60 FPS
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    Target: {activeTab.domain} · Touch or drag to rotate 3D core
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShow3DScannerModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 space-y-4">
+              <div className="w-full h-56 sm:h-64 rounded-xl overflow-hidden bg-black/80 border border-slate-800 relative shadow-inner">
+                <CyberScene3D statusMode={statusMode} interactive={true} className="w-full h-full" />
+                <div className="absolute bottom-2.5 left-3 text-[10px] font-mono text-cyan-300 bg-slate-950/80 px-2 py-0.5 rounded border border-cyan-500/30">
+                  Touch drag / Mouse tilt active
+                </div>
+                <div className="absolute top-2.5 right-3 text-[10px] font-mono text-emerald-400 bg-slate-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                  TLS Grade: {activeTab.sslGrade} · Security: {activeTab.securityScore}/100
+                </div>
+              </div>
+
+              {/* Real-time Telemetry Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-0.5">
+                  <div className="text-[10px] text-slate-400">Security Score</div>
+                  <div className="text-base font-bold text-emerald-400">{activeTab.securityScore}%</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-0.5">
+                  <div className="text-[10px] text-slate-400">SSL Certificate</div>
+                  <div className="text-base font-bold text-cyan-300">{activeTab.sslGrade}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-0.5">
+                  <div className="text-[10px] text-slate-400">Trackers Deflected</div>
+                  <div className="text-base font-bold text-amber-400">{activeTab.trackersBlocked}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-0.5">
+                  <div className="text-[10px] text-slate-400">Engine Latency</div>
+                  <div className="text-base font-bold text-teal-300">{activeTab.latencyMs}ms</div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 text-[11px] font-mono text-slate-400 border-t border-slate-850">
+                <span>DNS Status: <strong className="text-emerald-400">Cryptographically Signed (DNSSEC)</strong></span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShow3DScannerModal(false);
+                    onScanDns(activeTab.domain);
+                  }}
+                  className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                >
+                  Run Deep DNS Audit →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Universal Link Security & Identity Verification Modal */}

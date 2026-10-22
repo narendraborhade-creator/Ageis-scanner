@@ -273,6 +273,281 @@ app.get('/api/dns/scan', async (req, res) => {
   }
 });
 
+// 2b. Universal In-Browser Web Proxy & Link Interceptor (Enables Zero-Trust In-Browser Browsing)
+app.get('/api/proxy', async (req, res) => {
+  try {
+    let rawUrl = (req.query.url as string || '').trim();
+    if (!rawUrl) {
+      return res.status(400).send('URL query parameter is required');
+    }
+
+    if (!/^https?:\/\//i.test(rawUrl)) {
+      rawUrl = `https://${rawUrl}`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const clientHeaders: Record<string, string> = {
+      'User-Agent': (req.headers['user-agent'] as string) || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 AegisSafeBrowser/2.5',
+      'Accept': (req.headers['accept'] as string) || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': (req.headers['accept-language'] as string) || 'en-US,en;q=0.9',
+    };
+
+    let upstreamRes: Response;
+    try {
+      upstreamRes = await fetch(rawUrl, {
+        method: 'GET',
+        headers: clientHeaders,
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+    } catch {
+      // Fallback: try http if https failed
+      if (rawUrl.startsWith('https://')) {
+        upstreamRes = await fetch(rawUrl.replace('https://', 'http://'), {
+          method: 'GET',
+          headers: clientHeaders,
+          redirect: 'follow',
+          signal: controller.signal,
+        });
+      } else {
+        throw new Error('Connection could not be established');
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const finalUrl = upstreamRes.url || rawUrl;
+    const contentType = upstreamRes.headers.get('content-type') || 'text/html';
+
+    // Remove frame-busting headers
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
+      let html = await upstreamRes.text();
+
+      // Base URL injection so relative assets (CSS, JS, images, fonts) resolve properly
+      const baseTag = `<base href="${finalUrl}">`;
+
+      // Aegis in-page navigation interceptor script:
+      // Catches clicks on all links and submits on forms to navigate WITHIN the browser itself!
+      const interceptorScript = `
+<script>
+(function() {
+  function interceptLink(e) {
+    var a = e.target.closest('a');
+    if (a && a.href) {
+      var href = a.href;
+      if (href.startsWith('javascript:') || href === '#' || href === '') return;
+      if (href.startsWith(window.location.href + '#')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: href }, '*');
+    }
+  }
+  document.addEventListener('click', interceptLink, true);
+
+  document.addEventListener('submit', function(e) {
+    var form = e.target;
+    if (form && form.action) {
+      if ((form.method || 'GET').toUpperCase() === 'GET') {
+        e.preventDefault();
+        var formData = new FormData(form);
+        var params = new URLSearchParams(formData).toString();
+        var full = form.action + (form.action.includes('?') ? '&' : '?') + params;
+        window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: full }, '*');
+      }
+    }
+  }, true);
+
+  window.open = function(url) {
+    if (url) {
+      window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: url }, '*');
+    }
+    return null;
+  };
+})();
+</script>
+`;
+
+      if (/<head[^>]*>/i.test(html)) {
+        html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${baseTag}\n${interceptorScript}`);
+      } else {
+        html = `${baseTag}\n${interceptorScript}\n${html}`;
+      }
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    } else {
+      res.setHeader('Content-Type', contentType);
+      const arrayBuffer = await upstreamRes.arrayBuffer();
+      return res.send(Buffer.from(arrayBuffer));
+    }
+  } catch (err: any) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    const target = req.query.url as string;
+    return res.status(200).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #030712; color: #94a3b8; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; text-align: center; }
+            .card { max-width: 460px; width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+            h2 { color: #38bdf8; font-size: 18px; margin: 0 0 12px; }
+            p { font-size: 13px; line-height: 1.6; color: #cbd5e1; margin: 8px 0; }
+            code { background: #1e293b; color: #f59e0b; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+            .btn { display: inline-block; background: #06b6d4; color: #020617; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 16px; text-decoration: none; }
+            .btn:hover { background: #22d3ee; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h2>Aegis In-Browser Sandbox</h2>
+            <p>Target site <code>${target}</code> requires verification or strict local origin credentials.</p>
+            <p>You can search for this topic directly inside the browser using DuckDuckGo or YouTube.</p>
+            <button class="btn" onclick="window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: 'https://duckduckgo.com/?q=${encodeURIComponent(String(target))}' }, '*')">Search with DuckDuckGo</button>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+});
+
+// 2c. YouTube In-Browser Search API (Fetches live YouTube search results for in-browser playback)
+app.get('/api/youtube/search', async (req, res) => {
+  try {
+    const query = (req.query.q as string || 'cybersecurity and technology').trim();
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+    const upstream = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const html = await upstream.text();
+    const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+
+    const videos: Array<{
+      id: string;
+      title: string;
+      channel: string;
+      views: string;
+      published: string;
+      thumbnail: string;
+      url: string;
+    }> = [];
+
+    if (match) {
+      try {
+        const data = JSON.parse(match[1]);
+        const contents =
+          data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]
+            ?.itemSectionRenderer?.contents || [];
+
+        for (const item of contents) {
+          const v = item.videoRenderer;
+          if (v && v.videoId) {
+            videos.push({
+              id: v.videoId,
+              title: v.title?.runs?.[0]?.text || 'YouTube Video',
+              channel: v.ownerText?.runs?.[0]?.text || 'YouTube Creator',
+              views: v.viewCountText?.simpleText || v.shortViewCountText?.simpleText || 'View count unavailable',
+              published: v.publishedTimeText?.simpleText || 'Recently',
+              thumbnail:
+                v.thumbnail?.thumbnails?.[v.thumbnail.thumbnails.length - 1]?.url ||
+                `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`,
+              url: `https://www.youtube.com/watch?v=${v.videoId}`,
+            });
+            if (videos.length >= 16) break;
+          }
+        }
+      } catch (parseErr) {
+        console.warn('[YouTube Search] Failed to parse ytInitialData JSON:', parseErr);
+      }
+    }
+
+    // Curated high-relevance fallback videos if scraping returns empty
+    if (videos.length === 0) {
+      videos.push(
+        {
+          id: 'jq_LZ1RFPfU',
+          title: 'Cybersecurity Architecture: Five Principles to Follow',
+          channel: 'IBM Technology',
+          views: '1.1M views',
+          published: '3 years ago',
+          thumbnail: 'https://i.ytimg.com/vi/jq_LZ1RFPfU/hq720.jpg',
+          url: 'https://www.youtube.com/watch?v=jq_LZ1RFPfU',
+        },
+        {
+          id: '9HOpanT0GRs',
+          title: 'Harvard CS50 Intro to Cybersecurity – Full University Course',
+          channel: 'freeCodeCamp.org and CS50',
+          views: '720K views',
+          published: '1 year ago',
+          thumbnail: 'https://i.ytimg.com/vi/9HOpanT0GRs/hq720.jpg',
+          url: 'https://www.youtube.com/watch?v=9HOpanT0GRs',
+        },
+        {
+          id: '_DVVNOGYtmU',
+          title: 'Cybersecurity for Beginners | Google Cybersecurity Certificate',
+          channel: 'Grow with Google',
+          views: '5.3M views',
+          published: '3 years ago',
+          thumbnail: 'https://i.ytimg.com/vi/_DVVNOGYtmU/hq720.jpg',
+          url: 'https://www.youtube.com/watch?v=_DVVNOGYtmU',
+        },
+        {
+          id: '4b4bYMW6vD8',
+          title: 'How The Internet Works - Computer Networks & Security',
+          channel: 'Computerphile',
+          views: '2.4M views',
+          published: '4 years ago',
+          thumbnail: 'https://i.ytimg.com/vi/4b4bYMW6vD8/hq720.jpg',
+          url: 'https://www.youtube.com/watch?v=4b4bYMW6vD8',
+        }
+      );
+    }
+
+    return res.json({ query, videos });
+  } catch (err: any) {
+    return res.json({
+      query: req.query.q || '',
+      videos: [
+        {
+          id: 'jq_LZ1RFPfU',
+          title: 'Cybersecurity Architecture: Five Principles to Follow',
+          channel: 'IBM Technology',
+          views: '1.1M views',
+          published: '3 years ago',
+          thumbnail: 'https://i.ytimg.com/vi/jq_LZ1RFPfU/hq720.jpg',
+          url: 'https://www.youtube.com/watch?v=jq_LZ1RFPfU',
+        },
+        {
+          id: '9HOpanT0GRs',
+          title: 'Harvard CS50 Intro to Cybersecurity – Full University Course',
+          channel: 'freeCodeCamp.org and CS50',
+          views: '720K views',
+          published: '1 year ago',
+          thumbnail: 'https://i.ytimg.com/vi/9HOpanT0GRs/hq720.jpg',
+          url: 'https://www.youtube.com/watch?v=9HOpanT0GRs',
+        },
+      ],
+    });
+  }
+});
+
 // 3. Website Security & Header Inspector API
 app.get('/api/inspect/website', async (req, res) => {
   try {
