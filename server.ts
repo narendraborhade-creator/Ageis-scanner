@@ -45,6 +45,7 @@ function isAllowedUrl(urlString: string): boolean {
 
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Initialize GoogleGenAI SDK on server side
 const ai = new GoogleGenAI({
@@ -274,9 +275,9 @@ app.get('/api/dns/scan', async (req, res) => {
 });
 
 // 2b. Universal In-Browser Web Proxy & Link Interceptor (Enables Zero-Trust In-Browser Browsing)
-app.get('/api/proxy', async (req, res) => {
+app.all('/api/proxy', async (req, res) => {
   try {
-    let rawUrl = (req.query.url as string || '').trim();
+    let rawUrl = (req.query.url as string || (req.body && req.body.url) || '').trim();
     if (!rawUrl || rawUrl.startsWith('aegis://') || rawUrl === 'about:blank') {
       return res.status(400).send('Invalid or internal protocol');
     }
@@ -297,7 +298,7 @@ app.get('/api/proxy', async (req, res) => {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const incomingUA = (req.headers['user-agent'] as string) || '';
     const cleanUA = incomingUA && !incomingUA.includes('AegisSafeBrowser')
@@ -310,23 +311,33 @@ app.get('/api/proxy', async (req, res) => {
       'Accept-Language': (req.headers['accept-language'] as string) || 'en-US,en;q=0.9',
     };
 
+    const method = req.method.toUpperCase();
+    const fetchOptions: any = {
+      method: method === 'GET' || method === 'HEAD' ? method : method,
+      headers: clientHeaders,
+      redirect: 'follow',
+      signal: controller.signal,
+    };
+
+    if (method === 'POST' && req.body && Object.keys(req.body).length > 0) {
+      const contentType = req.headers['content-type'] || 'application/x-www-form-urlencoded';
+      clientHeaders['Content-Type'] = contentType;
+      if (typeof req.body === 'string' || Buffer.isBuffer(req.body)) {
+        fetchOptions.body = req.body;
+      } else if (contentType.includes('application/json')) {
+        fetchOptions.body = JSON.stringify(req.body);
+      } else {
+        fetchOptions.body = new URLSearchParams(req.body).toString();
+      }
+    }
+
     let upstreamRes: Response;
     try {
-      upstreamRes = await fetch(rawUrl, {
-        method: 'GET',
-        headers: clientHeaders,
-        redirect: 'follow',
-        signal: controller.signal,
-      });
+      upstreamRes = await fetch(rawUrl, fetchOptions);
     } catch {
       // Fallback: try http if https failed
       if (rawUrl.startsWith('https://')) {
-        upstreamRes = await fetch(rawUrl.replace('https://', 'http://'), {
-          method: 'GET',
-          headers: clientHeaders,
-          redirect: 'follow',
-          signal: controller.signal,
-        });
+        upstreamRes = await fetch(rawUrl.replace('https://', 'http://'), fetchOptions);
       } else {
         throw new Error('Connection could not be established');
       }
@@ -337,10 +348,21 @@ app.get('/api/proxy', async (req, res) => {
     const finalUrl = upstreamRes.url || rawUrl;
     const contentType = upstreamRes.headers.get('content-type') || 'text/html';
 
-    // Remove frame-busting headers
+    // Remove all frame-busting, CSP, and compression headers
     res.removeHeader('X-Frame-Options');
+    res.removeHeader('x-frame-options');
     res.removeHeader('Content-Security-Policy');
+    res.removeHeader('content-security-policy');
+    res.removeHeader('Content-Security-Policy-Report-Only');
+    res.removeHeader('content-security-policy-report-only');
+    res.removeHeader('Content-Encoding');
+    res.removeHeader('content-encoding');
+    res.removeHeader('Strict-Transport-Security');
+    res.removeHeader('Cross-Origin-Embedder-Policy');
+    res.removeHeader('Cross-Origin-Opener-Policy');
+    res.removeHeader('Cross-Origin-Resource-Policy');
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
 
     if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
       let html = await upstreamRes.text();
@@ -348,59 +370,144 @@ app.get('/api/proxy', async (req, res) => {
       // Base URL injection so relative assets (CSS, JS, images, fonts) resolve properly
       const baseTag = `<base href="${finalUrl}">`;
 
-      // Aegis in-page navigation interceptor script:
-      // Catches clicks on genuine user-clicked links to navigate WITHIN the browser itself!
-      // Strictly blocks popup loops and automatic script redirects.
+      // Aegis In-Browser Link, Form, and Navigation Engine:
+      // Enables full normal browser experience inside the sandbox:
+      // - Resolves all relative and root-relative URLs against finalUrl
+      // - Left click navigates in current tab
+      // - Target="_blank", Ctrl-click, middle-click opens in a NEW tab
+      // - Same-page anchor (#heading) scrolls smoothly within page
+      // - Form submits (GET & POST) navigate cleanly
+      // - window.open() opens a clean new Aegis tab
+      // - history.pushState / replaceState synchronizes the Omnibar address
+      // - Dynamic document title syncs with tab header
       const interceptorScript = `
 <script>
 (function() {
-  var lastNavTime = 0;
+  var currentBase = ${JSON.stringify(finalUrl)};
 
-  function interceptLink(e) {
-    if (!e.isTrusted) return;
-    var a = e.target.closest('a');
-    if (a && a.href) {
-      var href = a.href;
-      if (href.startsWith('javascript:') || href === '#' || href === '') return;
-      if (href.startsWith(window.location.href + '#')) return;
-      var now = Date.now();
-      if (now - lastNavTime < 1000) {
-        e.preventDefault();
-        return;
-      }
-      lastNavTime = now;
-      e.preventDefault();
-      e.stopPropagation();
-      window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: href }, '*');
+  function resolveUrl(relativeOrAbsolute) {
+    try {
+      return new URL(relativeOrAbsolute, currentBase).href;
+    } catch (e) {
+      return relativeOrAbsolute;
     }
   }
-  document.addEventListener('click', interceptLink, true);
 
+  // Sync initial page title with Aegis browser tab
+  if (document.title) {
+    try { window.parent.postMessage({ type: 'AEGIS_PAGE_TITLE', title: document.title }, '*'); } catch (e) {}
+  }
+
+  // Observe title changes dynamically
+  var titleEl = document.querySelector('title');
+  if (titleEl) {
+    var titleObserver = new MutationObserver(function() {
+      try { window.parent.postMessage({ type: 'AEGIS_PAGE_TITLE', title: document.title }, '*'); } catch (e) {}
+    });
+    titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
+  }
+
+  // Universal Click Interceptor
+  var lastNavTime = 0;
+  function handleLinkClick(e) {
+    var a = e.target.closest('a');
+    if (!a) return;
+
+    var rawHref = a.getAttribute('href');
+    if (!rawHref || rawHref === '#' || rawHref.startsWith('javascript:')) return;
+
+    // Same-page hash anchor: allow native in-page smooth scrolling
+    if (rawHref.startsWith('#')) return;
+
+    var fullUrl = resolveUrl(rawHref);
+    if (!fullUrl || fullUrl.startsWith('javascript:')) return;
+
+    // Check if user requested a new tab (target="_blank", middle mouse button, Ctrl key, Cmd/Meta key)
+    var isNewTab = a.target === '_blank' || e.button === 1 || e.ctrlKey || e.metaKey;
+
+    var now = Date.now();
+    if (now - lastNavTime < 250) {
+      e.preventDefault();
+      return;
+    }
+    lastNavTime = now;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    window.parent.postMessage({
+      type: 'AEGIS_NAVIGATE',
+      url: fullUrl,
+      inNewTab: Boolean(isNewTab)
+    }, '*');
+  }
+
+  document.addEventListener('click', handleLinkClick, true);
+  document.addEventListener('auxclick', handleLinkClick, true);
+
+  // Form Submission Interceptor
   document.addEventListener('submit', function(e) {
-    if (!e.isTrusted) return;
     var form = e.target;
-    if (form && form.action) {
-      if ((form.method || 'GET').toUpperCase() === 'GET') {
-        var now = Date.now();
-        if (now - lastNavTime < 1000) {
-          e.preventDefault();
-          return;
+    if (!form || !form.action) return;
+
+    var rawAction = form.getAttribute('action') || form.action;
+    var resolvedAction = resolveUrl(rawAction);
+    var method = (form.method || 'GET').toUpperCase();
+    var isNewTab = form.target === '_blank';
+
+    if (method === 'GET') {
+      e.preventDefault();
+      e.stopPropagation();
+
+      var formData = new FormData(form);
+      var queryParts = [];
+      formData.forEach(function(val, key) {
+        if (typeof val === 'string') {
+          queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(val));
         }
-        lastNavTime = now;
-        e.preventDefault();
-        var formData = new FormData(form);
-        var params = new URLSearchParams(formData).toString();
-        var full = form.action + (form.action.includes('?') ? '&' : '?') + params;
-        window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: full }, '*');
-      }
+      });
+      var qs = queryParts.join('&');
+      var fullUrl = resolvedAction + (resolvedAction.includes('?') ? '&' : '?') + qs;
+
+      window.parent.postMessage({
+        type: 'AEGIS_NAVIGATE',
+        url: fullUrl,
+        inNewTab: Boolean(isNewTab)
+      }, '*');
     }
   }, true);
 
-  // Strict Popup & Window-Loop Blocker:
-  // Overrides window.open so embedded websites cannot spawn popups or spam window creation.
-  window.open = function() {
-    console.warn('[Aegis Sandbox] Blocked unprompted window.open popup attempt.');
+  // Window.open interceptor -> dispatches as a clean new tab
+  window.open = function(url) {
+    if (url) {
+      var fullUrl = resolveUrl(url);
+      window.parent.postMessage({
+        type: 'AEGIS_NAVIGATE',
+        url: fullUrl,
+        inNewTab: true
+      }, '*');
+    }
     return null;
+  };
+
+  // Single-Page-App (SPA) pushState / replaceState sync
+  var originalPushState = history.pushState;
+  var originalReplaceState = history.replaceState;
+  history.pushState = function(state, unused, url) {
+    var res = originalPushState.apply(this, arguments);
+    if (url) {
+      var fullUrl = resolveUrl(url);
+      window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true }, '*');
+    }
+    return res;
+  };
+  history.replaceState = function(state, unused, url) {
+    var res = originalReplaceState.apply(this, arguments);
+    if (url) {
+      var fullUrl = resolveUrl(url);
+      window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true }, '*');
+    }
+    return res;
   };
 })();
 </script>
@@ -430,20 +537,23 @@ app.get('/api/proxy', async (req, res) => {
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #030712; color: #94a3b8; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; text-align: center; }
-            .card { max-width: 460px; width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+            .card { max-width: 480px; width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
             h2 { color: #38bdf8; font-size: 18px; margin: 0 0 12px; }
             p { font-size: 13px; line-height: 1.6; color: #cbd5e1; margin: 8px 0; }
             code { background: #1e293b; color: #f59e0b; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; }
-            .btn { display: inline-block; background: #06b6d4; color: #020617; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 16px; text-decoration: none; }
+            .btn { display: inline-block; background: #06b6d4; color: #020617; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; margin: 8px 4px; text-decoration: none; }
             .btn:hover { background: #22d3ee; }
+            .btn-sec { background: #1e293b; color: #38bdf8; border: 1px solid #38bdf8; }
+            .btn-sec:hover { background: #334155; }
           </style>
         </head>
         <body>
           <div class="card">
             <h2>Aegis In-Browser Sandbox</h2>
-            <p>Target site <code>${target}</code> requires verification or strict local origin credentials.</p>
-            <p>You can search for this topic directly inside the browser using DuckDuckGo or YouTube.</p>
-            <button class="btn" onclick="window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: 'https://duckduckgo.com/?q=${encodeURIComponent(String(target))}' }, '*')">Search with DuckDuckGo</button>
+            <p>Target site <code>${target || 'unknown'}</code> took longer than expected to respond or requires desktop network sockets.</p>
+            <p>You can search for this topic directly with Safe Search or YouTube:</p>
+            <button class="btn" onclick="window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: 'https://duckduckgo.com/?q=${encodeURIComponent(String(target || ''))}' }, '*')">Search with DuckDuckGo</button>
+            <button class="btn btn-sec" onclick="window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: 'https://www.youtube.com/results?search_query=${encodeURIComponent(String(target || ''))}' }, '*')">Search on YouTube</button>
           </div>
         </body>
       </html>
@@ -1335,6 +1445,37 @@ process.on('exit', () => {
 // Vite middleware or production static files
 async function startServer() {
   await ensurePythonBackendRunning();
+
+  // Auto-resolve any relative sub-resources (images, css, scripts) or links
+  // originating from inside a proxied iframe so they never leak into the SPA root
+  app.use((req, res, next) => {
+    if (
+      req.path.startsWith('/api/') ||
+      req.path.startsWith('/@') ||
+      req.path.startsWith('/node_modules') ||
+      req.path.startsWith('/src/') ||
+      req.path === '/' ||
+      req.path === '/index.html' ||
+      req.path === '/favicon.ico' ||
+      req.path.startsWith('/dist')
+    ) {
+      return next();
+    }
+
+    const referer = (req.headers['referer'] as string) || '';
+    if (referer.includes('/api/proxy?url=')) {
+      try {
+        const u = new URL(referer);
+        const upstream = u.searchParams.get('url');
+        if (upstream) {
+          const resolved = new URL(req.originalUrl, upstream).href;
+          return res.redirect(`/api/proxy?url=${encodeURIComponent(resolved)}`);
+        }
+      } catch {}
+    }
+
+    next();
+  });
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

@@ -590,31 +590,57 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     }
   }, []);
 
-  // In-Browser Link Click & Form Submission Interceptor:
-  // Listens to postMessage events from the proxied iframe and opens them directly in this browser!
-  // Strictly debounced to prevent loop storms or automated window openings.
+  // In-Browser Link Click, Form Submission, & Page Title Interceptor:
+  // Listens to postMessage events from the proxied iframe and updates browser tabs seamlessly!
   useEffect(() => {
     let lastNavTime = 0;
     const handleWindowMessage = (e: MessageEvent) => {
+      // 1. Dynamic Page Title Synchronization
+      if (e.data && e.data.type === 'AEGIS_PAGE_TITLE' && typeof e.data.title === 'string') {
+        const title = e.data.title.trim();
+        if (title && title !== activeTab.title) {
+          setTabs((prev) =>
+            prev.map((t) => (t.id === activeTab.id ? { ...t, title } : t))
+          );
+        }
+        return;
+      }
+
+      // 2. Navigation events (links, forms, window.open, SPA history)
       if (e.data && e.data.type === 'AEGIS_NAVIGATE' && typeof e.data.url === 'string') {
         const targetUrl = e.data.url.trim();
+        const inNewTab = Boolean(e.data.inNewTab);
+        const isSilentSync = Boolean(e.data.isSilentSync);
+
         if (!targetUrl || targetUrl.startsWith('javascript:') || targetUrl === 'about:blank') {
           return;
         }
-        const now = Date.now();
-        if (now - lastNavTime < 1200) {
+
+        // Silent sync from SPA history pushState/replaceState
+        if (isSilentSync) {
+          if (targetUrl !== activeTab.url) {
+            setTabs((prev) =>
+              prev.map((t) => (t.id === activeTab.id ? { ...t, url: targetUrl, domain: formatDomain(targetUrl) } : t))
+            );
+            setUrlInputValue(targetUrl);
+          }
           return;
         }
-        if (targetUrl === activeTab.url) {
+
+        const now = Date.now();
+        if (now - lastNavTime < 250) {
+          return;
+        }
+        if (!inNewTab && targetUrl === activeTab.url) {
           return;
         }
         lastNavTime = now;
-        executeNavigate(targetUrl, false, false);
+        executeNavigate(targetUrl, inNewTab, false);
       }
     };
     window.addEventListener('message', handleWindowMessage);
     return () => window.removeEventListener('message', handleWindowMessage);
-  }, [activeTab.url]);
+  }, [activeTab.url, activeTab.id, activeTab.title]);
 
   // Keep address bar in sync with the active tab when switching tabs
   useEffect(() => {
@@ -1048,19 +1074,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
    */
   const handleNavigate = (rawUrl: string, inNewTab = false, openExternal = false) => {
     let target = rawUrl.trim();
-    if (!target.includes('.') && !target.startsWith('http') && !target.startsWith('aegis://')) {
-      if (target.toLowerCase().includes('youtube')) {
-        const query = target.replace(/youtube/gi, '').trim() || 'trending';
-        target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-      } else {
-        target = `aegis://search?q=${encodeURIComponent(target)}&category=all`;
-      }
-    }
-    if (!/^https?:\/\//i.test(target) && !target.startsWith('aegis://')) {
-      target = `https://${target}`;
-    }
-
-    executeNavigate(target, inNewTab, false);
+    if (!target) return;
+    executeNavigate(target, inNewTab, openExternal);
   };
 
   const handleConfirmGuest = (rememberForSession: boolean) => {
@@ -2544,7 +2559,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       title={activeTab.title}
                       className="w-full h-full border-0 bg-white"
                       sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      allowFullScreen
                       onLoad={() => setIsScanning(false)}
                     />
                   )}
