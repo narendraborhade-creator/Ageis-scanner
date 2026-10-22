@@ -279,7 +279,7 @@ export interface AppSessionState {
     tabs: BrowserTab[];
     activeTabId: string;
     omnibarInput: string;
-    activeSidebar: 'none' | 'history' | 'bookmarks' | 'tabs' | 'ai' | 'read-later' | 'resource-monitor';
+    activeSidebar: 'none' | 'history' | 'bookmarks' | 'tabs' | 'ai' | 'read-later' | 'resource-monitor' | 'tools';
     tabGroups?: TabGroup[];
     recentlyClosedTabs?: BrowserTab[];
   };

@@ -54,6 +54,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Maximize2,
+  Minimize2,
   Copy,
   Check,
   History,
@@ -85,8 +86,22 @@ import {
   Play,
   Volume2,
   Compass,
+  Settings,
+  Puzzle,
+  Sliders,
+  GitCompare,
+  Info,
 } from 'lucide-react';
 import { CyberScene3D } from './CyberScene3D';
+import { DnsScannerView } from './DnsScannerView';
+import { WebsiteComparatorView } from './WebsiteComparatorView';
+import { ThreatBlockerView } from './ThreatBlockerView';
+import { SecurityAnalyticsView } from './SecurityAnalyticsView';
+import { ScienceSearchView } from './ScienceSearchView';
+import { GeminiCopilotView } from './GeminiCopilotView';
+import { PasswordVaultManager } from './PasswordVaultManager';
+import { ExtensionExportView } from './ExtensionExportView';
+import { AboutUsView } from './AboutUsView';
 
 function parseYouTubeUrl(url: string) {
   try {
@@ -119,16 +134,92 @@ function parseYouTubeUrl(url: string) {
   }
 }
 
+export type ToolTabId =
+  | '3d-scanner'
+  | 'dns'
+  | 'compare'
+  | 'threat-shield'
+  | 'analytics'
+  | 'science'
+  | 'ai-copilot'
+  | 'vault'
+  | 'extensions'
+  | 'settings'
+  | 'about';
+
 interface BrowserViewProps {
-  onScanDns: (domain: string) => void;
-  onOpenCompare: (domain: string) => void;
-  onOpenScience: (query: string) => void;
+  onScanDns?: (domain: string) => void;
+  onOpenCompare?: (domain: string) => void;
+  onOpenScience?: (query: string) => void;
   initialUrl?: string;
   onTabsCountChange?: (count: number) => void;
   currentUser?: UserAccount | null;
   onUserChange?: (user: UserAccount | null) => void;
   onOpenAuthView?: () => void;
+  onOpenThemeModal?: () => void;
+  onOpenCommandPalette?: () => void;
+  onOpenCloudflareModal?: () => void;
+  privacyMode?: boolean;
+  onTogglePrivacy?: () => void;
 }
+
+// Built-in working YouTube videos to guarantee playback never breaks or shows an empty screen
+export const DEFAULT_YT_VIDEOS = [
+  {
+    id: 'dQw4w9WgXcQ',
+    title: 'Rick Astley - Never Gonna Give You Up (Official Music Video)',
+    channel: 'Rick Astley',
+    views: '1.5B views',
+    published: 'Official 4K Remaster',
+    thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=640&q=80',
+    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  },
+  {
+    id: 'jNQXAC9IVRw',
+    title: 'Me at the zoo - The First Video on YouTube',
+    channel: 'jawed',
+    views: '315M views',
+    published: 'Historical Archive',
+    thumbnail: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=640&q=80',
+    url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
+  },
+  {
+    id: 'L_LUpnjgPso',
+    title: 'Starship Flight Test Highlights & Orbital Re-entry',
+    channel: 'SpaceX & Aerospace',
+    views: '18M views',
+    published: 'Aerospace Engineering',
+    thumbnail: 'https://images.unsplash.com/photo-1517976487502-5f690246a48c?auto=format&fit=crop&w=640&q=80',
+    url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+  },
+  {
+    id: 'M576WGiDBdQ',
+    title: 'Quantum Computing Explained: Qubits, Superposition & Cryptography',
+    channel: 'Quantum Computing Lab',
+    views: '4.2M views',
+    published: 'Cybersecurity & Physics',
+    thumbnail: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=640&q=80',
+    url: 'https://www.youtube.com/watch?v=M576WGiDBdQ',
+  },
+  {
+    id: 'kJQP7kiw5Fk',
+    title: 'Luis Fonsi - Despacito ft. Daddy Yankee',
+    channel: 'Luis Fonsi',
+    views: '8.4B views',
+    published: 'Music Video',
+    thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=640&q=80',
+    url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+  },
+  {
+    id: '9bZkp7q19f0',
+    title: 'PSY - GANGNAM STYLE (강남스타일) M/V',
+    channel: 'OfficialPsy',
+    views: '5.1B views',
+    published: 'K-Pop Sensation',
+    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=640&q=80',
+    url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+  },
+];
 
 // Helper to parse Aegis Secure Search URLs: aegis://search?q=...&category=...
 function parseSearchUrl(url: string) {
@@ -184,6 +275,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   currentUser,
   onUserChange,
   onOpenAuthView,
+  onOpenThemeModal,
+  onOpenCommandPalette,
+  onOpenCloudflareModal,
+  privacyMode,
+  onTogglePrivacy,
 }) => {
   const [tabs, setTabs] = useState<BrowserTab[]>(() => {
     const session = getStoredSessionState();
@@ -203,13 +299,17 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // Sidebar Mode: 'none' | 'history' | 'bookmarks' | 'tabs' | 'ai' | 'read-later' | 'resource-monitor'
+  // Sidebar Mode: 'none' | 'history' | 'bookmarks' | 'tabs' | 'ai' | 'read-later' | 'resource-monitor' | 'tools'
   const [activeSidebar, setActiveSidebar] = useState<
-    'none' | 'history' | 'bookmarks' | 'tabs' | 'ai' | 'read-later' | 'resource-monitor'
+    'none' | 'history' | 'bookmarks' | 'tabs' | 'ai' | 'read-later' | 'resource-monitor' | 'tools'
   >(() => {
     const session = getStoredSessionState();
     return (session?.browser.activeSidebar as any) || 'none';
   });
+
+  // Tools & Settings Side Panel state
+  const [activeToolTab, setActiveToolTab] = useState<ToolTabId>('dns');
+  const [isToolFullscreen, setIsToolFullscreen] = useState<boolean>(false);
 
   // Tab Groups & Smart Grouping modal state
   const [tabGroups, setTabGroups] = useState<TabGroup[]>(() => {
@@ -242,7 +342,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     published: string;
     thumbnail: string;
     url: string;
-  }>>([]);
+  }>>(DEFAULT_YT_VIDEOS);
   const [ytLoading, setYtLoading] = useState<boolean>(false);
   const [ytSearchInput, setYtSearchInput] = useState<string>('');
 
@@ -327,7 +427,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       fetch(`/api/youtube/search?q=${encodeURIComponent(q)}`)
         .then((r) => r.json())
         .then((data) => {
-          if (data && Array.isArray(data.videos)) {
+          if (data && Array.isArray(data.videos) && data.videos.length > 0) {
             setYtVideos(data.videos);
           }
         })
@@ -1269,107 +1369,118 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </div>
           </form>
 
-          {/* Tools & Sidebars Toggles (Responsive scrollable ribbon on phones) */}
-          <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-full pb-1 scrollbar-none py-0.5">
-            {/* 3D Shape Scanner HUD Button */}
+          {/* Chromium Style Action Toolbar */}
+          <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-full pb-0.5 scrollbar-none py-0.5">
+            {/* Extensions Action Button */}
             <button
               type="button"
-              onClick={() => setShow3DScannerModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]"
-              title="Open 3D Shape Scanner Holographic HUD"
+              onClick={() => {
+                if (activeSidebar === 'tools' && activeToolTab === 'extensions') {
+                  setActiveSidebar('none');
+                } else {
+                  setActiveSidebar('tools');
+                  setActiveToolTab('extensions');
+                }
+              }}
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
+                activeSidebar === 'tools' && activeToolTab === 'extensions'
+                  ? 'bg-indigo-500/25 text-indigo-300 border-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+              }`}
+              title="Aegis Chrome Extensions & Manifest Manager"
             >
-              <Shield className="w-3.5 h-3.5 text-cyan-400" />
-              <span>3D Scanner</span>
+              <Puzzle className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">Extensions</span>
             </button>
 
-            {/* Read Later Queue Sidebar Button */}
+            {/* Tools & Settings Side Panel Button (Houses all 10 tools) */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebar((prev) => (prev === 'tools' ? 'none' : 'tools'));
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg transition-all cursor-pointer border ${
+                activeSidebar === 'tools'
+                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold'
+                  : 'bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border-cyan-500/40'
+              }`}
+              title="Aegis Tools & Settings (DNS Scanner, Comparator, 3D Mesh, Threat Shield, Analytics, Vault, Science)"
+            >
+              <Settings className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Tools & Settings</span>
+              <span className="text-[10px] bg-cyan-400 text-slate-950 font-bold px-1.5 py-0.2 rounded-full">
+                10
+              </span>
+            </button>
+
+            {/* Quick Sidebars: Read Later */}
             <button
               type="button"
               onClick={() => setActiveSidebar((prev) => (prev === 'read-later' ? 'none' : 'read-later'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                 activeSidebar === 'read-later'
-                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400'
+                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
               }`}
-              title="Toggle Read Later Queue"
+              title={`Read Later Queue (${unreadReadLaterCount})`}
             >
               <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Read Later ({unreadReadLaterCount})</span>
             </button>
 
-            {/* Bookmarks Sidebar Button */}
+            {/* Bookmarks */}
             <button
               type="button"
               onClick={() => setActiveSidebar((prev) => (prev === 'bookmarks' ? 'none' : 'bookmarks'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                 activeSidebar === 'bookmarks'
-                  ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+                  ? 'bg-amber-500/25 text-amber-300 border-amber-400'
+                  : 'bg-slate-855 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
               }`}
-              title="Toggle Bookmarks Sidebar"
+              title={`Bookmarks Vault (${bookmarks.length})`}
             >
               <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-              <span>Bookmarks ({bookmarks.length})</span>
             </button>
 
-            {/* History & Trends Sidebar Button */}
+            {/* History */}
             <button
               type="button"
               onClick={() => setActiveSidebar((prev) => (prev === 'history' ? 'none' : 'history'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                 activeSidebar === 'history'
-                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400'
+                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
               }`}
-              title="Toggle Browsing History & Trends"
+              title="Browsing History & Visual Trends"
             >
               <History className="w-3.5 h-3.5 text-cyan-400" />
-              <span>History & Trends</span>
             </button>
 
-            {/* Tab Manager Sidebar Button */}
+            {/* Tabs Manager */}
             <button
               type="button"
               onClick={() => setActiveSidebar((prev) => (prev === 'tabs' ? 'none' : 'tabs'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                 activeSidebar === 'tabs'
-                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400'
+                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
               }`}
-              title="Toggle Tab Manager Sidebar"
+              title={`Tab Manager (${tabs.length} tabs)`}
             >
               <Layers className="w-3.5 h-3.5 text-amber-400" />
-              <span>Tabs ({tabs.length})</span>
             </button>
 
-            {/* In-Browser AI Assistant Button */}
-            <button
-              type="button"
-              onClick={() => setActiveSidebar((prev) => (prev === 'ai' ? 'none' : 'ai'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
-                activeSidebar === 'ai'
-                  ? 'bg-teal-500/25 text-teal-300 border-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]'
-                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
-              }`}
-              title="Toggle In-Browser AI Assistant"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-              <span>AI Copilot</span>
-            </button>
-
-            {/* Resource Monitor Sidebar Button */}
+            {/* Resource Monitor */}
             <button
               type="button"
               onClick={() => setActiveSidebar((prev) => (prev === 'resource-monitor' ? 'none' : 'resource-monitor'))}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                 activeSidebar === 'resource-monitor'
-                  ? 'bg-rose-500/25 text-rose-300 border-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
-                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+                  ? 'bg-rose-500/25 text-rose-300 border-rose-400'
+                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
               }`}
-              title="Toggle Resource Monitor (Real-time CPU & RAM per tab, sleep management)"
+              title="Resource Monitor (Real-time CPU & RAM per tab)"
             >
               <Cpu className="w-3.5 h-3.5 text-rose-400" />
-              <span>Resource Monitor</span>
             </button>
           </div>
         </div>
@@ -1408,7 +1519,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           {/* Main Web Viewport Area */}
           <div
             className={`transition-all duration-300 ${
-              activeSidebar !== 'none' ? 'lg:col-span-8' : 'lg:col-span-12'
+              activeSidebar === 'tools' && isToolFullscreen
+                ? 'hidden'
+                : activeSidebar === 'tools'
+                ? 'lg:col-span-7'
+                : activeSidebar !== 'none'
+                ? 'lg:col-span-8'
+                : 'lg:col-span-12'
             }`}
           >
             {activeTab.isQuarantined ? (
@@ -1439,7 +1556,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     Return to Safe Browsing
                   </button>
                   <button
-                    onClick={() => onScanDns(activeTab.domain)}
+                    onClick={() => {
+                      setActiveSidebar('tools');
+                      setActiveToolTab('dns');
+                      if (onScanDns) onScanDns(activeTab.domain);
+                    }}
                     className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-xl border border-slate-700 transition-colors cursor-pointer"
                   >
                     Inspect DNS Origin
@@ -2139,6 +2260,313 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 onUpdateTabs={setTabs}
                 onCloseSidebar={() => setActiveSidebar('none')}
               />
+            </div>
+          ) : activeSidebar === 'tools' ? (
+            /* =========================================================================
+               TOOLS & SETTINGS SIDE PANEL / FULLSCREEN DRAWER (HOUSES ALL 10 TOOLS)
+               ========================================================================= */
+            <div
+              className={`${
+                isToolFullscreen
+                  ? 'col-span-12 fixed inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-hidden'
+                  : 'lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/95 flex flex-col h-full overflow-hidden shadow-2xl'
+              }`}
+            >
+              {/* Tools Header Bar */}
+              <div className="p-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                    <Settings className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold font-mono text-slate-100 flex items-center gap-1.5">
+                      <span>Aegis Tools & Settings</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                        10 Tools
+                      </span>
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                      Security scanners, analytics, AI copilot & extensions
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsToolFullscreen((prev) => !prev)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-cyan-300 border border-slate-700 transition-colors cursor-pointer"
+                    title={isToolFullscreen ? 'Dock to Side Panel' : 'Maximize to Fullscreen'}
+                  >
+                    {isToolFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSidebar('none');
+                      setIsToolFullscreen(false);
+                    }}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-rose-400 border border-slate-700 transition-colors cursor-pointer"
+                    title="Close Tools Panel"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Tool Navigation Tabs Ribbon */}
+              <div className="px-2 py-1.5 bg-[#070c18] border-b border-slate-800 flex items-center gap-1 overflow-x-auto scrollbar-none shrink-0 select-none">
+                {[
+                  { id: '3d-scanner', label: '3D Mesh', icon: Shield, color: 'text-cyan-400' },
+                  { id: 'dns', label: 'DNS Scanner', icon: Globe, color: 'text-emerald-400' },
+                  { id: 'compare', label: 'Comparator', icon: GitCompare, color: 'text-blue-400' },
+                  { id: 'threat-shield', label: 'Threat Shield', icon: ShieldAlert, color: 'text-rose-400' },
+                  { id: 'analytics', label: 'Analytics', icon: BarChart2, color: 'text-teal-400' },
+                  { id: 'science', label: 'Science Search', icon: BookOpen, color: 'text-purple-400' },
+                  { id: 'ai-copilot', label: 'AI Copilot', icon: Bot, color: 'text-cyan-300' },
+                  { id: 'vault', label: 'Password Vault', icon: Key, color: 'text-amber-400' },
+                  { id: 'extensions', label: 'Extensions', icon: Puzzle, color: 'text-indigo-400' },
+                  { id: 'settings', label: 'Settings', icon: Sliders, color: 'text-slate-300' },
+                  { id: 'about', label: 'About Team', icon: Info, color: 'text-cyan-400' },
+                ].map((t) => {
+                  const Icon = t.icon;
+                  const isActive = activeToolTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setActiveToolTab(t.id as ToolTabId)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono whitespace-nowrap transition-all cursor-pointer border ${
+                        isActive
+                          ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.15)] font-bold'
+                          : 'bg-slate-900/60 hover:bg-slate-850 text-slate-400 hover:text-slate-200 border-slate-800'
+                      }`}
+                    >
+                      <Icon className={`w-3 h-3 ${isActive ? t.color : 'text-slate-500'}`} />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tool Body Container with Smooth Scroll */}
+              <div className="flex-1 overflow-y-auto scrollbar-thin p-3 sm:p-4 bg-slate-950/70">
+                {activeToolTab === '3d-scanner' && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-4 h-4 text-cyan-400" />
+                          <h4 className="text-xs font-bold text-slate-100 font-mono">3D Web Shape Mesh</h4>
+                        </div>
+                        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30">
+                          WebGL 60 FPS
+                        </span>
+                      </div>
+                      <div className="w-full h-56 rounded-xl overflow-hidden bg-black/80 border border-slate-800 relative">
+                        <CyberScene3D statusMode={statusMode} interactive={true} className="w-full h-full" />
+                        <div className="absolute bottom-2 left-2 text-[10px] font-mono text-cyan-300 bg-black/70 px-2 py-0.5 rounded">
+                          Drag to inspect 3D security mesh
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-center">
+                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                          <div className="text-[10px] text-slate-500">Security Score</div>
+                          <div className="text-sm font-bold text-emerald-400">{activeTab.securityScore}%</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                          <div className="text-[10px] text-slate-500">SSL Certificate</div>
+                          <div className="text-sm font-bold text-cyan-300">{activeTab.sslGrade}</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                          <div className="text-[10px] text-slate-500">Trackers Blocked</div>
+                          <div className="text-sm font-bold text-amber-400">{activeTab.trackersBlocked}</div>
+                        </div>
+                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                          <div className="text-[10px] text-slate-500">Response Latency</div>
+                          <div className="text-sm font-bold text-teal-300">{activeTab.latencyMs}ms</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeToolTab === 'dns' && (
+                  <DnsScannerView
+                    initialDomain={activeTab.domain && activeTab.domain !== 'aegis.local' ? activeTab.domain : 'cloudflare.com'}
+                  />
+                )}
+
+                {activeToolTab === 'compare' && (
+                  <WebsiteComparatorView
+                    initialSiteA={activeTab.domain && activeTab.domain !== 'aegis.local' ? activeTab.domain : 'cloudflare.com'}
+                    initialSiteB="wikipedia.org"
+                  />
+                )}
+
+                {activeToolTab === 'threat-shield' && (
+                  <ThreatBlockerView
+                    onNavigateToBrowser={(url) => {
+                      setActiveSidebar('none');
+                      setIsToolFullscreen(false);
+                      handleNavigate(url, false, false);
+                    }}
+                    currentBrowserUrl={activeTab.url}
+                  />
+                )}
+
+                {activeToolTab === 'analytics' && (
+                  <SecurityAnalyticsView
+                    onNavigateToBrowserUrl={(url) => {
+                      setActiveSidebar('none');
+                      setIsToolFullscreen(false);
+                      handleNavigate(url, false, false);
+                    }}
+                    onOpenCommandPalette={onOpenCommandPalette}
+                  />
+                )}
+
+                {activeToolTab === 'science' && (
+                  <ScienceSearchView initialQuery="AlphaFold structural biology" />
+                )}
+
+                {activeToolTab === 'ai-copilot' && (
+                  <GeminiCopilotView />
+                )}
+
+                {activeToolTab === 'vault' && (
+                  <PasswordVaultManager
+                    onNavigateToBrowserUrl={(url) => {
+                      setActiveSidebar('none');
+                      setIsToolFullscreen(false);
+                      handleNavigate(url, false, false);
+                    }}
+                  />
+                )}
+
+                {activeToolTab === 'extensions' && (
+                  <ExtensionExportView
+                    onOpenInFullBrowser={(url) => {
+                      setActiveSidebar('none');
+                      setIsToolFullscreen(false);
+                      handleNavigate(url, false, false);
+                    }}
+                    onOpenVault={() => setActiveToolTab('vault')}
+                  />
+                )}
+
+                {activeToolTab === 'settings' && (
+                  <div className="space-y-4">
+                    <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-cyan-400" />
+                        <h4 className="text-sm font-bold text-slate-100 font-mono">Browser & Security Preferences</h4>
+                      </div>
+
+                      <div className="space-y-3 text-xs font-mono">
+                        {/* Theme Trigger */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                          <div>
+                            <div className="font-semibold text-slate-200">Browser Theme & Appearance</div>
+                            <div className="text-[11px] text-slate-400">Cyberpunk Neon, Stealth Dark, Quantum Blue, Emerald Matrix</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onOpenThemeModal}
+                            className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 cursor-pointer"
+                          >
+                            Change Theme
+                          </button>
+                        </div>
+
+                        {/* Privacy Mode */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                          <div>
+                            <div className="font-semibold text-slate-200">Zero-Trace Privacy Mode</div>
+                            <div className="text-[11px] text-slate-400">Purges cookies, session storage & browsing logs on exit</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onTogglePrivacy}
+                            className={`px-3 py-1.5 rounded-lg border cursor-pointer font-bold ${
+                              privacyMode
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            {privacyMode ? 'Enabled' : 'Disabled'}
+                          </button>
+                        </div>
+
+                        {/* Cloudflare Verification Trigger */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                          <div>
+                            <div className="font-semibold text-slate-200">Cloudflare Turnstile Verification</div>
+                            <div className="text-[11px] text-slate-400">Verify client integrity & human identity check</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onOpenCloudflareModal}
+                            className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 cursor-pointer"
+                          >
+                            Verify Identity
+                          </button>
+                        </div>
+
+                        {/* Command Palette Trigger */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                          <div>
+                            <div className="font-semibold text-slate-200">Aegis Command Palette (Ctrl+K)</div>
+                            <div className="text-[11px] text-slate-400">Quick launch tabs, security audits and tools</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={onOpenCommandPalette}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer"
+                          >
+                            Open (Ctrl+K)
+                          </button>
+                        </div>
+
+                        {/* Clear History & Bookmarks */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                          <div>
+                            <div className="font-semibold text-rose-300">Purge Browsing Data</div>
+                            <div className="text-[11px] text-slate-400">Wipe stored history, cached thumbnails & bookmarks</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleClearAllHistory}
+                              className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 cursor-pointer"
+                            >
+                              Clear History
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Native Chromium Desktop Build Info */}
+                        <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                            <Globe className="w-3.5 h-3.5" />
+                            <span>Chromium Desktop App & Depot Tools</span>
+                          </div>
+                          <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+                            Run native Chromium desktop version with full unrestricted webviews and audio/video codecs via:
+                          </p>
+                          <code className="block p-2 rounded bg-black/60 text-cyan-300 font-mono text-[11px] select-all">
+                            npm run desktop
+                          </code>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeToolTab === 'about' && (
+                  <AboutUsView />
+                )}
+              </div>
             </div>
           ) : activeSidebar !== 'none' && (
             <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/90 flex flex-col h-full overflow-hidden">
@@ -2873,11 +3301,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         </button>
         <button
           type="button"
-          onClick={() => setShow3DScannerModal(true)}
-          className="p-2 rounded-xl hover:bg-slate-800 text-cyan-400 active:bg-slate-700"
-          title="3D Shape Scanner"
+          onClick={() => setActiveSidebar((prev) => (prev === 'tools' ? 'none' : 'tools'))}
+          className={`p-2 rounded-xl transition-colors ${
+            activeSidebar === 'tools' ? 'bg-cyan-500/20 text-cyan-300' : 'hover:bg-slate-800 text-cyan-400 active:bg-slate-700'
+          }`}
+          title="Tools & Settings"
         >
-          <Shield className="w-5 h-5" />
+          <Settings className="w-5 h-5" />
         </button>
       </div>
 
@@ -2956,7 +3386,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   type="button"
                   onClick={() => {
                     setShow3DScannerModal(false);
-                    onScanDns(activeTab.domain);
+                    setActiveSidebar('tools');
+                    setActiveToolTab('dns');
+                    if (onScanDns) onScanDns(activeTab.domain);
                   }}
                   className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
                 >

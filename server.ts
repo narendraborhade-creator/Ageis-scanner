@@ -277,12 +277,23 @@ app.get('/api/dns/scan', async (req, res) => {
 app.get('/api/proxy', async (req, res) => {
   try {
     let rawUrl = (req.query.url as string || '').trim();
-    if (!rawUrl) {
-      return res.status(400).send('URL query parameter is required');
+    if (!rawUrl || rawUrl.startsWith('aegis://') || rawUrl === 'about:blank') {
+      return res.status(400).send('Invalid or internal protocol');
     }
 
     if (!/^https?:\/\//i.test(rawUrl)) {
       rawUrl = `https://${rawUrl}`;
+    }
+
+    // Block internal loopback to completely prevent loading the browser inside itself
+    try {
+      const u = new URL(rawUrl);
+      const host = u.hostname.toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host === '0.0.0.0') {
+        return res.status(403).send('Access to local host is forbidden in proxy sandbox');
+      }
+    } catch {
+      return res.status(400).send('Malformed URL');
     }
 
     const controller = new AbortController();
