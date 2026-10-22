@@ -299,8 +299,13 @@ app.get('/api/proxy', async (req, res) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
 
+    const incomingUA = (req.headers['user-agent'] as string) || '';
+    const cleanUA = incomingUA && !incomingUA.includes('AegisSafeBrowser')
+      ? incomingUA
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
     const clientHeaders: Record<string, string> = {
-      'User-Agent': (req.headers['user-agent'] as string) || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 AegisSafeBrowser/2.5',
+      'User-Agent': cleanUA,
       'Accept': (req.headers['accept'] as string) || 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       'Accept-Language': (req.headers['accept-language'] as string) || 'en-US,en;q=0.9',
     };

@@ -92,6 +92,10 @@ import {
   GitCompare,
   Info,
   Database,
+  Terminal,
+  Printer,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { CyberScene3D } from './CyberScene3D';
 import { DnsScannerView } from './DnsScannerView';
@@ -473,10 +477,118 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
   // Active Tab & In-Browser Link Interceptor
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+  const isDesktop = typeof window !== 'undefined' && Boolean((window as any).isAegisDesktop);
+  const webviewRef = useRef<any>(null);
+  const [wvCanGoBack, setWvCanGoBack] = useState(false);
+  const [wvCanGoForward, setWvCanGoForward] = useState(false);
+
   const ytInfo = parseYouTubeUrl(activeTab.url);
   const searchInfo = parseSearchUrl(activeTab.url);
-  const canGoBack = (activeTab.historyIndex ?? 0) > 0;
-  const canGoForward = (activeTab.historyIndex ?? 0) < ((activeTab.historyStack?.length ?? 1) - 1);
+  const canGoBack = isDesktop
+    ? (wvCanGoBack || (activeTab.historyIndex ?? 0) > 0)
+    : ((activeTab.historyIndex ?? 0) > 0);
+  const canGoForward = isDesktop
+    ? (wvCanGoForward || (activeTab.historyIndex ?? 0) < ((activeTab.historyStack?.length ?? 1) - 1))
+    : ((activeTab.historyIndex ?? 0) < ((activeTab.historyStack?.length ?? 1) - 1));
+
+  // Synchronize desktop Chromium webview events with Aegis tabs
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (!wv) return;
+
+    const syncNavState = () => {
+      try {
+        setWvCanGoBack(Boolean(wv.canGoBack?.()));
+        setWvCanGoForward(Boolean(wv.canGoForward?.()));
+      } catch {}
+    };
+
+    const handleStartLoading = () => setIsScanning(true);
+    const handleStopLoading = () => {
+      setIsScanning(false);
+      syncNavState();
+    };
+
+    const handleDidNavigate = (e: any) => {
+      const navUrl = e.url;
+      if (!navUrl || navUrl.startsWith('about:blank')) return;
+      syncNavState();
+      if (navUrl !== activeTab.url) {
+        const domain = formatDomain(navUrl);
+        const isHttps = navUrl.startsWith('https://');
+        setTabs((prev) =>
+          prev.map((t) => {
+            if (t.id !== activeTab.id) return t;
+            const stack = t.historyStack ? [...t.historyStack, navUrl] : [navUrl];
+            return {
+              ...t,
+              url: navUrl,
+              domain,
+              isHttps,
+              historyStack: stack,
+              historyIndex: stack.length - 1,
+            };
+          })
+        );
+        setUrlInputValue(navUrl);
+        setIsEditingUrl(false);
+      }
+    };
+
+    const handleTitleUpdated = (e: any) => {
+      if (e.title && e.title !== activeTab.title) {
+        setTabs((prev) =>
+          prev.map((t) => (t.id === activeTab.id ? { ...t, title: e.title } : t))
+        );
+      }
+    };
+
+    const handleFaviconUpdated = (e: any) => {
+      if (e.favicons && e.favicons.length > 0) {
+        setTabs((prev) =>
+          prev.map((t) => (t.id === activeTab.id ? { ...t, favicon: e.favicons[0] } : t))
+        );
+      }
+    };
+
+    const handleNewWindow = (e: any) => {
+      if (e.url) {
+        executeNavigate(e.url, true, false);
+      }
+    };
+
+    wv.addEventListener('did-start-loading', handleStartLoading);
+    wv.addEventListener('did-stop-loading', handleStopLoading);
+    wv.addEventListener('did-navigate', handleDidNavigate);
+    wv.addEventListener('did-navigate-in-page', handleDidNavigate);
+    wv.addEventListener('page-title-updated', handleTitleUpdated);
+    wv.addEventListener('page-favicon-updated', handleFaviconUpdated);
+    wv.addEventListener('new-window', handleNewWindow);
+
+    return () => {
+      try {
+        wv.removeEventListener('did-start-loading', handleStartLoading);
+        wv.removeEventListener('did-stop-loading', handleStopLoading);
+        wv.removeEventListener('did-navigate', handleDidNavigate);
+        wv.removeEventListener('did-navigate-in-page', handleDidNavigate);
+        wv.removeEventListener('page-title-updated', handleTitleUpdated);
+        wv.removeEventListener('page-favicon-updated', handleFaviconUpdated);
+        wv.removeEventListener('new-window', handleNewWindow);
+      } catch {}
+    };
+  }, [activeTab.id, activeTab.url, isDesktop]);
+
+  // Desktop window open listener (catches window.open calls from Chromium webview)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).aegisDesktopApi?.onOpenNewTab) {
+      const unsub = (window as any).aegisDesktopApi.onOpenNewTab((url: string) => {
+        if (url) {
+          executeNavigate(url, true, false);
+        }
+      });
+      return unsub;
+    }
+  }, []);
 
   // In-Browser Link Click & Form Submission Interceptor:
   // Listens to postMessage events from the proxied iframe and opens them directly in this browser!
@@ -565,6 +677,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   }, [activeTab.url, activeTab.title, ytInfo.isYouTube, ytInfo.searchQuery, ytInfo.videoId]);
 
   const handleGoBack = () => {
+    if (isDesktop && webviewRef.current?.canGoBack?.()) {
+      webviewRef.current.goBack();
+      return;
+    }
     if (!canGoBack || !activeTab.historyStack) return;
     const nextIdx = (activeTab.historyIndex ?? 0) - 1;
     const targetUrl = activeTab.historyStack[nextIdx];
@@ -572,6 +688,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   };
 
   const handleGoForward = () => {
+    if (isDesktop && webviewRef.current?.canGoForward?.()) {
+      webviewRef.current.goForward();
+      return;
+    }
     if (!canGoForward || !activeTab.historyStack) return;
     const nextIdx = (activeTab.historyIndex ?? 0) + 1;
     const targetUrl = activeTab.historyStack[nextIdx];
@@ -580,6 +700,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
   const handleReload = () => {
     setIsScanning(true);
+    if (isDesktop && webviewRef.current?.reload) {
+      try {
+        webviewRef.current.reload();
+        setTimeout(() => setIsScanning(false), 500);
+        return;
+      } catch {}
+    }
     setRefreshKey((prev) => prev + 1);
     setTimeout(() => setIsScanning(false), 450);
   };
@@ -1518,6 +1645,27 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
           {/* Chromium Style Action Toolbar */}
           <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-full pb-0.5 scrollbar-none py-0.5">
+            {/* Chromium DevTools Button (Desktop Mode) */}
+            {isDesktop && (
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    if (webviewRef.current?.openDevTools) {
+                      webviewRef.current.openDevTools({ mode: 'detach' });
+                    } else if ((window as any).aegisDesktopApi?.openDevTools) {
+                      (window as any).aegisDesktopApi.openDevTools();
+                    }
+                  } catch {}
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border bg-slate-800 hover:bg-slate-750 text-cyan-300 border-cyan-500/40"
+                title="Open Chromium DevTools (F12 / Ctrl+Shift+I)"
+              >
+                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">DevTools</span>
+              </button>
+            )}
+
             {/* Extensions Action Button */}
             <button
               type="button"
@@ -1720,7 +1868,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </button>
                 </div>
               </div>
-            ) : ytInfo.isYouTube && ytInfo.videoId ? (
+            ) : !isDesktop && ytInfo.isYouTube && ytInfo.videoId ? (
               /* =========================================================================
                  IN-BROWSER YOUTUBE VIDEO PLAYER VIEW
                  ========================================================================= */
@@ -1865,7 +2013,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </div>
                 </div>
               </div>
-            ) : ytInfo.isYouTube && !ytInfo.videoId ? (
+            ) : !isDesktop && ytInfo.isYouTube && !ytInfo.videoId ? (
               /* =========================================================================
                  IN-BROWSER YOUTUBE PORTAL & SEARCH VIEW
                  ========================================================================= */
@@ -2335,8 +2483,27 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[10px] text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
-                      Zero-Trust Sandbox Active
+                      {isDesktop ? 'Chromium Engine Active' : 'Zero-Trust Sandbox Active'}
                     </span>
+                    {isDesktop && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            if (webviewRef.current?.openDevTools) {
+                              webviewRef.current.openDevTools({ mode: 'detach' });
+                            } else if ((window as any).aegisDesktopApi?.openDevTools) {
+                              (window as any).aegisDesktopApi.openDevTools();
+                            }
+                          } catch {}
+                        }}
+                        className="px-2 py-0.5 rounded bg-slate-800 hover:bg-cyan-950 text-cyan-400 border border-cyan-500/30 text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Open Chromium DevTools for this page (F12)"
+                      >
+                        <Terminal className="w-3 h-3" />
+                        <span>DevTools</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setShow3DScannerModal(true)}
@@ -2362,10 +2529,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   {isScanning && (
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 animate-pulse z-20" />
                   )}
-                  {typeof window !== 'undefined' && (window as any).isAegisDesktop ? (
+                  {isDesktop ? (
                     <webview
+                      ref={webviewRef}
                       key={`desktop-webview-${activeTab.id}-${refreshKey}`}
                       src={activeTab.url}
+                      allowpopups=""
                       className="w-full h-full border-0 bg-white"
                     />
                   ) : (
@@ -2704,18 +2873,81 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Native Chromium Desktop Build Info */}
-                        <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
-                            <Globe className="w-3.5 h-3.5" />
-                            <span>Chromium Desktop App & Depot Tools</span>
+                        {/* Native Chromium Engine & Controls */}
+                        <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                              <Globe className="w-3.5 h-3.5" />
+                              <span>{isDesktop ? 'Native Chromium Engine Active' : 'Chromium Desktop & Depot Tools'}</span>
+                            </div>
+                            {isDesktop && (
+                              <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Hardware Accelerated
+                              </span>
+                            )}
                           </div>
                           <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
-                            Run native Chromium desktop version with full unrestricted webviews and audio/video codecs via:
+                            {isDesktop
+                              ? `Running high-performance Chromium engine (${(window as any).aegisDesktopApi?.version || 'v130'}) with full web audio/video codecs, native webviews, and DevTools.`
+                              : 'Run native Chromium desktop version with full unrestricted webviews and audio/video codecs via:'}
                           </p>
-                          <code className="block p-2 rounded bg-black/60 text-cyan-300 font-mono text-[11px] select-all">
-                            npm run desktop
-                          </code>
+                          {isDesktop ? (
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  try {
+                                    if (webviewRef.current?.openDevTools) {
+                                      webviewRef.current.openDevTools({ mode: 'detach' });
+                                    } else if ((window as any).aegisDesktopApi?.openDevTools) {
+                                      (window as any).aegisDesktopApi.openDevTools();
+                                    }
+                                  } catch {}
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                              >
+                                <Terminal className="w-3.5 h-3.5" />
+                                <span>Inspect / DevTools (F12)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => (window as any).aegisDesktopApi?.printPage?.()}
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>Print Page (Ctrl+P)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => (window as any).aegisDesktopApi?.zoomIn?.()}
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs cursor-pointer"
+                                title="Zoom In (+10%)"
+                              >
+                                <ZoomIn className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => (window as any).aegisDesktopApi?.zoomOut?.()}
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs cursor-pointer"
+                                title="Zoom Out (-10%)"
+                              >
+                                <ZoomOut className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => (window as any).aegisDesktopApi?.zoomReset?.()}
+                                className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono cursor-pointer"
+                                title="Reset Zoom (100%)"
+                              >
+                                100%
+                              </button>
+                            </div>
+                          ) : (
+                            <code className="block p-2 rounded bg-black/60 text-cyan-300 font-mono text-[11px] select-all">
+                              npm run desktop
+                            </code>
+                          )}
                         </div>
                       </div>
                     </div>
