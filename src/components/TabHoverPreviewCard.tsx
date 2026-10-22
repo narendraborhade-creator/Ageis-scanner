@@ -46,6 +46,10 @@ export const TabHoverPreviewCard: React.FC<TabHoverPreviewCardProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
+  // Prevent hover popup interference on mobile phones and touch devices
+  if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+    return null;
+  }
   // Clamping left position to prevent overflowing viewport (320px width card)
   const cardWidth = 320;
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
