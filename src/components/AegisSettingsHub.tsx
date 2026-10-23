@@ -373,7 +373,7 @@ export const AegisSettingsHub: React.FC<AegisSettingsHubProps> = ({
           {/* 1. CHROMIUM & DEPOT TOOLS */}
           {activeSection === 'depot-tools' && (
             <div className="space-y-4">
-              <ChromiumDepotToolsView />
+              <ChromiumDepotToolsView onNavigateToBrowserUrl={onNavigateToUrl} />
             </div>
           )}
 
