@@ -2,11 +2,11 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/gemini/chat",
-      "destination": "/api/gemini/chat"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

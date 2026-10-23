@@ -2724,6 +2724,14 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               <div className="relative w-full h-full flex flex-col bg-black overflow-hidden">
                 <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs font-mono shrink-0 select-none">
                   <div className="flex items-center gap-2 truncate">
+                    <button
+                      type="button"
+                      onClick={() => handleNavigate('https://www.youtube.com', false, false)}
+                      className="px-2 py-1 rounded bg-red-600/20 hover:bg-red-600/40 text-red-300 text-xs flex items-center gap-1 cursor-pointer transition-colors font-sans"
+                      title="Back to YouTube Home"
+                    >
+                      <span>← Back to YouTube</span>
+                    </button>
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     <span className="text-red-400 font-bold">YouTube Web Player</span>
                     <span className="text-slate-600">·</span>
@@ -2762,6 +2770,108 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                     allowFullScreen
                   />
+                </div>
+              </div>
+            ) : (!isDesktop && ytInfo.isYouTube && !ytInfo.videoId) ? (
+              /* =========================================================================
+                 IN-BROWSER YOUTUBE PORTAL & VIDEO DISCOVERY VIEW (WEB FALLBACK)
+                 ========================================================================= */
+              <div className="relative w-full h-full flex flex-col bg-slate-950 text-slate-100 overflow-y-auto scrollbar-thin">
+                {/* YouTube Navigation & Search Banner */}
+                <div className="sticky top-0 z-20 px-4 py-3 bg-slate-900/95 backdrop-blur border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white font-black shadow-md shadow-red-600/30">
+                      ▶
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold tracking-wide text-white flex items-center gap-1.5">
+                        <span>YouTube Safe Portal</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">Ad-Free Player</span>
+                      </h2>
+                      <p className="text-[11px] text-slate-400">Stream any YouTube video in zero-trust theater mode</p>
+                    </div>
+                  </div>
+
+                  {/* YouTube In-Page Search */}
+                  <div className="flex items-center gap-2 flex-1 max-w-md">
+                    <div className="relative w-full">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Search YouTube videos, creators, music..."
+                        defaultValue={ytInfo.searchQuery || ''}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = (e.currentTarget.value || '').trim();
+                            if (val) {
+                              handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(val)}`, false, false);
+                            }
+                          }
+                        }}
+                        className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-red-500 text-slate-100 placeholder-slate-400 font-sans"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Topic Filter Pills */}
+                <div className="px-4 py-2.5 bg-slate-900/60 border-b border-slate-800 flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
+                  {['Trending', 'Cybersecurity', 'Programming', 'Science', 'Gaming', 'Music', 'Tech News', 'Podcasts'].map((pill) => (
+                    <button
+                      key={pill}
+                      type="button"
+                      onClick={() => handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(pill)}`, false, false)}
+                      className="px-3 py-1 rounded-full bg-slate-800 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40 border border-slate-700 text-slate-300 transition-colors shrink-0 cursor-pointer font-medium"
+                    >
+                      {pill}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Video Grid */}
+                <div className="p-4 sm:p-6 flex-1">
+                  {ytLoading ? (
+                    <div className="flex flex-col items-center justify-center py-24 space-y-3">
+                      <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-mono text-slate-400">Loading YouTube videos & recommendations...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                      {ytVideos.map((vid) => (
+                        <div
+                          key={vid.id}
+                          onClick={() => handleNavigate(`https://www.youtube.com/watch?v=${vid.id}`, false, false)}
+                          className="group bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-red-500/50 rounded-xl overflow-hidden shadow-lg transition-all duration-200 cursor-pointer flex flex-col"
+                        >
+                          <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
+                            <img
+                              src={vid.thumbnail}
+                              alt={vid.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <div className="w-12 h-12 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                                <span className="text-xl pl-0.5">▶</span>
+                              </div>
+                            </div>
+                            <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono text-white">
+                              HD
+                            </span>
+                          </div>
+                          <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
+                            <h3 className="text-xs font-semibold text-slate-100 line-clamp-2 group-hover:text-red-400 transition-colors">
+                              {vid.title}
+                            </h3>
+                            <div className="text-[11px] text-slate-400 space-y-0.5">
+                              <p className="font-medium text-slate-300 truncate">{vid.channel}</p>
+                              <p className="font-mono text-[10px] text-slate-500">{vid.views} · {vid.published}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (activeTab.url === 'aegis://newtab' || (activeTab.title === 'New Tab' && (!activeTab.historyStack || activeTab.historyStack.length <= 1))) ? (
