@@ -109,6 +109,7 @@ import { ExtensionExportView } from './ExtensionExportView';
 import { AboutUsView } from './AboutUsView';
 import { SecurityApisHubView } from './SecurityApisHubView';
 import { ChromiumDepotToolsView } from './ChromiumDepotToolsView';
+import { AegisSettingsHub, SettingsSectionId } from './AegisSettingsHub';
 
 function parseYouTubeUrl(url: string) {
   try {
@@ -2687,390 +2688,33 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </div>
           ) : activeSidebar === 'tools' ? (
             /* =========================================================================
-               TOOLS & SETTINGS SIDE PANEL / FULLSCREEN DRAWER (HOUSES ALL 10 TOOLS)
+               AEGIS UNIFIED SETTINGS & TOOLS HUB (12 FEATURES ARCHITECTURE)
                ========================================================================= */
             <div
               className={`${
                 isToolFullscreen
                   ? 'col-span-12 fixed inset-0 z-40 bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-hidden'
                   : 'lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/95 flex flex-col h-full overflow-hidden shadow-2xl'
-              }`}
-            >
-              {/* Tools Header Bar */}
-              <div className="p-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between gap-2 shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-                    <Settings className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold font-mono text-slate-100 flex items-center gap-1.5">
-                      <span>Aegis Tools & Settings</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                        12 Features
-                      </span>
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-mono truncate">
-                      Chromium depot_tools, jaegeral/security-apis, 3D scanner, DoH, comparator & AI
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsToolFullscreen((prev) => !prev)}
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-cyan-300 border border-slate-700 transition-colors cursor-pointer"
-                    title={isToolFullscreen ? 'Dock to Side Panel' : 'Maximize to Fullscreen'}
-                  >
-                    {isToolFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveSidebar('none');
-                      setIsToolFullscreen(false);
-                    }}
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-rose-400 border border-slate-700 transition-colors cursor-pointer"
-                    title="Close Tools Panel"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Tool Navigation Tabs Ribbon */}
-              <div className="px-2 py-1.5 bg-[#070c18] border-b border-slate-800 flex items-center gap-1 overflow-x-auto scrollbar-none shrink-0 select-none">
-                {[
-                  { id: 'depot-tools', label: 'Chromium / Depot Tools', icon: Cpu, color: 'text-cyan-400' },
-                  { id: 'security-apis', label: 'Security APIs Hub', icon: Database, color: 'text-indigo-400' },
-                  { id: '3d-scanner', label: '3D Mesh', icon: Shield, color: 'text-cyan-400' },
-                  { id: 'dns', label: 'DNS Scanner', icon: Globe, color: 'text-emerald-400' },
-                  { id: 'compare', label: 'Comparator', icon: GitCompare, color: 'text-blue-400' },
-                  { id: 'threat-shield', label: 'Threat Shield', icon: ShieldAlert, color: 'text-rose-400' },
-                  { id: 'analytics', label: 'Analytics', icon: BarChart2, color: 'text-teal-400' },
-                  { id: 'science', label: 'Science Search', icon: BookOpen, color: 'text-purple-400' },
-                  { id: 'ai-copilot', label: 'AI Copilot', icon: Bot, color: 'text-cyan-300' },
-                  { id: 'vault', label: 'Password Vault', icon: Key, color: 'text-amber-400' },
-                  { id: 'extensions', label: 'Extensions', icon: Puzzle, color: 'text-indigo-400' },
-                  { id: 'settings', label: 'Preferences & Flags', icon: Sliders, color: 'text-slate-300' },
-                  { id: 'about', label: 'About Team', icon: Info, color: 'text-cyan-400' },
-                ].map((t) => {
-                  const Icon = t.icon;
-                  const isActive = activeToolTab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setActiveToolTab(t.id as ToolTabId)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono whitespace-nowrap transition-all cursor-pointer border ${
-                        isActive
-                          ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.15)] font-bold'
-                          : 'bg-slate-900/60 hover:bg-slate-850 text-slate-400 hover:text-slate-200 border-slate-800'
-                      }`}
-                    >
-                      <Icon className={`w-3 h-3 ${isActive ? t.color : 'text-slate-500'}`} />
-                      <span>{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Tool Body Container with Smooth Scroll */}
-              <div className="flex-1 overflow-y-auto scrollbar-thin p-3 sm:p-4 bg-slate-950/70">
-                {activeToolTab === 'depot-tools' && (
-                  <ChromiumDepotToolsView />
-                )}
-
-                {activeToolTab === '3d-scanner' && (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-cyan-400" />
-                          <h4 className="text-xs font-bold text-slate-100 font-mono">3D Web Shape Mesh</h4>
-                        </div>
-                        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30">
-                          WebGL 60 FPS
-                        </span>
-                      </div>
-                      <div className="w-full h-56 rounded-xl overflow-hidden bg-black/80 border border-slate-800 relative">
-                        <CyberScene3D statusMode={statusMode} interactive={true} className="w-full h-full" />
-                        <div className="absolute bottom-2 left-2 text-[10px] font-mono text-cyan-300 bg-black/70 px-2 py-0.5 rounded">
-                          Drag to inspect 3D security mesh
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-center">
-                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                          <div className="text-[10px] text-slate-500">Security Score</div>
-                          <div className="text-sm font-bold text-emerald-400">{activeTab.securityScore}%</div>
-                        </div>
-                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                          <div className="text-[10px] text-slate-500">SSL Certificate</div>
-                          <div className="text-sm font-bold text-cyan-300">{activeTab.sslGrade}</div>
-                        </div>
-                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                          <div className="text-[10px] text-slate-500">Trackers Blocked</div>
-                          <div className="text-sm font-bold text-amber-400">{activeTab.trackersBlocked}</div>
-                        </div>
-                        <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                          <div className="text-[10px] text-slate-500">Response Latency</div>
-                          <div className="text-sm font-bold text-teal-300">{activeTab.latencyMs}ms</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeToolTab === 'dns' && (
-                  <DnsScannerView
-                    initialDomain={activeTab.domain && activeTab.domain !== 'aegis.local' ? activeTab.domain : 'cloudflare.com'}
-                  />
-                )}
-
-                {activeToolTab === 'compare' && (
-                  <WebsiteComparatorView
-                    initialSiteA={activeTab.domain && activeTab.domain !== 'aegis.local' ? activeTab.domain : 'cloudflare.com'}
-                    initialSiteB="wikipedia.org"
-                  />
-                )}
-
-                {activeToolTab === 'threat-shield' && (
-                  <ThreatBlockerView
-                    onNavigateToBrowser={(url) => {
-                      setActiveSidebar('none');
-                      setIsToolFullscreen(false);
-                      handleNavigate(url, false, false);
-                    }}
-                    currentBrowserUrl={activeTab.url}
-                  />
-                )}
-
-                {activeToolTab === 'security-apis' && (
-                  <SecurityApisHubView
-                    currentBrowserDomain={activeTab.domain}
-                    onNavigateToBrowserUrl={(url) => {
-                      setActiveSidebar('none');
-                      setIsToolFullscreen(false);
-                      handleNavigate(url, false, false);
-                    }}
-                  />
-                )}
-
-                {activeToolTab === 'analytics' && (
-                  <SecurityAnalyticsView
-                    onNavigateToBrowserUrl={(url) => {
-                      setActiveSidebar('none');
-                      setIsToolFullscreen(false);
-                      handleNavigate(url, false, false);
-                    }}
-                    onOpenCommandPalette={onOpenCommandPalette}
-                  />
-                )}
-
-                {activeToolTab === 'science' && (
-                  <ScienceSearchView initialQuery="AlphaFold structural biology" />
-                )}
-
-                {activeToolTab === 'ai-copilot' && (
-                  <GeminiCopilotView />
-                )}
-
-                {activeToolTab === 'vault' && (
-                  <PasswordVaultManager
-                    onNavigateToBrowserUrl={(url) => {
-                      setActiveSidebar('none');
-                      setIsToolFullscreen(false);
-                      handleNavigate(url, false, false);
-                    }}
-                  />
-                )}
-
-                {activeToolTab === 'extensions' && (
-                  <ExtensionExportView
-                    onOpenInFullBrowser={(url) => {
-                      setActiveSidebar('none');
-                      setIsToolFullscreen(false);
-                      handleNavigate(url, false, false);
-                    }}
-                    onOpenVault={() => setActiveToolTab('vault')}
-                  />
-                )}
-
-                {activeToolTab === 'settings' && (
-                  <div className="space-y-4">
-                    <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Sliders className="w-4 h-4 text-cyan-400" />
-                        <h4 className="text-sm font-bold text-slate-100 font-mono">Browser & Security Preferences</h4>
-                      </div>
-
-                      <div className="space-y-3 text-xs font-mono">
-                        {/* Theme Trigger */}
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-                          <div>
-                            <div className="font-semibold text-slate-200">Browser Theme & Appearance</div>
-                            <div className="text-[11px] text-slate-400">Cyberpunk Neon, Stealth Dark, Quantum Blue, Emerald Matrix</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={onOpenThemeModal}
-                            className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 cursor-pointer"
-                          >
-                            Change Theme
-                          </button>
-                        </div>
-
-                        {/* Privacy Mode */}
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-                          <div>
-                            <div className="font-semibold text-slate-200">Zero-Trace Privacy Mode</div>
-                            <div className="text-[11px] text-slate-400">Purges cookies, session storage & browsing logs on exit</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={onTogglePrivacy}
-                            className={`px-3 py-1.5 rounded-lg border cursor-pointer font-bold ${
-                              privacyMode
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                : 'bg-slate-800 text-slate-400 border-slate-700'
-                            }`}
-                          >
-                            {privacyMode ? 'Enabled' : 'Disabled'}
-                          </button>
-                        </div>
-
-                        {/* Cloudflare Verification Trigger */}
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-                          <div>
-                            <div className="font-semibold text-slate-200">Cloudflare Turnstile Verification</div>
-                            <div className="text-[11px] text-slate-400">Verify client integrity & human identity check</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={onOpenCloudflareModal}
-                            className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 cursor-pointer"
-                          >
-                            Verify Identity
-                          </button>
-                        </div>
-
-                        {/* Command Palette Trigger */}
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-                          <div>
-                            <div className="font-semibold text-slate-200">Aegis Command Palette (Ctrl+K)</div>
-                            <div className="text-[11px] text-slate-400">Quick launch tabs, security audits and tools</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={onOpenCommandPalette}
-                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer"
-                          >
-                            Open (Ctrl+K)
-                          </button>
-                        </div>
-
-                        {/* Clear History & Bookmarks */}
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-                          <div>
-                            <div className="font-semibold text-rose-300">Purge Browsing Data</div>
-                            <div className="text-[11px] text-slate-400">Wipe stored history, cached thumbnails & bookmarks</div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={handleClearAllHistory}
-                              className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 cursor-pointer"
-                            >
-                              Clear History
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Native Chromium Engine & Controls */}
-                        <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
-                              <Globe className="w-3.5 h-3.5" />
-                              <span>{isDesktop ? 'Native Chromium Engine Active' : 'Chromium Desktop & Depot Tools'}</span>
-                            </div>
-                            {isDesktop && (
-                              <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                Hardware Accelerated
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
-                            {isDesktop
-                              ? `Running high-performance Chromium engine (${(window as any).aegisDesktopApi?.version || 'v130'}) with full web audio/video codecs, native webviews, and DevTools.`
-                              : 'Run native Chromium desktop version with full unrestricted webviews and audio/video codecs via:'}
-                          </p>
-                          {isDesktop ? (
-                            <div className="flex flex-wrap items-center gap-2 pt-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  try {
-                                    if (webviewRef.current?.openDevTools) {
-                                      webviewRef.current.openDevTools({ mode: 'detach' });
-                                    } else if ((window as any).aegisDesktopApi?.openDevTools) {
-                                      (window as any).aegisDesktopApi.openDevTools();
-                                    }
-                                  } catch {}
-                                }}
-                                className="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                              >
-                                <Terminal className="w-3.5 h-3.5" />
-                                <span>Inspect / DevTools (F12)</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => (window as any).aegisDesktopApi?.printPage?.()}
-                                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                                <span>Print Page (Ctrl+P)</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => (window as any).aegisDesktopApi?.zoomIn?.()}
-                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs cursor-pointer"
-                                title="Zoom In (+10%)"
-                              >
-                                <ZoomIn className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => (window as any).aegisDesktopApi?.zoomOut?.()}
-                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs cursor-pointer"
-                                title="Zoom Out (-10%)"
-                              >
-                                <ZoomOut className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => (window as any).aegisDesktopApi?.zoomReset?.()}
-                                className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono cursor-pointer"
-                                title="Reset Zoom (100%)"
-                              >
-                                100%
-                              </button>
-                            </div>
-                          ) : (
-                            <code className="block p-2 rounded bg-black/60 text-cyan-300 font-mono text-[11px] select-all">
-                              npm run desktop
-                            </code>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeToolTab === 'about' && (
-                  <AboutUsView />
-                )}
-              </div>
+              }`}>
+              <AegisSettingsHub
+                initialSection={activeToolTab === 'settings' ? 'general' : (activeToolTab as SettingsSectionId)}
+                activeTab={activeTab}
+                tabs={tabs}
+                onClose={() => {
+                  setActiveSidebar('none');
+                  setIsToolFullscreen(false);
+                }}
+                onNavigateToUrl={(url) => {
+                  setActiveSidebar('none');
+                  setIsToolFullscreen(false);
+                  handleNavigate(url, false, false);
+                }}
+                onOpenCommandPalette={onOpenCommandPalette}
+                onOpenThemeModal={onOpenThemeModal}
+                isDesktop={isDesktop}
+                isFullscreen={isToolFullscreen}
+                onToggleFullscreen={() => setIsToolFullscreen((prev) => !prev)}
+              />
             </div>
           ) : activeSidebar !== 'none' && (
             <div className="lg:col-span-4 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-950/90 flex flex-col h-full overflow-hidden">
