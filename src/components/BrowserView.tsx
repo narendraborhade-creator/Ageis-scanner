@@ -101,6 +101,10 @@ import {
   ChevronDown,
   Download,
   SlidersHorizontal,
+  VolumeX,
+  ShieldCheck,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import { CyberScene3D } from './CyberScene3D';
 import { DnsScannerView } from './DnsScannerView';
@@ -518,7 +522,85 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const [showBookmarksBar, setShowBookmarksBar] = useState<boolean>(true);
   const [zoomPercent, setZoomPercent] = useState<number>(100);
 
-  // Outside click listener for chrome menu dropdowns
+  // Opera Sidebar & Chrome Tab Context Menu States
+  const [showOperaSidebar, setShowOperaSidebar] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('aegis_show_opera_sidebar');
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    x: number;
+    y: number;
+    tabId: string;
+  } | null>(null);
+
+  // Speed Dial Shortcuts State
+  const [customShortcuts, setCustomShortcuts] = useState<Array<{
+    title: string;
+    url: string;
+    desc: string;
+    icon: string;
+    color: string;
+  }>>(() => {
+    try {
+      const stored = localStorage.getItem('aegis_speed_dial_shortcuts');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [
+      { title: 'YouTube', url: 'https://www.youtube.com', desc: 'Video & Streaming', icon: 'youtube', color: 'text-red-500' },
+      { title: 'Google', url: 'https://www.google.com', desc: 'Web Search Engine', icon: 'google', color: 'text-blue-400' },
+      { title: 'Instagram', url: 'https://www.instagram.com', desc: 'Social & Media', icon: 'instagram', color: 'text-pink-400' },
+      { title: 'GitHub', url: 'https://github.com', desc: 'Open Source Code', icon: 'github', color: 'text-indigo-400' },
+      { title: 'Wikipedia', url: 'https://en.wikipedia.org', desc: 'Free Encyclopedia', icon: 'wikipedia', color: 'text-cyan-400' },
+      { title: 'Reddit', url: 'https://www.reddit.com', desc: 'Discussions & Communities', icon: 'reddit', color: 'text-orange-400' },
+      { title: 'ChatGPT', url: 'https://chatgpt.com', desc: 'Conversational AI', icon: 'chatgpt', color: 'text-emerald-400' },
+      { title: 'Cloudflare', url: 'https://radar.cloudflare.com', desc: 'Zero Trust & Radar', icon: 'cloudflare', color: 'text-amber-400' },
+      { title: 'DuckDuckGo', url: 'https://duckduckgo.com', desc: 'Privacy Search', icon: 'duckduckgo', color: 'text-teal-400' },
+      { title: 'BBC News', url: 'https://www.bbc.com', desc: 'Global News', icon: 'news', color: 'text-red-400' },
+      { title: 'PubMed', url: 'https://pubmed.ncbi.nlm.nih.gov', desc: 'Biomedical Research', icon: 'science', color: 'text-emerald-400' },
+      { title: 'arXiv', url: 'https://arxiv.org', desc: 'Preprints & Papers', icon: 'arxiv', color: 'text-rose-400' },
+    ];
+  });
+  const [showAddShortcutModal, setShowAddShortcutModal] = useState<boolean>(false);
+  const [newShortcutTitle, setNewShortcutTitle] = useState<string>('');
+  const [newShortcutUrl, setNewShortcutUrl] = useState<string>('');
+
+  const handleToggleOperaSidebar = () => {
+    setShowOperaSidebar((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('aegis_show_opera_sidebar', String(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleAddShortcut = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newShortcutUrl.trim()) return;
+    let u = newShortcutUrl.trim();
+    if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
+    const t = newShortcutTitle.trim() || formatDomain(u);
+    const updated = [
+      ...customShortcuts,
+      { title: t, url: u, desc: formatDomain(u), icon: 'globe', color: 'text-cyan-400' },
+    ];
+    setCustomShortcuts(updated);
+    try { localStorage.setItem('aegis_speed_dial_shortcuts', JSON.stringify(updated)); } catch {}
+    setNewShortcutTitle('');
+    setNewShortcutUrl('');
+    setShowAddShortcutModal(false);
+  };
+
+  const handleDeleteShortcut = (url: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = customShortcuts.filter((s) => s.url !== url);
+    setCustomShortcuts(updated);
+    try { localStorage.setItem('aegis_speed_dial_shortcuts', JSON.stringify(updated)); } catch {}
+  };
+
+  // Outside click listener for chrome menu dropdowns & context menus
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -527,6 +609,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         setShowMoreToolsMenu(false);
         setShowPageInfoModal(false);
         setShowProfileMenu(false);
+      }
+      if (!target.closest('.tab-context-menu')) {
+        setTabContextMenu(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -1165,17 +1250,33 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       return;
     }
 
-    // YouTube direct resolver
+    // Authentic Chromium & Opera Omnibox Domain & Search Resolver
     const lowerTarget = target.toLowerCase();
     if (lowerTarget === 'youtube' || lowerTarget === 'youtube.com' || lowerTarget === 'www.youtube.com' || lowerTarget === 'https://youtube.com' || lowerTarget === 'https://www.youtube.com' || lowerTarget === 'http://youtube.com') {
       target = 'https://www.youtube.com';
     } else if (lowerTarget.startsWith('youtube ') || lowerTarget.startsWith('yt ')) {
       const q = target.replace(/^(youtube|yt)\s+/i, '').trim();
       target = `https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`;
+    } else if (lowerTarget === 'google' || lowerTarget === 'google.com' || lowerTarget === 'www.google.com') {
+      target = 'https://www.google.com';
+    } else if (lowerTarget === 'github' || lowerTarget === 'github.com') {
+      target = 'https://github.com';
+    } else if (lowerTarget === 'wikipedia' || lowerTarget === 'wikipedia.org') {
+      target = 'https://www.wikipedia.org';
+    } else if (lowerTarget === 'reddit' || lowerTarget === 'reddit.com') {
+      target = 'https://www.reddit.com';
+    } else if (lowerTarget === 'instagram' || lowerTarget === 'instagram.com') {
+      target = 'https://www.instagram.com';
+    } else if (lowerTarget === 'chatgpt' || lowerTarget === 'chatgpt.com') {
+      target = 'https://chatgpt.com';
+    } else if (lowerTarget === 'duckduckgo' || lowerTarget === 'duckduckgo.com') {
+      target = 'https://duckduckgo.com';
+    } else if (lowerTarget === 'cloudflare' || lowerTarget === 'cloudflare.com') {
+      target = 'https://radar.cloudflare.com';
     }
 
     const sInfo = parseSearchUrl(target);
-    if (!sInfo.isSearch && !target.startsWith('aegis://')) {
+    if (!sInfo.isSearch && !target.startsWith('aegis://') && !target.startsWith('chrome://')) {
       const isExplicitUrl = /^https?:\/\//i.test(target) ||
         (!target.includes(' ') && target.includes('.') && !target.endsWith('.') && !target.startsWith('.'));
 
@@ -1184,7 +1285,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           const query = target.replace(/youtube/gi, '').trim() || 'trending tech';
           target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
         } else {
-          target = `aegis://search?q=${encodeURIComponent(target)}`;
+          // Standard web search: navigate to real Google search or DuckDuckGo in privacy mode
+          target = privacyMode
+            ? `https://duckduckgo.com/?q=${encodeURIComponent(target)}`
+            : `https://www.google.com/search?q=${encodeURIComponent(target)}`;
         }
       } else if (!/^https?:\/\//i.test(target)) {
         target = `https://${target}`;
@@ -1344,6 +1448,78 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     executeNavigate(target, inNewTab, openExternal);
   };
 
+  // Chrome & Opera Tab Context Menu Actions
+  const handleDuplicateTab = (tabOrId: BrowserTab | string) => {
+    const tabToDupe = typeof tabOrId === 'string'
+      ? tabs.find((t) => t.id === tabOrId)
+      : tabOrId;
+    if (!tabToDupe) return;
+    const newId = `tab-${Date.now()}`;
+    const newTab: BrowserTab = {
+      ...tabToDupe,
+      id: newId,
+      title: `${tabToDupe.title} (Copy)`,
+      createdAt: Date.now(),
+    };
+    const idx = tabs.findIndex((t) => t.id === tabToDupe.id);
+    const updated = [...tabs];
+    if (idx !== -1) {
+      updated.splice(idx + 1, 0, newTab);
+    } else {
+      updated.push(newTab);
+    }
+    setTabs(updated);
+    setActiveTabId(newId);
+    setTabContextMenu(null);
+  };
+
+  const handleTogglePinTab = (tabId: string) => {
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, isPinned: !t.isPinned } : t))
+    );
+    setTabContextMenu(null);
+  };
+
+  const handleToggleMuteTab = (tabId: string) => {
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, isMuted: !t.isMuted } : t))
+    );
+    setTabContextMenu(null);
+  };
+
+  const handleCloseOtherTabs = (tabId?: string) => {
+    const targetId = tabId || activeTab.id;
+    const kept = tabs.find((t) => t.id === targetId);
+    if (!kept) return;
+    const closed = tabs.filter((t) => t.id !== targetId);
+    setRecentlyClosedTabs((prev) => [...closed, ...prev].slice(0, 20));
+    setTabs([kept]);
+    setActiveTabId(kept.id);
+    setTabContextMenu(null);
+  };
+
+  const handleCloseTabsToRight = (tabId: string) => {
+    const idx = tabs.findIndex((t) => t.id === tabId);
+    if (idx === -1) return;
+    const kept = tabs.slice(0, idx + 1);
+    const closed = tabs.slice(idx + 1);
+    setRecentlyClosedTabs((prev) => [...closed, ...prev].slice(0, 20));
+    setTabs(kept);
+    if (!kept.some((t) => t.id === activeTabId)) {
+      setActiveTabId(tabId);
+    }
+    setTabContextMenu(null);
+  };
+
+  const handleReopenLastClosedTab = () => {
+    if (recentlyClosedTabs.length === 0) return;
+    const [lastClosed, ...remaining] = recentlyClosedTabs;
+    setRecentlyClosedTabs(remaining);
+    setTabs((prev) => [...prev, lastClosed]);
+    setActiveTabId(lastClosed.id);
+    setTabContextMenu(null);
+  };
+
   const handleConfirmGuest = (rememberForSession: boolean) => {
     if (rememberForSession) {
       sessionStorage.setItem('aegis_auth_prompt_dismissed', 'true');
@@ -1438,25 +1614,6 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     }
   };
 
-  const handleTogglePinTab = (tabId: string) => {
-    setTabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, isPinned: !t.isPinned } : t))
-    );
-  };
-
-  const handleDuplicateTab = (tabToDuplicate: BrowserTab) => {
-    const dup: BrowserTab = {
-      ...tabToDuplicate,
-      id: `tab-${Date.now()}`,
-      createdAt: Date.now(),
-    };
-    setTabs((prev) => [...prev, dup]);
-    setActiveTabId(dup.id);
-  };
-
-  const handleCloseOtherTabs = () => {
-    setTabs([activeTab]);
-  };
 
   const handleRestoreRecentlyClosed = () => {
     if (recentlyClosedTabs.length === 0) return;
@@ -1642,6 +1799,15 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 key={tab.id}
                 onMouseEnter={(e) => handleTabMouseEnter(e, tab)}
                 onMouseLeave={handleTabMouseLeave}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTabContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    tabId: tab.id,
+                  });
+                }}
                 onClick={() => {
                   setHoveredTab(null);
                   setActiveTabId(tab.id);
@@ -1698,6 +1864,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </span>
                 )}
 
+                {/* Muted Audio Indicator */}
+                {tab.isMuted && (
+                  <span title="Tab audio is muted" className="shrink-0">
+                    <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                  </span>
+                )}
+
                 {/* Close Tab Button (Chrome 'x') */}
                 <button
                   type="button"
@@ -1724,8 +1897,20 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
         {/* Authentic Chromium Navigation Toolbar (ToolbarView from chromium/views) */}
         <div className="relative flex items-center justify-between px-3 py-1.5 bg-[#282c34] border-b border-slate-800/80 gap-2 select-none z-20 chrome-menu-anchor">
-          {/* Navigation Controls: Back, Forward, Reload, Home */}
+          {/* Navigation Controls: Back, Forward, Reload, Home, Sidebar Toggle */}
           <div className="flex items-center gap-1 shrink-0 text-slate-300">
+            <button
+              type="button"
+              onClick={handleToggleOperaSidebar}
+              className={`p-1.5 rounded-full transition-colors ${
+                showOperaSidebar
+                  ? 'text-cyan-400 bg-cyan-950/60 border border-cyan-500/30'
+                  : 'hover:bg-slate-700/60 text-slate-400 hover:text-white cursor-pointer'
+              }`}
+              title={showOperaSidebar ? 'Hide Opera Left Sidebar' : 'Show Opera Left Sidebar'}
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
             <button
               type="button"
               disabled={!canGoBack}
@@ -2280,7 +2465,177 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           </div>
         )}
 
-        {/* Viewport & Slide-In Sidebars Split Layout */}
+        {/* Main Body: Opera Left Sidebar + Viewport & Slide-In Sidebars */}
+        <div className="flex flex-1 min-h-0 overflow-hidden relative">
+          {/* Opera-style Vertical Left Sidebar */}
+          {showOperaSidebar && (
+            <aside className="w-[48px] bg-[#101217] border-r border-slate-800/80 flex flex-col items-center py-2.5 justify-between shrink-0 select-none z-20">
+              {/* Opera Top Action Items */}
+              <div className="flex flex-col items-center gap-1.5 w-full">
+                {/* Speed Dial / Start Page */}
+                <button
+                  type="button"
+                  onClick={handleGoHome}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    activeTab.url === 'aegis://newtab'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                  title="Speed Dial / Start Page"
+                >
+                  <Zap className="w-4 h-4" />
+                </button>
+
+                {/* Opera Aria / Gemini AI Copilot */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebar((prev) => (prev === 'ai' ? 'none' : 'ai'))}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer relative ${
+                    activeSidebar === 'ai'
+                      ? 'bg-teal-500/25 text-teal-300 border border-teal-500/40 shadow-[0_0_12px_rgba(20,184,166,0.3)]'
+                      : 'text-slate-400 hover:text-teal-300 hover:bg-slate-800/80'
+                  }`}
+                  title="Aria & Gemini AI Assistant (Ctrl+Shift+A)"
+                >
+                  <Sparkles className="w-4 h-4 text-teal-400" />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+                </button>
+
+                {/* Opera Ad & Tracker Blocker Shield */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTabs((prev) =>
+                      prev.map((t) =>
+                        t.id === activeTab.id
+                          ? { ...t, trackersBlocked: t.trackersBlocked + 1 }
+                          : t
+                      )
+                    );
+                  }}
+                  className="w-9 h-9 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer text-emerald-400 hover:bg-slate-800/80 relative"
+                  title={`Opera Ad & Tracker Shield: ${activeTab.trackersBlocked} blocked`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span className="text-[9px] font-mono font-bold leading-none text-emerald-300">
+                    {activeTab.trackersBlocked > 99 ? '99+' : activeTab.trackersBlocked}
+                  </span>
+                </button>
+
+                {/* Free Built-in VPN & Zero-Trace Privacy */}
+                <button
+                  type="button"
+                  onClick={onTogglePrivacy}
+                  className={`w-9 h-9 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${
+                    privacyMode
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/80'
+                  }`}
+                  title={`Free Built-in VPN & Zero-Trace Privacy (${privacyMode ? 'ON' : 'OFF'})`}
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span className={`text-[8px] font-mono font-black tracking-tighter ${privacyMode ? 'text-cyan-300' : 'text-slate-500'}`}>
+                    VPN
+                  </span>
+                </button>
+
+                <div className="w-6 h-[1px] bg-slate-800 my-0.5" />
+
+                {/* Workspaces / Tab Groups */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebar((prev) => (prev === 'tabs' ? 'none' : 'tabs'))}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    activeSidebar === 'tabs'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                  title="Workspaces & Tab Groups"
+                >
+                  <Layers className="w-4 h-4" />
+                </button>
+
+                {/* Bookmarks */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebar((prev) => (prev === 'bookmarks' ? 'none' : 'bookmarks'))}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    activeSidebar === 'bookmarks'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                  title="Bookmarks (Ctrl+B)"
+                >
+                  <Star className="w-4 h-4" />
+                </button>
+
+                {/* History */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebar((prev) => (prev === 'history' ? 'none' : 'history'))}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    activeSidebar === 'history'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                  title="History (Ctrl+H)"
+                >
+                  <History className="w-4 h-4" />
+                </button>
+
+                {/* Reading List */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebar((prev) => (prev === 'read-later' ? 'none' : 'read-later'))}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    activeSidebar === 'read-later'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                  title="Reading List"
+                >
+                  <BookOpen className="w-4 h-4" />
+                </button>
+
+                {/* RAM & CPU Performance Limiter (Opera GX) */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebar((prev) => (prev === 'resource-monitor' ? 'none' : 'resource-monitor'))}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    activeSidebar === 'resource-monitor'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                  title="CPU & RAM Resource Monitor"
+                >
+                  <Cpu className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Opera Bottom Tools & Collapse */}
+              <div className="flex flex-col items-center gap-1.5 w-full pt-2 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => executeNavigate('chrome://settings', false, false)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                  title="Settings & Flags"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleToggleOperaSidebar}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  title="Hide Opera Sidebar"
+                >
+                  <PanelLeftClose className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </aside>
+          )}
+
+          {/* Viewport & Slide-In Sidebars Split Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 min-h-0 overflow-hidden">
           {/* Main Web Viewport Area */}
           <div
@@ -2356,270 +2711,51 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   isFullscreen={true}
                 />
               </div>
-            ) : ytInfo.isYouTube && ytInfo.videoId ? (
+            ) : (!isDesktop && ytInfo.isYouTube && ytInfo.videoId) ? (
               /* =========================================================================
-                 IN-BROWSER YOUTUBE VIDEO PLAYER VIEW
+                 IN-BROWSER THEATER MODE YOUTUBE PLAYER VIEW (WEB FALLBACK)
                  ========================================================================= */
-              <div className="relative w-full h-full flex flex-col bg-[#050811] overflow-y-auto scrollbar-thin p-3 sm:p-5 space-y-4">
-                {/* Main YouTube Embedded Video Player Card */}
-                <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden border border-slate-800 bg-black shadow-2xl">
-                  <div className="relative w-full aspect-video bg-black">
-                    <iframe
-                      key={`yt-player-${ytInfo.videoId}-${refreshKey}`}
-                      src={`https://www.youtube.com/embed/${ytInfo.videoId}?autoplay=1&enablejsapi=1&rel=0&playsinline=1`}
-                      title={activeTab.title || 'YouTube Video Player'}
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                      allowFullScreen
-                    />
+              <div className="relative w-full h-full flex flex-col bg-black overflow-hidden">
+                <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs font-mono shrink-0 select-none">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    <span className="text-red-400 font-bold">YouTube Web Player</span>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-200 truncate">{activeTab.title}</span>
                   </div>
-
-                  {/* Video Meta & In-Browser Actions */}
-                  <div className="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                    <div className="space-y-1 max-w-xl">
-                      <h3 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                        <span>{activeTab.title}</span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-950/80 text-red-400 border border-red-500/30">
-                          YouTube Web
-                        </span>
-                      </h3>
-                      <p className="text-xs text-slate-400 font-mono">
-                        Playing in Aegis In-Browser Sandbox · TLS 1.3 Verified · Zero-Trust Container
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={handleToggleActiveBookmark}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${
-                          isCurrentBookmarked
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-amber-300'
-                        }`}
-                      >
-                        <Star className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
-                        <span>{isCurrentBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleToggleReadLater}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${
-                          isCurrentInReadLater
-                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-cyan-300'
-                        }`}
-                      >
-                        <BookOpen className={`w-3.5 h-3.5 ${isCurrentInReadLater ? 'text-cyan-400 fill-cyan-400/20' : ''}`} />
-                        <span>{isCurrentInReadLater ? 'In Watch Later' : 'Watch Later'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShow3DScannerModal(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 text-xs font-mono transition-colors cursor-pointer"
-                      >
-                        <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>3D Scanner HUD</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Search Inside YouTube */}
-                <div className="w-full max-w-5xl mx-auto flex items-center gap-2">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (ytSearchInput.trim()) {
-                        handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(ytSearchInput.trim())}`, false, false);
-                      }
-                    }}
-                    className="flex-1 flex items-center bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono focus-within:border-cyan-500 shadow-inner"
-                  >
-                    <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
-                    <input
-                      type="text"
-                      value={ytSearchInput}
-                      onChange={(e) => setYtSearchInput(e.target.value)}
-                      placeholder="Search more YouTube videos..."
-                      className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none"
-                    />
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
-                      type="submit"
-                      className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs cursor-pointer ml-2"
+                      type="button"
+                      onClick={handleToggleActiveBookmark}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                        isCurrentBookmarked
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                      }`}
                     >
-                      Search
+                      <Star className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
+                      <span>{isCurrentBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
                     </button>
-                  </form>
-                </div>
-
-                {/* Recommended & Related Videos Grid */}
-                <div className="w-full max-w-5xl mx-auto space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-200 font-mono flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-cyan-400" />
-                      <span>Recommended & Related Videos</span>
-                    </h4>
-                    {ytLoading && (
-                      <span className="text-[11px] font-mono text-cyan-400 flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        <span>Fetching related videos...</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {ytVideos.map((video) => (
-                      <div
-                        key={video.id}
-                        onClick={() => handleNavigate(`https://www.youtube.com/watch?v=${video.id}`, false, false)}
-                        className="group rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 p-2 space-y-2 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg shadow-black/40"
-                      >
-                        <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-950">
-                          <img
-                            src={video.thumbnail}
-                            alt={video.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-                        </div>
-                        <div className="space-y-1">
-                          <h5 className="text-xs font-semibold text-slate-200 group-hover:text-cyan-300 line-clamp-2 leading-snug">
-                            {video.title}
-                          </h5>
-                          <div className="text-[11px] text-slate-400 truncate">{video.channel}</div>
-                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                            <span>{video.views}</span>
-                            <span>{video.published}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : ytInfo.isYouTube && !ytInfo.videoId ? (
-              /* =========================================================================
-                 IN-BROWSER YOUTUBE PORTAL & SEARCH VIEW
-                 ========================================================================= */
-              <div className="relative w-full h-full flex flex-col bg-[#050811] overflow-y-auto scrollbar-thin p-4 sm:p-6 space-y-6">
-                <div className="w-full max-w-5xl mx-auto space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500">
-                        <Globe className="w-5 h-5 text-red-500" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
-                          <span>YouTube Safe Web Player</span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-950/80 text-red-400 border border-red-500/30">
-                            In-Browser
-                          </span>
-                        </h2>
-                        <p className="text-xs text-slate-400 font-mono">
-                          Watch any YouTube video right inside Aegis 3D Safe Browser with zero tracking
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Big Search Bar */}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const q = ytSearchInput.trim() || 'trending tech';
-                      handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, false, false);
-                    }}
-                    className="flex items-center bg-slate-900 border border-slate-800 focus-within:border-red-500 rounded-2xl p-1.5 shadow-xl transition-all"
-                  >
-                    <Search className="w-5 h-5 text-slate-400 ml-3 mr-2 shrink-0" />
-                    <input
-                      type="text"
-                      value={ytSearchInput}
-                      onChange={(e) => setYtSearchInput(e.target.value)}
-                      placeholder="Search videos, tutorials, music, cyber security, coding..."
-                      className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1.5"
-                    />
                     <button
-                      type="submit"
-                      className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs font-mono transition-colors cursor-pointer shrink-0"
+                      type="button"
+                      onClick={handleLaunchExternalWindow}
+                      className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Open in new window"
                     >
-                      Search
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open External</span>
                     </button>
-                  </form>
-
-                  {/* Quick Topic Chips */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs font-mono">
-                    {[
-                      'Cybersecurity',
-                      'Web Development',
-                      'Three.js 3D',
-                      'Computer Networks',
-                      'Artificial Intelligence',
-                      'Science & Physics',
-                      'Music & Lofi',
-                    ].map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => {
-                          setYtSearchInput(chip);
-                          handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(chip)}`, false, false);
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-red-500/40 text-slate-300 hover:text-white whitespace-nowrap transition-colors cursor-pointer"
-                      >
-                        {chip}
-                      </button>
-                    ))}
                   </div>
                 </div>
-
-                {/* Videos Grid */}
-                <div className="w-full max-w-5xl mx-auto space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-200 font-mono">
-                      {ytInfo.searchQuery ? `Search Results for "${ytInfo.searchQuery}"` : 'Trending & Recommended Videos'}
-                    </h3>
-                    {ytLoading && (
-                      <span className="text-xs font-mono text-cyan-400 flex items-center gap-1.5">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Loading videos...</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {ytVideos.map((video) => (
-                      <div
-                        key={video.id}
-                        onClick={() => handleNavigate(`https://www.youtube.com/watch?v=${video.id}`, false, false)}
-                        className="group rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-red-500/50 p-2.5 space-y-2.5 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-red-950/20"
-                      >
-                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
-                          <img
-                            src={video.thumbnail}
-                            alt={video.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className="text-xs font-bold text-slate-200 group-hover:text-red-400 line-clamp-2 leading-snug">
-                            {video.title}
-                          </h4>
-                          <div className="text-[11px] text-slate-400 truncate">{video.channel}</div>
-                          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/80">
-                            <span>{video.views}</span>
-                            <span>{video.published}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex-1 w-full h-full relative bg-black">
+                  <iframe
+                    key={`yt-player-${ytInfo.videoId}-${refreshKey}`}
+                    src={`https://www.youtube-nocookie.com/embed/${ytInfo.videoId}?autoplay=1&enablejsapi=1&rel=0&playsinline=1`}
+                    title={activeTab.title || 'YouTube Video Player'}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                    allowFullScreen
+                  />
                 </div>
               </div>
             ) : (activeTab.url === 'aegis://newtab' || (activeTab.title === 'New Tab' && (!activeTab.historyStack || activeTab.historyStack.length <= 1))) ? (
@@ -2725,246 +2861,66 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </div>
                 </div>
 
-                {/* Quick Shortcuts Grid */}
-                <div className="w-full max-w-xl mx-auto space-y-2.5">
-                  <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider text-center">
-                    Top Sites & Safe Shortcuts
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
-                    {[
-                      { title: 'YouTube', url: 'https://www.youtube.com', desc: 'In-Browser Player', icon: Globe, color: 'text-red-400' },
-                      { title: 'Wikipedia', url: 'https://en.wikipedia.org', desc: 'Free Encyclopedia', icon: Globe, color: 'text-cyan-400' },
-                      { title: 'Cloudflare', url: 'https://cloudflare.com', desc: 'Zero Trust & DNS', icon: Shield, color: 'text-amber-400' },
-                      { title: 'DuckDuckGo', url: 'https://duckduckgo.com', desc: 'Private Search', icon: Search, color: 'text-teal-400' },
-                      { title: 'GitHub', url: 'https://github.com', desc: 'Open Source Code', icon: Globe, color: 'text-indigo-400' },
-                      { title: 'PubMed', url: 'https://ncbi.nlm.nih.gov', desc: 'Biomedical Science', icon: Activity, color: 'text-emerald-400' },
-                      { title: 'arXiv', url: 'https://arxiv.org', desc: 'Physics & AI Preprints', icon: Activity, color: 'text-rose-400' },
-                      { title: 'Google Search', url: 'https://google.com', desc: 'Web Search', icon: Search, color: 'text-blue-400' },
-                    ].map((site) => (
-                      <button
-                        key={site.title}
-                        type="button"
-                        onClick={() => handleNavigate(site.url, false, false)}
-                        className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-850 flex flex-col items-center justify-center text-center space-y-1 transition-all group cursor-pointer"
-                      >
-                        <site.icon className={`w-5 h-5 ${site.color} group-hover:scale-110 transition-transform`} />
-                        <span className="font-bold text-slate-200 group-hover:text-cyan-300">{site.title}</span>
-                        <span className="text-[10px] text-slate-400">{site.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : searchInfo.isSearch ? (
-              /* =========================================================================
-                 IN-BROWSER SECURE WEB SEARCH ENGINE RESULTS VIEW
-                 ========================================================================= */
-              <div className="relative w-full h-full flex flex-col bg-[#050811] overflow-y-auto scrollbar-thin p-3 sm:p-6 space-y-5">
-                {/* Search Top Filter Header */}
-                <div className="w-full max-w-4xl mx-auto space-y-3">
-                  {/* Search Input Bar */}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (searchQueryInput.trim()) {
-                        executeNavigate(`aegis://search?q=${encodeURIComponent(searchQueryInput.trim())}&category=${searchCategory}`, false, false);
-                      }
-                    }}
-                    className="flex items-center bg-slate-900/90 border border-slate-700 hover:border-cyan-500 focus-within:border-cyan-400 rounded-2xl p-2 shadow-2xl transition-all shadow-cyan-950/20"
-                  >
-                    <Search className="w-5 h-5 text-cyan-400 ml-3 mr-2 shrink-0" />
-                    <input
-                      type="text"
-                      value={searchQueryInput}
-                      onChange={(e) => setSearchQueryInput(e.target.value)}
-                      placeholder="Search the web securely..."
-                      className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1"
-                    />
-                    {searchQueryInput && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQueryInput('')}
-                        className="p-1 rounded text-slate-400 hover:text-slate-200 mr-1 cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                {/* Authentic Opera & Chrome Speed Dial Grid */}
+                <div className="w-full max-w-3xl mx-auto space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/60 pb-1.5">
+                    <span className="uppercase tracking-wider font-bold text-slate-300 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Speed Dial Shortcuts</span>
+                    </span>
                     <button
-                      type="submit"
-                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs font-mono cursor-pointer shrink-0 transition-all shadow-md"
+                      type="button"
+                      onClick={() => setShowAddShortcutModal(true)}
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
                     >
-                      Search
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add shortcut</span>
                     </button>
-                  </form>
+                  </div>
 
-                  {/* Category Pills & Security Status */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
-                      {[
-                        { id: 'all', label: 'All Web', icon: Globe },
-                        { id: 'news', label: 'News', icon: Activity },
-                        { id: 'tech', label: 'Tech & Dev', icon: Cpu },
-                        { id: 'videos', label: 'Videos', icon: Play },
-                        { id: 'science', label: 'Science', icon: Sparkles },
-                      ].map((cat) => {
-                        const Icon = cat.icon;
-                        const isSelected = searchCategory === cat.id;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              setSearchCategory(cat.id as any);
-                              const q = searchQueryInput.trim() || searchInfo.query;
-                              if (cat.id === 'videos') {
-                                executeNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`, false, false);
-                              } else {
-                                executeNavigate(`aegis://search?q=${encodeURIComponent(q)}&category=${cat.id}`, false, false);
-                              }
-                            }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all cursor-pointer whitespace-nowrap text-xs ${
-                              isSelected
-                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)] font-bold'
-                                : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                            }`}
-                          >
-                            <Icon className="w-3.5 h-3.5" />
-                            <span>{cat.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs font-mono">
+                    {customShortcuts.map((site) => (
+                      <div
+                        key={site.url}
+                        onClick={() => handleNavigate(site.url, false, false)}
+                        className="group relative p-3 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-cyan-500/50 hover:bg-slate-850 flex flex-col items-center justify-center text-center space-y-2 transition-all cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-0.5"
+                      >
+                        <div className="w-10 h-10 rounded-2xl bg-slate-800/90 border border-slate-700/80 group-hover:border-cyan-400/40 flex items-center justify-center text-base font-bold shadow-inner transition-transform group-hover:scale-105">
+                          {site.title.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="space-y-0.5 w-full">
+                          <span className="font-bold text-slate-200 group-hover:text-cyan-300 truncate block">
+                            {site.title}
+                          </span>
+                          <span className="text-[10px] text-slate-400 truncate block">
+                            {site.desc}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteShortcut(site.url, e)}
+                          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-slate-800/90 hover:bg-rose-900/80 text-slate-400 hover:text-rose-200 transition-all cursor-pointer"
+                          title="Remove shortcut"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
 
-                    <div className="flex items-center gap-2 text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
-                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Zero-Trace Protected</span>
-                      <span className="text-slate-500">·</span>
-                      <span className="text-slate-400">0 Ads / Popups</span>
-                    </div>
+                    {/* Add Shortcut Tile */}
+                    <button
+                      type="button"
+                      onClick={() => setShowAddShortcutModal(true)}
+                      className="p-3 rounded-2xl border border-dashed border-slate-700/80 hover:border-cyan-500/60 bg-slate-900/30 hover:bg-slate-900/70 flex flex-col items-center justify-center text-center space-y-2 transition-all cursor-pointer text-slate-400 hover:text-cyan-300 min-h-[96px]"
+                    >
+                      <div className="w-10 h-10 rounded-2xl border border-slate-700 flex items-center justify-center">
+                        <Plus className="w-5 h-5 text-cyan-400" />
+                      </div>
+                      <span className="font-semibold text-xs">Add site</span>
+                    </button>
                   </div>
                 </div>
-
-                {/* Search Results Container */}
-                <div className="w-full max-w-4xl mx-auto space-y-4">
-                  {searchLoading ? (
-                    <div className="space-y-4 pt-2">
-                      <div className="text-xs font-mono text-cyan-400 animate-pulse flex items-center gap-2">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Scanning and verifying secure web results...</span>
-                      </div>
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/80 space-y-2 animate-pulse">
-                          <div className="h-4 bg-slate-800 rounded w-1/3"></div>
-                          <div className="h-5 bg-slate-800 rounded w-3/4"></div>
-                          <div className="h-3 bg-slate-800 rounded w-full"></div>
-                          <div className="h-3 bg-slate-800 rounded w-2/3"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : searchResults.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="text-xs font-mono text-slate-400 flex items-center justify-between border-b border-slate-800/80 pb-2">
-                        <span>
-                          Found <strong className="text-cyan-300 font-bold">{searchResults.length}</strong> verified safe web results
-                        </span>
-                        <span className="text-slate-500 hidden sm:inline">
-                          Filtered for malicious redirects & popups
-                        </span>
-                      </div>
-
-                      {searchResults.map((item, idx) => (
-                        <div
-                          key={`${item.url}-${idx}`}
-                          className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-cyan-500/40 hover:bg-slate-900 transition-all shadow-sm group space-y-2"
-                        >
-                          {/* Domain & Security Badges Header */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-                            <div className="flex items-center gap-2 truncate">
-                              <div className="w-5 h-5 rounded-md bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
-                                <Globe className="w-3 h-3" />
-                              </div>
-                              <span className="text-slate-300 font-semibold truncate">{item.domain}</span>
-                              <span className="text-slate-600">·</span>
-                              <span className="text-emerald-400 text-[10px] bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold">
-                                SSL {item.sslGrade}
-                              </span>
-                              <span className="text-cyan-400 text-[10px] bg-cyan-950/80 border border-cyan-500/30 px-1.5 py-0.5 rounded font-bold">
-                                Score {item.securityScore}/100
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleNavigate(item.url, false, false)}
-                                className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 transition-colors text-xs font-mono flex items-center gap-1 cursor-pointer"
-                              >
-                                <span>Visit Site</span>
-                                <ExternalLink className="w-3 h-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleNavigate(item.url, true, false)}
-                                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
-                                title="Open in new tab"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Result Title */}
-                          <h3
-                            onClick={() => handleNavigate(item.url, false, false)}
-                            className="text-base font-bold text-cyan-300 hover:text-cyan-200 group-hover:underline cursor-pointer leading-snug"
-                          >
-                            {item.title}
-                          </h3>
-
-                          {/* URL Display */}
-                          <div className="text-xs text-slate-400 font-mono truncate">
-                            {item.url}
-                          </div>
-
-                          {/* Snippet Description */}
-                          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-                            {item.snippet}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    /* Empty Search Fallback */
-                    <div className="p-8 text-center space-y-4 rounded-2xl bg-slate-900/40 border border-slate-800">
-                      <Search className="w-10 h-10 text-cyan-400 mx-auto opacity-70" />
-                      <div className="space-y-1">
-                        <h3 className="text-base font-bold text-slate-100">No Direct Results Found</h3>
-                        <p className="text-xs text-slate-400 font-mono">
-                          Try searching with different keywords or launch directly with top safe search engines:
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                        {[
-                          { name: 'DuckDuckGo Safe', url: `https://duckduckgo.com/?q=${encodeURIComponent(searchQueryInput)}` },
-                          { name: 'Wikipedia', url: `https://en.wikipedia.org/wiki/${encodeURIComponent(searchQueryInput)}` },
-                          { name: 'GitHub Code', url: `https://github.com/search?q=${encodeURIComponent(searchQueryInput)}` },
-                          { name: 'YouTube Video', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQueryInput)}` },
-                        ].map((engine) => (
-                          <button
-                            key={engine.name}
-                            type="button"
-                            onClick={() => handleNavigate(engine.url, false, false)}
-                            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-mono cursor-pointer transition-colors"
-                          >
-                            {engine.name} →
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
+              </div>) : (
               /* =========================================================================
                  REAL WEB VIEWPORT (PROXIED IFRAME WITH IN-PAGE CLICK INTERCEPTION)
                  ========================================================================= */
@@ -3637,6 +3593,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* Optional Gemini API Key Configuration Modal */}
@@ -3947,6 +3904,164 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         onContinueAsGuest={handleConfirmGuest}
         onLoginWithGmail={handleConfirmGmail}
       />
+
+      {/* Chrome & Opera Native Tab Right-Click Context Menu */}
+      {tabContextMenu && (
+        <div
+          className="tab-context-menu fixed z-50 min-w-[220px] bg-[#1a1d24]/95 backdrop-blur-xl border border-slate-700/80 rounded-xl shadow-2xl py-1.5 text-xs font-sans text-slate-200 select-none animate-in fade-in zoom-in-95 duration-100"
+          style={{
+            left: Math.min(tabContextMenu.x, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 230),
+            top: Math.min(tabContextMenu.y, (typeof window !== 'undefined' ? window.innerHeight : 800) - 310),
+          }}
+        >
+          <button
+            onClick={() => {
+              handleCreateNewTab();
+              setTabContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-cyan-500/20 hover:text-cyan-200 transition-colors cursor-pointer text-left"
+          >
+            <Plus className="w-3.5 h-3.5 text-slate-400" />
+            <span>New tab to the right</span>
+            <span className="ml-auto text-[10px] text-slate-500 font-mono">Ctrl+T</span>
+          </button>
+          <button
+            onClick={() => handleDuplicateTab(tabContextMenu.tabId)}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-cyan-500/20 hover:text-cyan-200 transition-colors cursor-pointer text-left"
+          >
+            <Copy className="w-3.5 h-3.5 text-slate-400" />
+            <span>Duplicate tab</span>
+          </button>
+          <button
+            onClick={() => handleTogglePinTab(tabContextMenu.tabId)}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-cyan-500/20 hover:text-cyan-200 transition-colors cursor-pointer text-left"
+          >
+            <Pin className="w-3.5 h-3.5 text-amber-400" />
+            <span>{tabs.find((t) => t.id === tabContextMenu.tabId)?.isPinned ? 'Unpin tab' : 'Pin tab'}</span>
+          </button>
+          <button
+            onClick={() => handleToggleMuteTab(tabContextMenu.tabId)}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-cyan-500/20 hover:text-cyan-200 transition-colors cursor-pointer text-left"
+          >
+            {tabs.find((t) => t.id === tabContextMenu.tabId)?.isMuted ? (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Unmute site</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                <span>Mute site</span>
+              </>
+            )}
+          </button>
+          <div className="my-1 border-t border-slate-700/60" />
+          <button
+            onClick={() => {
+              handleCloseTab({ stopPropagation: () => {} } as any, tabContextMenu.tabId);
+              setTabContextMenu(null);
+            }}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-rose-500/20 hover:text-rose-200 transition-colors cursor-pointer text-left"
+          >
+            <X className="w-3.5 h-3.5 text-rose-400" />
+            <span>Close tab</span>
+            <span className="ml-auto text-[10px] text-slate-500 font-mono">Ctrl+W</span>
+          </button>
+          <button
+            onClick={() => handleCloseOtherTabs(tabContextMenu.tabId)}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-rose-500/20 hover:text-rose-200 transition-colors cursor-pointer text-left"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+            <span>Close other tabs</span>
+          </button>
+          <button
+            onClick={() => handleCloseTabsToRight(tabContextMenu.tabId)}
+            className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-rose-500/20 hover:text-rose-200 transition-colors cursor-pointer text-left"
+          >
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            <span>Close tabs to the right</span>
+          </button>
+          {recentlyClosedTabs.length > 0 && (
+            <>
+              <div className="my-1 border-t border-slate-700/60" />
+              <button
+                onClick={handleReopenLastClosedTab}
+                className="w-full px-3 py-1.5 flex items-center gap-2.5 hover:bg-cyan-500/20 hover:text-cyan-200 transition-colors cursor-pointer text-left"
+              >
+                <History className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Reopen closed tab</span>
+                <span className="ml-auto text-[10px] text-slate-500 font-mono">Ctrl+Shift+T</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Speed Dial Add Shortcut Modal */}
+      {showAddShortcutModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddShortcutModal(false);
+          }}
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-cyan-400" />
+                <span>Add Speed Dial Shortcut</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddShortcutModal(false)}
+                className="p-1 rounded text-slate-400 hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleAddShortcut} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-mono">Site Name</label>
+                <input
+                  type="text"
+                  value={newShortcutTitle}
+                  onChange={(e) => setNewShortcutTitle(e.target.value)}
+                  placeholder="e.g. YouTube, GitHub, Twitter"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 mb-1 font-mono">URL Address</label>
+                <input
+                  type="text"
+                  required
+                  value={newShortcutUrl}
+                  onChange={(e) => setNewShortcutUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddShortcutModal(false)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
+                >
+                  Save Shortcut
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
