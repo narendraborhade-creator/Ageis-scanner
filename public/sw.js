@@ -1,10 +1,10 @@
 // Aegis 3D Safe Browser - Core Service Worker
-// Version: 1.1.0
+// Version: 1.2.0 (v3 Cache)
 // Caches essential static assets and the core browser shell for offline execution
 
-const SHELL_CACHE_NAME = 'aegis-shell-v2';
-const STATIC_CACHE_NAME = 'aegis-static-v2';
-const FONT_CACHE_NAME = 'aegis-fonts-v2';
+const SHELL_CACHE_NAME = 'aegis-shell-v3';
+const STATIC_CACHE_NAME = 'aegis-static-v3';
+const FONT_CACHE_NAME = 'aegis-fonts-v3';
 
 const CORE_SHELL_ASSETS = [
   '/',
@@ -56,6 +56,16 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // CRITICAL: NEVER intercept /api/ requests or any proxy URL!
+  // Always let the network handle /api/ and proxy calls directly!
+  if (
+    url.pathname.startsWith('/api/') ||
+    request.url.includes('/api/proxy') ||
+    url.searchParams.has('url')
+  ) {
+    return;
+  }
+
   // Skip non-GET requests
   if (request.method !== 'GET') {
     return;
@@ -80,7 +90,7 @@ self.addEventListener('fetch', (event) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Fallback to cached index.html or root
+          // Fallback to cached index.html only for top-level navigation
           return (await caches.match('/index.html')) || (await caches.match('/'));
         })
     );
@@ -134,33 +144,11 @@ self.addEventListener('fetch', (event) => {
               return networkResponse;
             })
             .catch(() => {
-              // Network failed; will return cachedResponse if present
               return cachedResponse;
             });
 
           return cachedResponse || fetchPromise;
         });
-      })
-    );
-    return;
-  }
-
-  // 4. API Endpoints: Network-first with graceful offline response
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(
-          JSON.stringify({
-            offline: true,
-            status: 'offline',
-            message: 'Aegis 3D Safe Browser is in offline mode. Core browser shell, local sandboxing, and cached threat heuristics remain active.',
-            timestamp: new Date().toISOString(),
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
       })
     );
     return;

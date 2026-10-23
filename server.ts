@@ -1449,19 +1449,18 @@ async function startServer() {
   // Auto-resolve any relative sub-resources (images, css, scripts) or links
   // originating from inside a proxied iframe so they never leak into the SPA root
   app.use((req, res, next) => {
+    // Only Vite dev internals and the explicit proxy API endpoint skip referer interception
     if (
-      req.path.startsWith('/api/') ||
+      req.path === '/api/proxy' ||
       req.path.startsWith('/@') ||
       req.path.startsWith('/node_modules') ||
-      req.path.startsWith('/src/') ||
-      req.path === '/' ||
-      req.path === '/index.html' ||
-      req.path === '/favicon.ico' ||
-      req.path.startsWith('/dist')
+      req.path.startsWith('/src/')
     ) {
       return next();
     }
 
+    // If this request originates from inside a proxied iframe, resolve against the upstream site
+    // and NEVER serve the top-level SPA index.html!
     const referer = (req.headers['referer'] as string) || '';
     if (referer.includes('/api/proxy?url=')) {
       try {
@@ -1472,6 +1471,16 @@ async function startServer() {
           return res.redirect(`/api/proxy?url=${encodeURIComponent(resolved)}`);
         }
       } catch {}
+    }
+
+    if (
+      req.path.startsWith('/api/') ||
+      req.path === '/' ||
+      req.path === '/index.html' ||
+      req.path === '/favicon.ico' ||
+      req.path.startsWith('/dist')
+    ) {
+      return next();
     }
 
     next();

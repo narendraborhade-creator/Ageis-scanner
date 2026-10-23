@@ -699,6 +699,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         return;
       }
 
+      // 1b. External Window Dispatch
+      if (e.data && e.data.type === 'AEGIS_OPEN_EXTERNAL') {
+        window.open(activeTab.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
       // 2. Navigation events (links, forms, window.open, SPA history)
       if (e.data && e.data.type === 'AEGIS_NAVIGATE' && typeof e.data.url === 'string') {
         const targetUrl = e.data.url.trim();
