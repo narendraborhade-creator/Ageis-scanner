@@ -108,6 +108,7 @@ import { PasswordVaultManager } from './PasswordVaultManager';
 import { ExtensionExportView } from './ExtensionExportView';
 import { AboutUsView } from './AboutUsView';
 import { SecurityApisHubView } from './SecurityApisHubView';
+import { ChromiumDepotToolsView } from './ChromiumDepotToolsView';
 
 function parseYouTubeUrl(url: string) {
   try {
@@ -141,12 +142,13 @@ function parseYouTubeUrl(url: string) {
 }
 
 export type ToolTabId =
+  | 'depot-tools'
+  | 'security-apis'
   | '3d-scanner'
   | 'dns'
   | 'compare'
   | 'threat-shield'
   | 'analytics'
-  | 'security-apis'
   | 'science'
   | 'ai-copilot'
   | 'vault'
@@ -966,6 +968,51 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     let target = rawUrl.trim();
     if (!target) return;
 
+    // Internal Browser Settings & Tools Navigation
+    const lower = target.toLowerCase();
+    if (lower === 'aegis://settings' || lower === 'chrome://settings') {
+      setActiveSidebar('tools');
+      setActiveToolTab('settings');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://depot-tools' || lower === 'aegis://flags' || lower === 'chrome://flags' || lower === 'depot-tools') {
+      setActiveSidebar('tools');
+      setActiveToolTab('depot-tools');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://security' || lower === 'aegis://apis' || lower === 'security-apis') {
+      setActiveSidebar('tools');
+      setActiveToolTab('security-apis');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://dns') {
+      setActiveSidebar('tools');
+      setActiveToolTab('dns');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://compare') {
+      setActiveSidebar('tools');
+      setActiveToolTab('compare');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://vault') {
+      setActiveSidebar('tools');
+      setActiveToolTab('vault');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://extensions' || lower === 'chrome://extensions') {
+      setActiveSidebar('tools');
+      setActiveToolTab('extensions');
+      setIsScanning(false);
+      return;
+    }
+
     const sInfo = parseSearchUrl(target);
     if (!sInfo.isSearch && !target.startsWith('aegis://')) {
       const isExplicitUrl = /^https?:\/\//i.test(target) ||
@@ -1075,6 +1122,51 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const handleNavigate = (rawUrl: string, inNewTab = false, openExternal = false) => {
     let target = rawUrl.trim();
     if (!target) return;
+
+    // Internal Browser Settings & Tools Navigation
+    const lower = target.toLowerCase();
+    if (lower === 'aegis://settings' || lower === 'chrome://settings') {
+      setActiveSidebar('tools');
+      setActiveToolTab('settings');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://depot-tools' || lower === 'aegis://flags' || lower === 'chrome://flags' || lower === 'depot-tools') {
+      setActiveSidebar('tools');
+      setActiveToolTab('depot-tools');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://security' || lower === 'aegis://apis' || lower === 'security-apis') {
+      setActiveSidebar('tools');
+      setActiveToolTab('security-apis');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://dns') {
+      setActiveSidebar('tools');
+      setActiveToolTab('dns');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://compare') {
+      setActiveSidebar('tools');
+      setActiveToolTab('compare');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://vault') {
+      setActiveSidebar('tools');
+      setActiveToolTab('vault');
+      setIsScanning(false);
+      return;
+    }
+    if (lower === 'aegis://extensions' || lower === 'chrome://extensions') {
+      setActiveSidebar('tools');
+      setActiveToolTab('extensions');
+      setIsScanning(false);
+      return;
+    }
     executeNavigate(target, inNewTab, openExternal);
   };
 
@@ -1703,7 +1795,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               <span className="hidden sm:inline">Extensions</span>
             </button>
 
-            {/* Tools & Settings Side Panel Button (Houses all 11 tools) */}
+            {/* Tools & Settings Side Panel Button (Houses all 12 tools) */}
             <button
               type="button"
               onClick={() => {
@@ -1714,12 +1806,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold'
                   : 'bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border-cyan-500/40'
               }`}
-              title="Aegis Tools & Settings (Security APIs, DNS Scanner, Comparator, 3D Mesh, Threat Shield, Analytics, Vault, Science)"
+              title="Aegis Tools & Settings (Chromium Depot Tools, jaegeral/security-apis, DNS Scanner, Comparator, 3D Mesh, Threat Shield, Analytics, Vault, Science)"
             >
               <Settings className="w-3.5 h-3.5 text-cyan-400" />
               <span>Tools & Settings</span>
               <span className="text-[10px] bg-cyan-400 text-slate-950 font-bold px-1.5 py-0.2 rounded-full">
-                11
+                12
               </span>
             </button>
 
@@ -2614,11 +2706,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     <h3 className="text-xs font-bold font-mono text-slate-100 flex items-center gap-1.5">
                       <span>Aegis Tools & Settings</span>
                       <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                        11 Tools
+                        12 Features
                       </span>
                     </h3>
                     <p className="text-[10px] text-slate-400 font-mono truncate">
-                      Security scanners, jaegeral/security-apis, AI copilot & extensions
+                      Chromium depot_tools, jaegeral/security-apis, 3D scanner, DoH, comparator & AI
                     </p>
                   </div>
                 </div>
@@ -2649,17 +2741,18 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               {/* Tool Navigation Tabs Ribbon */}
               <div className="px-2 py-1.5 bg-[#070c18] border-b border-slate-800 flex items-center gap-1 overflow-x-auto scrollbar-none shrink-0 select-none">
                 {[
+                  { id: 'depot-tools', label: 'Chromium / Depot Tools', icon: Cpu, color: 'text-cyan-400' },
+                  { id: 'security-apis', label: 'Security APIs Hub', icon: Database, color: 'text-indigo-400' },
                   { id: '3d-scanner', label: '3D Mesh', icon: Shield, color: 'text-cyan-400' },
                   { id: 'dns', label: 'DNS Scanner', icon: Globe, color: 'text-emerald-400' },
                   { id: 'compare', label: 'Comparator', icon: GitCompare, color: 'text-blue-400' },
                   { id: 'threat-shield', label: 'Threat Shield', icon: ShieldAlert, color: 'text-rose-400' },
-                  { id: 'security-apis', label: 'Security APIs', icon: Database, color: 'text-cyan-400' },
                   { id: 'analytics', label: 'Analytics', icon: BarChart2, color: 'text-teal-400' },
                   { id: 'science', label: 'Science Search', icon: BookOpen, color: 'text-purple-400' },
                   { id: 'ai-copilot', label: 'AI Copilot', icon: Bot, color: 'text-cyan-300' },
                   { id: 'vault', label: 'Password Vault', icon: Key, color: 'text-amber-400' },
                   { id: 'extensions', label: 'Extensions', icon: Puzzle, color: 'text-indigo-400' },
-                  { id: 'settings', label: 'Settings', icon: Sliders, color: 'text-slate-300' },
+                  { id: 'settings', label: 'Preferences & Flags', icon: Sliders, color: 'text-slate-300' },
                   { id: 'about', label: 'About Team', icon: Info, color: 'text-cyan-400' },
                 ].map((t) => {
                   const Icon = t.icon;
@@ -2684,6 +2777,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
               {/* Tool Body Container with Smooth Scroll */}
               <div className="flex-1 overflow-y-auto scrollbar-thin p-3 sm:p-4 bg-slate-950/70">
+                {activeToolTab === 'depot-tools' && (
+                  <ChromiumDepotToolsView />
+                )}
+
                 {activeToolTab === '3d-scanner' && (
                   <div className="space-y-4">
                     <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-3">

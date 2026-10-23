@@ -396,6 +396,62 @@ export async function querySecurityIntel(targetUrl: string): Promise<ThreatIntel
   };
 }
 
+export interface UserSecurityApiKey {
+  serviceId: string;
+  serviceName: string;
+  apiKey: string;
+  lastUpdated: number;
+}
+
+const SECURITY_API_KEYS_STORAGE = 'aegis_security_user_api_keys';
+
+export function getStoredSecurityApiKeys(): UserSecurityApiKey[] {
+  try {
+    const raw = localStorage.getItem(SECURITY_API_KEYS_STORAGE);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function saveSecurityApiKey(serviceId: string, serviceName: string, apiKey: string): UserSecurityApiKey[] {
+  const current = getStoredSecurityApiKeys().filter((k) => k.serviceId !== serviceId);
+  if (apiKey.trim()) {
+    current.push({
+      serviceId,
+      serviceName,
+      apiKey: apiKey.trim(),
+      lastUpdated: Date.now(),
+    });
+  }
+  try {
+    localStorage.setItem(SECURITY_API_KEYS_STORAGE, JSON.stringify(current));
+  } catch {}
+  return current;
+}
+
+export async function queryUrlhausDatabase(queryUrlOrDomain: string): Promise<any> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const form = new URLSearchParams();
+    form.append('url', queryUrlOrDomain);
+    const res = await fetch('https://urlhaus-api.abuse.ch/v1/url/', {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('[Security APIs] URLhaus query error:', e);
+  }
+  return null;
+}
+
 /**
  * Filter security APIs by search term and category
  */

@@ -33,9 +33,13 @@ import {
   lookupCveRecord,
   querySecurityIntel,
   filterSecurityApis,
+  getStoredSecurityApiKeys,
+  saveSecurityApiKey,
+  queryUrlhausDatabase,
   CveRecord,
   ThreatIntelligenceReport,
   SecurityApiEntry,
+  UserSecurityApiKey,
 } from '../services/securityApisService';
 
 interface SecurityApisHubViewProps {
@@ -47,7 +51,7 @@ export const SecurityApisHubView: React.FC<SecurityApisHubViewProps> = ({
   onNavigateToBrowserUrl,
   currentBrowserDomain = 'cloudflare.com',
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'apis-catalog' | 'cve-lookup' | 'threat-intel'>('apis-catalog');
+  const [activeSubTab, setActiveSubTab] = useState<'apis-catalog' | 'cve-lookup' | 'threat-intel' | 'api-keys'>('apis-catalog');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -60,6 +64,12 @@ export const SecurityApisHubView: React.FC<SecurityApisHubViewProps> = ({
   const [intelTarget, setIntelTarget] = useState(currentBrowserDomain !== 'aegis.local' ? currentBrowserDomain : 'cloudflare.com');
   const [intelLoading, setIntelLoading] = useState(false);
   const [intelResult, setIntelResult] = useState<ThreatIntelligenceReport | null>(null);
+
+  // API Key Vault State
+  const [apiKeys, setApiKeys] = useState<UserSecurityApiKey[]>(() => getStoredSecurityApiKeys());
+  const [selectedService, setSelectedService] = useState('virustotal');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [keySavedNotice, setKeySavedNotice] = useState(false);
 
   // Initialize initial lookups on mount
   useEffect(() => {
@@ -130,6 +140,7 @@ export const SecurityApisHubView: React.FC<SecurityApisHubViewProps> = ({
             { id: 'apis-catalog', label: `Public Security APIs (${SECURITY_APIS_CATALOG.length})`, icon: Database },
             { id: 'cve-lookup', label: 'Live CVE & Vuln Search (CIRCL)', icon: Bug },
             { id: 'threat-intel', label: 'Threat Intel & URLhaus Sandbox', icon: Radio },
+            { id: 'api-keys', label: 'API Keys Vault', icon: Key },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
@@ -419,6 +430,109 @@ export const SecurityApisHubView: React.FC<SecurityApisHubViewProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 4. API KEYS VAULT VIEW */}
+      {activeSubTab === 'api-keys' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-amber-400" />
+                <h4 className="text-sm font-bold text-slate-100">Cybersecurity API Credentials Vault</h4>
+              </div>
+              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">
+                Local Zero-Knowledge Storage
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+              Store your free API keys for services listed in <strong className="text-cyan-300">jaegeral/security-apis</strong>.
+              Keys are strictly saved locally in your browser and used to power deep threat lookups.
+            </p>
+
+            {/* Key Input Form */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
+              <select
+                value={selectedService}
+                onChange={(e) => setSelectedService(e.target.value)}
+                className="bg-black/60 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:border-cyan-400 focus:outline-none"
+              >
+                <option value="virustotal">VirusTotal v3 API</option>
+                <option value="alienvault-otx">AlienVault OTX Key</option>
+                <option value="shodan">Shodan API Key</option>
+                <option value="abuseipdb">AbuseIPDB Key</option>
+                <option value="vulners">Vulners Database Key</option>
+                <option value="greynoise">GreyNoise API Key</option>
+              </select>
+
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="Enter API Key / Token..."
+                className="bg-black/60 border border-slate-700 text-slate-100 text-xs rounded-xl p-2.5 focus:border-cyan-400 focus:outline-none font-mono"
+              />
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (apiKeyInput.trim()) {
+                    const updated = saveSecurityApiKey(selectedService, selectedService.toUpperCase(), apiKeyInput);
+                    setApiKeys(updated);
+                    setApiKeyInput('');
+                    setKeySavedNotice(true);
+                    setTimeout(() => setKeySavedNotice(false), 2500);
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>Save Key to Vault</span>
+              </button>
+            </div>
+
+            {keySavedNotice && (
+              <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>API Key securely saved to local browser vault!</span>
+              </div>
+            )}
+          </div>
+
+          {/* Stored Keys List */}
+          <div className="space-y-2">
+            <h5 className="text-xs font-bold text-slate-300">Configured API Services ({apiKeys.length})</h5>
+            {apiKeys.length === 0 ? (
+              <div className="p-6 text-center rounded-xl bg-slate-900/40 border border-slate-800 text-slate-500 text-xs">
+                No custom API keys added yet. The browser automatically uses free public endpoints for CIRCL, Defend.network, and Quad9.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {apiKeys.map((k) => (
+                  <div key={k.serviceId} className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-cyan-300">{k.serviceName}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        Key: ••••••••••••••••{k.apiKey.slice(-4)} · Updated: {new Date(k.lastUpdated).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = saveSecurityApiKey(k.serviceId, k.serviceName, '');
+                        setApiKeys(updated);
+                      }}
+                      className="px-2.5 py-1 text-[11px] rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
