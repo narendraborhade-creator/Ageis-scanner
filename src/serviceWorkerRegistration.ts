@@ -34,94 +34,25 @@ export function subscribeServiceWorkerStatus(callback: StatusCallback): () => vo
 
 export function registerServiceWorker(): void {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-    console.log('[Aegis SW] Service Worker not supported in this environment');
     return;
   }
 
-  // On localhost / development, unregister any existing service worker and purge caches
-  // so that proxying and embedded iframes are never intercepted by cached fallbacks
-  const isLocalhost = Boolean(
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '[::1]' ||
-    window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/) ||
-    import.meta.env?.DEV
-  );
+  // Actively unregister all existing service workers and purge caches
+  // to prevent zombie workers from serving stale index.html or intercepting proxy navigation
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+      console.log('[Aegis SW] Unregistered legacy service worker');
+    }
+  });
 
-  if (isLocalhost) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const registration of registrations) {
-        registration.unregister();
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      for (const key of keys) {
+        caches.delete(key);
       }
     });
-    if ('caches' in window) {
-      caches.keys().then((keys) => {
-        for (const key of keys) {
-          caches.delete(key);
-        }
-      });
-    }
-    return;
   }
-
-  // Register when the window is loaded to prevent competing with initial render
-  window.addEventListener('load', async () => {
-    try {
-      // Register our core service worker which caches the browser shell and static assets
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/',
-      });
-
-      currentStatus = {
-        ...currentStatus,
-        isRegistered: true,
-        registration,
-      };
-      notifyListeners();
-
-      console.log('[Aegis SW] Service Worker registered with scope:', registration.scope);
-
-      // Actively query for updated worker and cache busting
-      try {
-        await registration.update();
-      } catch (e) {
-        // Ignore background network errors
-      }
-
-      // Check if this registration is already active and caching
-      if (registration.active) {
-        currentStatus.isOfflineReady = true;
-        notifyListeners();
-      }
-
-      // Check for updates
-      registration.addEventListener('updatefound', () => {
-        const installingWorker = registration.installing;
-        if (!installingWorker) return;
-
-        installingWorker.addEventListener('statechange', () => {
-          if (installingWorker.state === 'installed') {
-            if (navigator.serviceWorker.controller) {
-              console.log('[Aegis SW] New content available; please refresh.');
-              currentStatus.hasUpdate = true;
-            } else {
-              console.log('[Aegis SW] Content cached for offline use.');
-              currentStatus.isOfflineReady = true;
-            }
-            notifyListeners();
-          }
-        });
-      });
-    } catch (error) {
-      console.warn('[Aegis SW] Service worker registration encountered an issue:', error);
-    }
-  });
-
-  // Track controlling service worker changes
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[Aegis SW] New service worker took control');
-    currentStatus.isOfflineReady = true;
-    notifyListeners();
-  });
 }
 
 export async function clearAppCacheAndReload(): Promise<void> {

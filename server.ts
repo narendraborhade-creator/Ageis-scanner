@@ -506,6 +506,50 @@ app.all('/api/proxy', async (req, res) => {
     }
   }, true);
 
+  // Universal In-Browser AJAX/Fetch Proxy Hook:
+  // Automatically proxies client-side AJAX requests (fetch & XMLHttpRequest) through /api/proxy
+  // so that single-page-apps, video feeds, and search results do not fail with CORS errors!
+  if (window.fetch) {
+    var originalFetch = window.fetch;
+    window.fetch = function(resource, init) {
+      try {
+        var targetUrl = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
+        if (targetUrl && !targetUrl.startsWith('data:') && !targetUrl.startsWith('blob:') && !targetUrl.includes('/api/proxy')) {
+          var fullTarget = resolveUrl(targetUrl);
+          var proxied = '/api/proxy?url=' + encodeURIComponent(fullTarget);
+          if (typeof resource === 'string') {
+            return originalFetch(proxied, init);
+          } else if (resource && typeof resource === 'object' && resource.url) {
+            return originalFetch(new Request(proxied, init || resource));
+          }
+        }
+      } catch (err) {}
+      return originalFetch.apply(this, arguments);
+    };
+  }
+
+  if (window.XMLHttpRequest) {
+    var originalXhrOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+      try {
+        if (url && typeof url === 'string' && !url.startsWith('data:') && !url.startsWith('blob:') && !url.includes('/api/proxy')) {
+          var fullTarget = resolveUrl(url);
+          url = '/api/proxy?url=' + encodeURIComponent(fullTarget);
+        }
+      } catch (err) {}
+      return originalXhrOpen.call(this, method, url, async !== false, user, password);
+    };
+  }
+
+  // Prevent embedded pages from crashing on or hijacking the parent service worker
+  if (navigator.serviceWorker) {
+    try {
+      navigator.serviceWorker.register = function() {
+        return Promise.reject(new Error('Service workers disabled in sandbox'));
+      };
+    } catch (e) {}
+  }
+
   // Window.open interceptor -> dispatches as a clean new tab
   window.open = function(url) {
     if (url) {
