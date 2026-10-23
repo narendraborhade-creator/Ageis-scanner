@@ -11,3 +11,8 @@
 **Vulnerability:** Found a DOM-based Cross-Site Scripting (XSS) vulnerability in `src/components/ExtensionExportView.tsx`. The template string used to export `browser.js` contained insecure DOM manipulation via `innerHTML` where an untrusted variable `tab.title` was concatenated directly.
 **Learning:** Even generated code in an export or template needs strict DOM-based XSS protections. Vulnerabilities can be shipped to users via exported extensions if string concatenation is used to build DOM elements from potentially unsafe input.
 **Prevention:** Instead of generating JS code that uses `innerHTML` with string concatenation, the template must use secure DOM creation methods (like `document.createElement` and `.textContent`) when handling any user input, such as `tab.title`.
+
+## 2025-02-28 - SSRF Vulnerability in Proxy Endpoint
+**Vulnerability:** The `/api/proxy` endpoint had custom SSRF checking logic that failed to account for alternate loopback representations (like `127.0.0.2`, `0.0.0.0`, and IPv6 `[::1]`). This could allow attackers to bypass the check and access internal network services.
+**Learning:** Implementing manual, ad-hoc security checks for URLs across different endpoints often leads to inconsistencies and bypasses. Centralized validation logic is essential for comprehensive security.
+**Prevention:** Replace ad-hoc validation with a central helper function (like `isAllowedUrl`) that thoroughly checks against all known local, private, and loopback patterns, and ensure this function is used consistently across all endpoints that make outbound requests.
