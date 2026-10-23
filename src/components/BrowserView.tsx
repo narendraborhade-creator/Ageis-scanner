@@ -181,7 +181,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'freeCodeCamp.org and CS50',
     views: '720K views',
     published: 'University Lecture',
-    thumbnail: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/9HOpanT0GRs/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=9HOpanT0GRs',
   },
   {
@@ -190,7 +190,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'IBM Technology',
     views: '1.1M views',
     published: 'Enterprise Security',
-    thumbnail: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/jq_LZ1RFPfU/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=jq_LZ1RFPfU',
   },
   {
@@ -199,7 +199,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'Quantum Computing Lab',
     views: '4.2M views',
     published: 'Cybersecurity & Physics',
-    thumbnail: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/M576WGiDBdQ/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=M576WGiDBdQ',
   },
   {
@@ -208,16 +208,34 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'SpaceX & Aerospace',
     views: '18M views',
     published: 'Aerospace Engineering',
-    thumbnail: 'https://images.unsplash.com/photo-1517976487502-5f690246a48c?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/L_LUpnjgPso/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
   },
   {
+    id: '4b4bYMW6vD8',
+    title: 'How The Internet Works - Computer Networks & Security',
+    channel: 'Computerphile',
+    views: '2.4M views',
+    published: 'Computer Systems',
+    thumbnail: 'https://i.ytimg.com/vi/4b4bYMW6vD8/hq720.jpg',
+    url: 'https://www.youtube.com/watch?v=4b4bYMW6vD8',
+  },
+  {
+    id: '_DVVNOGYtmU',
+    title: 'Google Cybersecurity Professional Certificate Overview',
+    channel: 'Grow with Google',
+    views: '5.3M views',
+    published: 'Google Cloud & Security',
+    thumbnail: 'https://i.ytimg.com/vi/_DVVNOGYtmU/hq720.jpg',
+    url: 'https://www.youtube.com/watch?v=_DVVNOGYtmU',
+  },
+  {
     id: 'dQw4w9WgXcQ',
-    title: 'Rick Astley - Never Gonna Give You Up (Official Music Video)',
+    title: 'Rick Astley - Never Gonna Give You Up (Official Music Video 4K)',
     channel: 'Rick Astley',
     views: '1.5B views',
     published: 'Official 4K Remaster',
-    thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   },
   {
@@ -226,7 +244,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'jawed',
     views: '315M views',
     published: 'Historical Archive',
-    thumbnail: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/jNQXAC9IVRw/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
   },
   {
@@ -235,7 +253,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'Luis Fonsi',
     views: '8.4B views',
     published: 'Music Video',
-    thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
   },
   {
@@ -244,8 +262,26 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'OfficialPsy',
     views: '5.1B views',
     published: 'K-Pop Sensation',
-    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=640&q=80',
+    thumbnail: 'https://i.ytimg.com/vi/9bZkp7q19f0/hq720.jpg',
     url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
+  },
+  {
+    id: 'bZ6hQoA16J0',
+    title: 'Three.js 3D Web Graphics Crash Course - Full Tutorial',
+    channel: 'freeCodeCamp.org',
+    views: '890K views',
+    published: 'Web Graphics & WebGL',
+    thumbnail: 'https://i.ytimg.com/vi/bZ6hQoA16J0/hq720.jpg',
+    url: 'https://www.youtube.com/watch?v=bZ6hQoA16J0',
+  },
+  {
+    id: 'kUMe1FH4CHE',
+    title: 'Learn HTML & CSS in 2026 - Complete Beginner to Pro Course',
+    channel: 'SuperSimpleDev',
+    views: '11M views',
+    published: 'Web Development',
+    thumbnail: 'https://i.ytimg.com/vi/kUMe1FH4CHE/hq720.jpg',
+    url: 'https://www.youtube.com/watch?v=kUMe1FH4CHE',
   },
 ];
 
@@ -447,6 +483,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   } | null>(null);
   const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
   const [urlInputValue, setUrlInputValue] = useState<string>('');
+  const [startPageSearchInput, setStartPageSearchInput] = useState<string>('');
 
   // Real In-Browser Rendering & YouTube States
   const [refreshKey, setRefreshKey] = useState<number>(0);
@@ -649,7 +686,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   useEffect(() => {
     const current = tabs.find((t) => t.id === activeTabId) || tabs[0];
     if (current && !isEditingUrl) {
-      setUrlInputValue(current.url);
+      setUrlInputValue(current.url === 'aegis://newtab' ? '' : current.url);
     }
   }, [activeTabId, tabs, isEditingUrl]);
 
@@ -969,6 +1006,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     let target = rawUrl.trim();
     if (!target) return;
 
+    // Strip accidental 'aegis://newtab' prefix if entered
+    if (target.startsWith('aegis://newtab') && target.length > 'aegis://newtab'.length) {
+      target = target.replace(/^aegis:\/\/newtab\s*/i, '').trim();
+    }
+    if (!target) target = 'aegis://newtab';
+
     // Internal Browser Settings & Tools Navigation
     const lower = target.toLowerCase();
     if (lower === 'aegis://settings' || lower === 'chrome://settings') {
@@ -1014,14 +1057,23 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       return;
     }
 
+    // YouTube direct resolver
+    const lowerTarget = target.toLowerCase();
+    if (lowerTarget === 'youtube' || lowerTarget === 'youtube.com' || lowerTarget === 'www.youtube.com' || lowerTarget === 'https://youtube.com' || lowerTarget === 'https://www.youtube.com' || lowerTarget === 'http://youtube.com') {
+      target = 'https://www.youtube.com';
+    } else if (lowerTarget.startsWith('youtube ') || lowerTarget.startsWith('yt ')) {
+      const q = target.replace(/^(youtube|yt)\s+/i, '').trim();
+      target = `https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`;
+    }
+
     const sInfo = parseSearchUrl(target);
     if (!sInfo.isSearch && !target.startsWith('aegis://')) {
       const isExplicitUrl = /^https?:\/\//i.test(target) ||
         (!target.includes(' ') && target.includes('.') && !target.endsWith('.') && !target.startsWith('.'));
 
       if (!isExplicitUrl) {
-        if (target.toLowerCase().includes('youtube')) {
-          const query = target.replace(/youtube/gi, '').trim() || 'trending';
+        if (lowerTarget.includes('youtube')) {
+          const query = target.replace(/youtube/gi, '').trim() || 'trending tech';
           target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
         } else {
           target = `aegis://search?q=${encodeURIComponent(target)}`;
@@ -1123,6 +1175,19 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const handleNavigate = (rawUrl: string, inNewTab = false, openExternal = false) => {
     let target = rawUrl.trim();
     if (!target) return;
+
+    if (target.startsWith('aegis://newtab') && target.length > 'aegis://newtab'.length) {
+      target = target.replace(/^aegis:\/\/newtab\s*/i, '').trim();
+    }
+    if (!target) target = 'aegis://newtab';
+
+    const lowerNav = target.toLowerCase();
+    if (lowerNav === 'youtube' || lowerNav === 'youtube.com' || lowerNav === 'www.youtube.com' || lowerNav === 'https://youtube.com' || lowerNav === 'https://www.youtube.com') {
+      target = 'https://www.youtube.com';
+    } else if (lowerNav.startsWith('youtube ') || lowerNav.startsWith('yt ')) {
+      const q = target.replace(/^(youtube|yt)\s+/i, '').trim();
+      target = `https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`;
+    }
 
     // Internal Browser Settings & Tools Navigation
     const lower = target.toLowerCase();
@@ -1456,9 +1521,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const statusMode = activeTab.isQuarantined ? 'threat' : isScanning ? 'scanning' : 'safe';
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* BROWSER WINDOW WITH MULTI-TAB STRIP & DEDICATED SIDEBARS */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Google Chrome Style Tab Strip */}
         <div className="flex items-center px-2 pt-2 bg-slate-950/90 border-b border-slate-800/80 gap-1 overflow-x-auto scrollbar-none select-none">
           {tabs.map((tab) => {
@@ -1689,10 +1754,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               )}
               <input
                 type="text"
-                value={isEditingUrl ? urlInputValue : activeTab.url}
+                value={isEditingUrl ? urlInputValue : (activeTab.url === 'aegis://newtab' ? '' : activeTab.url)}
                 onFocus={() => {
                   setIsEditingUrl(true);
-                  setUrlInputValue(activeTab.url);
+                  setUrlInputValue(activeTab.url === 'aegis://newtab' ? '' : activeTab.url);
                 }}
                 onBlur={() => {
                   setTimeout(() => setIsEditingUrl(false), 250);
@@ -1918,10 +1983,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         </div>
 
         {/* Viewport & Slide-In Sidebars Split Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 min-h-0 overflow-hidden">
           {/* Main Web Viewport Area */}
           <div
-            className={`transition-all duration-300 ${
+            className={`h-full min-h-0 flex flex-col overflow-hidden transition-all duration-300 ${
               activeSidebar === 'tools' && isToolFullscreen
                 ? 'hidden'
                 : activeSidebar === 'tools'
@@ -1976,7 +2041,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </button>
                 </div>
               </div>
-            ) : !isDesktop && ytInfo.isYouTube && ytInfo.videoId ? (
+            ) : ytInfo.isYouTube && ytInfo.videoId ? (
               /* =========================================================================
                  IN-BROWSER YOUTUBE VIDEO PLAYER VIEW
                  ========================================================================= */
@@ -2121,7 +2186,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   </div>
                 </div>
               </div>
-            ) : !isDesktop && ytInfo.isYouTube && !ytInfo.videoId ? (
+            ) : ytInfo.isYouTube && !ytInfo.videoId ? (
               /* =========================================================================
                  IN-BROWSER YOUTUBE PORTAL & SEARCH VIEW
                  ========================================================================= */
@@ -2246,7 +2311,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               /* =========================================================================
                  NEW TAB / 3D SHAPE SCANNER START PAGE
                  ========================================================================= */
-              <div className="relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#030712] via-[#050b18] to-[#030712] overflow-y-auto scrollbar-thin p-4 sm:p-8 space-y-8">
+              <div className="relative w-full h-full flex flex-col items-center justify-start bg-gradient-to-b from-[#030712] via-[#050b18] to-[#030712] overflow-y-auto scrollbar-thin p-4 sm:p-8 space-y-8">
                 {/* 3D Cyber Core & Shape Scanner */}
                 <div className="relative w-full max-w-xl mx-auto flex flex-col items-center">
                   <div className="w-full h-44 sm:h-56 relative rounded-2xl overflow-hidden border border-cyan-500/30 bg-slate-950/60 shadow-[0_0_35px_rgba(6,182,212,0.15)]">
@@ -2280,19 +2345,31 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      const v = (urlInputValue || '').trim();
-                      if (v) handleNavigate(v, false, false);
+                      const v = startPageSearchInput.trim();
+                      if (v) {
+                        handleNavigate(v, false, false);
+                        setStartPageSearchInput('');
+                      }
                     }}
                     className="flex items-center bg-slate-900/90 border border-slate-700 hover:border-cyan-500 focus-within:border-cyan-400 rounded-2xl p-2 shadow-2xl transition-all shadow-cyan-950/20"
                   >
                     <Search className="w-5 h-5 text-cyan-400 ml-3 mr-2 shrink-0" />
                     <input
                       type="text"
-                      value={urlInputValue}
-                      onChange={(e) => setUrlInputValue(e.target.value)}
-                      placeholder="Search the web securely or enter URL..."
+                      value={startPageSearchInput}
+                      onChange={(e) => setStartPageSearchInput(e.target.value)}
+                      placeholder="Search safely or enter URL (e.g. youtube.com, github.com)..."
                       className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1.5"
                     />
+                    {startPageSearchInput && (
+                      <button
+                        type="button"
+                        onClick={() => setStartPageSearchInput('')}
+                        className="p-1 rounded text-slate-400 hover:text-slate-200 mr-1.5 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       type="submit"
                       className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs font-mono cursor-pointer shrink-0 transition-all shadow-md"
@@ -2316,15 +2393,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                           key={item.id}
                           type="button"
                           onClick={() => {
-                            const query = (urlInputValue || '').trim();
-                            if (query) {
-                              if (item.id === 'videos') {
-                                handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, false, false);
-                              } else {
-                                handleNavigate(`aegis://search?q=${encodeURIComponent(query)}&category=${item.id}`, false, false);
-                              }
+                            const query = (startPageSearchInput || '').trim() || (item.id === 'videos' ? 'trending tech' : item.id === 'science' ? 'quantum computing' : 'cybersecurity');
+                            if (item.id === 'videos') {
+                              handleNavigate(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, false, false);
                             } else {
-                              setUrlInputValue(item.id === 'videos' ? 'trending tech' : item.id === 'science' ? 'quantum computing' : 'cybersecurity');
+                              handleNavigate(`aegis://search?q=${encodeURIComponent(query)}&category=${item.id}`, false, false);
                             }
                           }}
                           className="px-2.5 py-1 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 transition-colors flex items-center gap-1.5 cursor-pointer text-[11px]"
@@ -2580,7 +2653,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               /* =========================================================================
                  REAL WEB VIEWPORT (PROXIED IFRAME WITH IN-PAGE CLICK INTERCEPTION)
                  ========================================================================= */
-              <div className="relative w-full h-full flex flex-col bg-slate-950 overflow-hidden min-h-[500px]">
+              <div className="relative w-full h-full flex flex-col bg-slate-950 overflow-hidden min-h-0">
                 {/* Security & Sandbox Status Ribbon */}
                 <div className="px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 text-[11px] font-mono flex items-center justify-between gap-2 shrink-0 select-none">
                   <div className="flex items-center gap-2 truncate">
