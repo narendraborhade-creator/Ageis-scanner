@@ -96,6 +96,11 @@ import {
   Printer,
   ZoomIn,
   ZoomOut,
+  MoreVertical,
+  ChevronRight,
+  ChevronDown,
+  Download,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { CyberScene3D } from './CyberScene3D';
 import { DnsScannerView } from './DnsScannerView';
@@ -110,6 +115,24 @@ import { AboutUsView } from './AboutUsView';
 import { SecurityApisHubView } from './SecurityApisHubView';
 import { ChromiumDepotToolsView } from './ChromiumDepotToolsView';
 import { AegisSettingsHub, SettingsSectionId } from './AegisSettingsHub';
+
+
+export function mapUrlToSection(url: string): SettingsSectionId {
+  const lower = (url || '').toLowerCase();
+  if (lower.includes('depot-tools') || lower.includes('flags')) return 'depot-tools';
+  if (lower.includes('security') || lower.includes('apis')) return 'security-apis';
+  if (lower.includes('3d') || lower.includes('mesh')) return '3d-scanner';
+  if (lower.includes('dns')) return 'dns';
+  if (lower.includes('compare')) return 'compare';
+  if (lower.includes('threat')) return 'threat-shield';
+  if (lower.includes('analytics')) return 'analytics';
+  if (lower.includes('science')) return 'science';
+  if (lower.includes('copilot') || lower.includes('ai')) return 'ai-copilot';
+  if (lower.includes('vault')) return 'vault';
+  if (lower.includes('extension')) return 'extensions';
+  if (lower.includes('version') || lower.includes('about')) return 'about';
+  return 'general';
+}
 
 function parseYouTubeUrl(url: string) {
   try {
@@ -400,7 +423,7 @@ function parseSearchUrl(url: string) {
 const DEFAULT_TABS: BrowserTab[] = [
   {
     id: 'tab-newtab',
-    title: 'Aegis Safe Search',
+    title: 'New Tab',
     url: 'aegis://newtab',
     domain: 'aegis.local',
     isHttps: true,
@@ -487,6 +510,29 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
   // Real In-Browser Rendering & YouTube States
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  // Authentic Chromium Menu, Page Info, and Bookmark Bar States
+  const [showAppMenu, setShowAppMenu] = useState<boolean>(false);
+  const [showMoreToolsMenu, setShowMoreToolsMenu] = useState<boolean>(false);
+  const [showPageInfoModal, setShowPageInfoModal] = useState<boolean>(false);
+  const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
+  const [showBookmarksBar, setShowBookmarksBar] = useState<boolean>(true);
+  const [zoomPercent, setZoomPercent] = useState<number>(100);
+
+  // Outside click listener for chrome menu dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.chrome-menu-anchor')) {
+        setShowAppMenu(false);
+        setShowMoreToolsMenu(false);
+        setShowPageInfoModal(false);
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [show3DScannerModal, setShow3DScannerModal] = useState<boolean>(false);
   const [ytVideos, setYtVideos] = useState<Array<{
     id: string;
@@ -527,6 +573,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const canGoBack = isDesktop
     ? (wvCanGoBack || (activeTab.historyIndex ?? 0) > 0)
     : ((activeTab.historyIndex ?? 0) > 0);
+  
+  const isInternalChromePage =
+    activeTab.url.startsWith('chrome://') ||
+    (activeTab.url.startsWith('aegis://') &&
+     !activeTab.url.startsWith('aegis://newtab') &&
+     !activeTab.url.startsWith('aegis://search'));
+
   const canGoForward = isDesktop
     ? (wvCanGoForward || (activeTab.historyIndex ?? 0) < ((activeTab.historyStack?.length ?? 1) - 1))
     : ((activeTab.historyIndex ?? 0) < ((activeTab.historyStack?.length ?? 1) - 1));
@@ -975,24 +1028,39 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   };
 
   const getCleanTitle = (url: string) => {
-    if (url === 'aegis://newtab') return 'Aegis Safe Search & 3D Core';
+    if (url === 'aegis://newtab') return 'New Tab';
+    const lower = url.toLowerCase();
+    if (lower === 'chrome://settings' || lower === 'aegis://settings') return 'Settings';
+    if (lower === 'chrome://depot-tools' || lower === 'aegis://depot-tools' || lower === 'chrome://flags') return 'Depot Tools Studio';
+    if (lower === 'chrome://security-apis' || lower === 'aegis://security') return 'Security APIs Hub';
+    if (lower === 'chrome://3d-scanner' || lower === 'aegis://3d-scanner') return '3D Security Mesh';
+    if (lower === 'chrome://dns' || lower === 'aegis://dns') return 'DNS Inspector';
+    if (lower === 'chrome://compare' || lower === 'aegis://compare') return 'Website Comparator';
+    if (lower === 'chrome://threats' || lower === 'aegis://threats') return 'Threat Shield';
+    if (lower === 'chrome://analytics' || lower === 'aegis://analytics') return 'Security Analytics';
+    if (lower === 'chrome://science' || lower === 'aegis://science') return 'Science Search';
+    if (lower === 'chrome://copilot' || lower === 'aegis://copilot') return 'AI Copilot';
+    if (lower === 'chrome://vault' || lower === 'aegis://vault') return 'Password Vault';
+    if (lower === 'chrome://extensions' || lower === 'aegis://extensions') return 'Extensions';
+    if (lower === 'chrome://version' || lower === 'chrome://about') return 'About Aegis Chromium';
+
     const sInfo = parseSearchUrl(url);
     if (sInfo.isSearch) {
-      return sInfo.query ? `Aegis Search: ${sInfo.query}` : 'Aegis Secure Search';
+      return sInfo.query ? `${sInfo.query} - Google Search` : 'Google Search';
     }
     const domain = formatDomain(url);
     const yt = parseYouTubeUrl(url);
     if (yt.isYouTube) {
       if (yt.videoId) return `YouTube Video (${yt.videoId})`;
-      if (yt.searchQuery) return `YouTube: ${yt.searchQuery}`;
-      return 'YouTube: Web Video Portal';
+      if (yt.searchQuery) return `${yt.searchQuery} - YouTube`;
+      return 'YouTube';
     }
-    if (domain.includes('github')) return 'GitHub: Where the world builds';
-    if (domain.includes('cloudflare')) return 'Cloudflare: Web Security & DNS';
-    if (domain.includes('ncbi') || domain.includes('pubmed')) return 'NCBI / PubMed Literature';
-    if (domain.includes('wikipedia')) return 'Wikipedia, the free encyclopedia';
-    if (domain.includes('duckduckgo')) return 'DuckDuckGo Search';
-    if (domain.includes('google')) return 'Google Safe Search';
+    if (domain.includes('github')) return 'GitHub';
+    if (domain.includes('cloudflare')) return 'Cloudflare';
+    if (domain.includes('ncbi') || domain.includes('pubmed')) return 'NCBI / PubMed';
+    if (domain.includes('wikipedia')) return 'Wikipedia';
+    if (domain.includes('duckduckgo')) return 'DuckDuckGo';
+    if (domain.includes('google')) return 'Google';
     return domain || 'New Tab';
   };
 
@@ -1012,13 +1080,47 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     }
     if (!target) target = 'aegis://newtab';
 
-    // Internal Browser Settings & Tools Navigation
+    // Internal Browser Settings & Tools Navigation (renders natively inside tab)
     const lower = target.toLowerCase();
-    if (lower === 'aegis://settings' || lower === 'chrome://settings') {
-      setActiveSidebar('tools');
-      setActiveToolTab('settings');
-      setIsScanning(false);
-      return;
+    if (lower === 'chrome://settings' || lower === 'aegis://settings' || lower === 'settings') {
+      target = 'chrome://settings';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://depot-tools' || lower === 'aegis://depot-tools' || lower === 'chrome://flags' || lower === 'aegis://flags' || lower === 'depot-tools') {
+      target = 'chrome://depot-tools';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://security-apis' || lower === 'aegis://security' || lower === 'aegis://apis' || lower === 'security-apis') {
+      target = 'chrome://security-apis';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://3d-scanner' || lower === 'aegis://3d-scanner' || lower === '3d-scanner') {
+      target = 'chrome://3d-scanner';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://dns' || lower === 'aegis://dns' || lower === 'dns') {
+      target = 'chrome://dns';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://compare' || lower === 'aegis://compare' || lower === 'compare') {
+      target = 'chrome://compare';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://threats' || lower === 'aegis://threat-shield' || lower === 'threats') {
+      target = 'chrome://threats';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://analytics' || lower === 'aegis://analytics' || lower === 'analytics') {
+      target = 'chrome://analytics';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://science' || lower === 'aegis://science' || lower === 'science') {
+      target = 'chrome://science';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://copilot' || lower === 'aegis://ai-copilot' || lower === 'copilot') {
+      target = 'chrome://copilot';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://vault' || lower === 'aegis://vault' || lower === 'vault') {
+      target = 'chrome://vault';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://extensions' || lower === 'aegis://extensions' || lower === 'extensions') {
+      target = 'chrome://extensions';
+      setActiveSidebar('none');
+    } else if (lower === 'chrome://version' || lower === 'chrome://about' || lower === 'aegis://about' || lower === 'about') {
+      target = 'chrome://version';
+      setActiveSidebar('none');
     }
     if (lower === 'aegis://depot-tools' || lower === 'aegis://flags' || lower === 'chrome://flags' || lower === 'depot-tools') {
       setActiveSidebar('tools');
@@ -1268,7 +1370,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     }
     const newTab: BrowserTab = {
       id: `tab-${Date.now()}`,
-      title: 'Aegis Safe Search',
+      title: 'New Tab',
       url: 'aegis://newtab',
       domain: 'aegis.local',
       isHttps: true,
@@ -1524,8 +1626,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     <div className="flex flex-col h-full min-h-0">
       {/* BROWSER WINDOW WITH MULTI-TAB STRIP & DEDICATED SIDEBARS */}
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        {/* Google Chrome Style Tab Strip */}
-        <div className="flex items-center px-2 pt-2 bg-slate-950/90 border-b border-slate-800/80 gap-1 overflow-x-auto scrollbar-none select-none">
+        {/* Google Chromium / ChromeOS Style Tab Strip */}
+        <div className="flex items-center px-2 pt-2 bg-[#1f2229] border-b border-slate-800/80 gap-1 overflow-x-auto scrollbar-none select-none">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             const isSuspended = tab.isSuspended;
@@ -1552,15 +1654,15 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     );
                   }
                 }}
-                className={`group relative flex items-center gap-2 px-3 py-2 rounded-t-xl text-xs font-mono transition-all cursor-pointer max-w-[240px] min-w-[130px] border-t border-x ${
+                className={`group relative flex items-center gap-2 px-3 py-2 rounded-t-xl text-xs font-sans transition-all cursor-pointer max-w-[240px] min-w-[130px] border-t border-x ${
                   isActive
-                    ? 'bg-slate-900/90 border-cyan-400/50 text-cyan-300 shadow-[0_-2px_10px_rgba(6,182,212,0.15)] font-semibold z-10'
+                    ? 'bg-[#282c34] border-slate-700/80 text-white font-medium z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.25)]'
                     : isSuspended
-                    ? 'bg-slate-950/30 border-slate-900 text-slate-500 hover:text-slate-300 hover:bg-slate-900/30 opacity-75'
-                    : 'bg-slate-950/40 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                    ? 'bg-[#181a1f]/80 border-transparent text-slate-500 hover:text-slate-300 hover:bg-[#282c34]/50 opacity-75'
+                    : 'bg-[#181a1f]/90 border-transparent text-slate-400 hover:text-slate-200 hover:bg-[#282c34]/70'
                 }`}
               >
-                {/* Pin / Favicon / Sleep Icon */}
+                {/* Favicon / Lock / Status */}
                 {isSuspended ? (
                   <span title="Tab is sleeping to conserve CPU & RAM">
                     <Moon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1570,32 +1672,20 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 ) : tab.isQuarantined ? (
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 ) : tab.isHttps ? (
-                  <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 ) : (
                   <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 )}
 
                 {/* Tab Title */}
-                <span className="truncate flex-1 text-[11px]">
+                <span className="truncate flex-1 text-xs">
                   {tab.title}
                 </span>
 
                 {/* Group Tag Chip (if assigned) */}
                 {tab.groupTitle && (
                   <span
-                    className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full border truncate max-w-[65px] shrink-0 hidden sm:inline ${
-                      tab.groupColor === 'purple'
-                        ? 'bg-purple-950/80 border-purple-500/40 text-purple-300'
-                        : tab.groupColor === 'emerald'
-                        ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
-                        : tab.groupColor === 'amber'
-                        ? 'bg-amber-950/80 border-amber-500/40 text-amber-300'
-                        : tab.groupColor === 'rose'
-                        ? 'bg-rose-950/80 border-rose-500/40 text-rose-300'
-                        : tab.groupColor === 'blue'
-                        ? 'bg-blue-950/80 border-blue-500/40 text-blue-300'
-                        : 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300'
-                    }`}
+                    className="text-[9px] font-mono px-1.5 py-0.2 rounded-full border border-blue-500/40 bg-blue-950/80 text-blue-300 truncate max-w-[65px] shrink-0 hidden sm:inline"
                     title={`Group: ${tab.groupTitle}`}
                   >
                     {tab.groupTitle.split(' ')[0]}
@@ -1606,8 +1696,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 <button
                   type="button"
                   onClick={(e) => handleCloseTab(e, tab.id)}
-                  className="w-4 h-4 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-slate-800 hover:text-rose-400 transition-all shrink-0 cursor-pointer"
-                  title="Close tab"
+                  className="w-4 h-4 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-slate-700/80 hover:text-white transition-all shrink-0 cursor-pointer"
+                  title="Close tab (Ctrl+W)"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -1615,126 +1705,66 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             );
           })}
 
-          {/* Plus (+) New Tab Button (Just like Chrome) */}
+          {/* Plus (+) New Tab Button */}
           <button
             type="button"
             onClick={handleCreateNewTab}
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-900 transition-colors ml-1 shrink-0 cursor-pointer"
-            title="Open New Tab (Chrome Style)"
+            className="flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ml-1 shrink-0 cursor-pointer"
+            title="New tab (Ctrl+T)"
           >
             <Plus className="w-4 h-4" />
           </button>
-
-          {/* Smart Tab Grouping Action Button */}
-          <button
-            type="button"
-            onClick={() => setShowSmartGroupModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/40 transition-colors ml-1 shrink-0 text-xs font-mono cursor-pointer"
-            title="Smart Tab Grouping (Auto-cluster tabs by category)"
-          >
-            <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Groups</span>
-            {tabGroups.length > 0 && (
-              <span className="text-[9px] bg-cyan-950 text-cyan-300 px-1 py-0.2 rounded-full border border-cyan-500/30">
-                {tabGroups.length}
-              </span>
-            )}
-          </button>
         </div>
 
-        {/* Chrome Navigation Toolbar with History, Bookmarks, Tabs, and AI Copilot Buttons */}
-        <div className="flex flex-wrap items-center justify-between px-4 py-2 bg-slate-900/70 border-b border-slate-800 gap-3">
-          {/* Navigation controls: Back, Forward, Reload, Home */}
-          <div className="flex items-center gap-1 shrink-0 text-slate-400">
+        {/* Authentic Chromium Navigation Toolbar (ToolbarView from chromium/views) */}
+        <div className="relative flex items-center justify-between px-3 py-1.5 bg-[#282c34] border-b border-slate-800/80 gap-2 select-none z-20 chrome-menu-anchor">
+          {/* Navigation Controls: Back, Forward, Reload, Home */}
+          <div className="flex items-center gap-1 shrink-0 text-slate-300">
             <button
               type="button"
               disabled={!canGoBack}
               onClick={handleGoBack}
-              className={`p-1.5 rounded transition-colors ${
+              className={`p-1.5 rounded-full transition-colors ${
                 canGoBack
-                  ? 'hover:bg-slate-800 text-slate-200 hover:text-cyan-300 cursor-pointer'
+                  ? 'hover:bg-slate-700/60 text-slate-200 hover:text-white cursor-pointer'
                   : 'text-slate-600 cursor-not-allowed opacity-40'
               }`}
-              title="Back"
+              title="Click to go back"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
             <button
               type="button"
               disabled={!canGoForward}
               onClick={handleGoForward}
-              className={`p-1.5 rounded transition-colors ${
+              className={`p-1.5 rounded-full transition-colors ${
                 canGoForward
-                  ? 'hover:bg-slate-800 text-slate-200 hover:text-cyan-300 cursor-pointer'
+                  ? 'hover:bg-slate-700/60 text-slate-200 hover:text-white cursor-pointer'
                   : 'text-slate-600 cursor-not-allowed opacity-40'
               }`}
-              title="Forward"
+              title="Click to go forward"
             >
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={handleReload}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-cyan-300 transition-colors cursor-pointer text-slate-300"
-              title="Reload Page"
+              className="p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-300"
+              title="Reload this page (Ctrl+R)"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-cyan-400' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isScanning ? 'animate-spin text-blue-400' : ''}`} />
             </button>
             <button
               type="button"
               onClick={handleGoHome}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-cyan-300 transition-colors cursor-pointer text-slate-300"
-              title="Home / Start Page"
+              className="p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-300"
+              title="Open the home page"
             >
-              <Home className="w-3.5 h-3.5" />
+              <Home className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Identity & Session Status Badge */}
-          {currentUser && !currentUser.email.endsWith('@aegis.local') ? (
-            <button
-              type="button"
-              onClick={() => {
-                setPendingNav({ url: activeTab.url, inNewTab: false, openExternal: false });
-                setShowLinkAuthModal(true);
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 transition-colors text-[11px] font-mono shrink-0 cursor-pointer shadow-sm"
-              title={`Logged in as ${currentUser.email}. Click to change identity or switch to Guest.`}
-            >
-              <Mail className="w-3 h-3 text-cyan-400 shrink-0" />
-              <span className="hidden sm:inline max-w-[120px] truncate">{currentUser.email}</span>
-              <span className="sm:hidden">Gmail</span>
-            </button>
-          ) : isGuestModeActive() ? (
-            <button
-              type="button"
-              onClick={() => {
-                setPendingNav({ url: activeTab.url, inNewTab: false, openExternal: false });
-                setShowLinkAuthModal(true);
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-950/60 border border-teal-500/40 text-teal-300 hover:bg-teal-900/60 transition-colors text-[11px] font-mono shrink-0 cursor-pointer shadow-sm"
-              title="Browsing as Guest. Click to log in with Gmail."
-            >
-              <EyeOff className="w-3 h-3 text-teal-400 shrink-0" />
-              <span className="hidden sm:inline">Guest Mode</span>
-              <span className="sm:hidden">Guest</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setPendingNav({ url: activeTab.url, inNewTab: false, openExternal: false });
-                setShowLinkAuthModal(true);
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/60 transition-colors text-[11px] font-mono shrink-0 cursor-pointer animate-pulse"
-              title="Not authenticated. Click to choose Guest or Gmail."
-            >
-              <Shield className="w-3 h-3 text-amber-400 shrink-0" />
-              <span>Select Mode</span>
-            </button>
-          )}
-
-          {/* Interactive Address Bar Form */}
+          {/* Center: Chromium Omnibox (LocationBarView) */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1744,14 +1774,23 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 setIsEditingUrl(false);
               }
             }}
-            className="flex-1 min-w-0 sm:min-w-[200px] flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 focus-within:border-cyan-400 font-mono text-xs overflow-hidden transition-all shadow-inner"
+            className="flex-1 min-w-[200px] flex items-center justify-between px-3 py-1.5 rounded-full bg-[#181a1f] hover:bg-[#14161a] border border-transparent hover:border-slate-700 focus-within:border-blue-500/80 focus-within:bg-[#181a1f] font-sans text-xs transition-all shadow-inner"
           >
+            {/* Padlock / Tune Page Info Icon */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              {activeTab.isHttps ? (
-                <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
-              ) : (
-                <ShieldAlert className="w-3 h-3 text-rose-400 shrink-0" />
-              )}
+              <button
+                type="button"
+                onClick={() => setShowPageInfoModal((prev) => !prev)}
+                className="p-1 rounded-full hover:bg-slate-700/60 transition-colors cursor-pointer text-slate-400 hover:text-slate-200"
+                title="View site information & security"
+              >
+                {activeTab.isHttps ? (
+                  <Lock className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
+                ) : (
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                )}
+              </button>
+
               <input
                 type="text"
                 value={isEditingUrl ? urlInputValue : (activeTab.url === 'aegis://newtab' ? '' : activeTab.url)}
@@ -1763,224 +1802,477 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   setTimeout(() => setIsEditingUrl(false), 250);
                 }}
                 onChange={(e) => setUrlInputValue(e.target.value)}
-                placeholder="Enter URL or search term..."
-                className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none truncate font-mono text-xs"
+                placeholder="Search Google or type a URL"
+                className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none truncate font-sans text-xs"
               />
             </div>
 
-            <div className="flex items-center gap-1 shrink-0 ml-1">
-              {isEditingUrl && (
-                <button
-                  type="submit"
-                  className="px-2 py-0.5 rounded bg-cyan-500 text-slate-950 font-bold text-[10px] hover:bg-cyan-400 cursor-pointer"
-                >
-                  Go
-                </button>
-              )}
-              {/* Quick Save to Read Later Action */}
-              <button
-                type="button"
-                onClick={handleToggleReadLater}
-                className={`p-1 rounded transition-colors cursor-pointer ${
-                  isCurrentInReadLater
-                    ? 'text-cyan-400 hover:text-cyan-300'
-                    : 'text-slate-500 hover:text-cyan-400'
-                }`}
-                title={isCurrentInReadLater ? 'In Read Later queue' : 'Save to Read Later queue'}
-              >
-                <BookOpen className={`w-3.5 h-3.5 ${isCurrentInReadLater ? 'text-cyan-400 fill-cyan-400/20' : ''}`} />
-              </button>
-
+            <div className="flex items-center gap-1 shrink-0 ml-1 text-slate-400">
               {/* Star Bookmark Icon Button */}
               <button
                 type="button"
                 onClick={handleToggleActiveBookmark}
-                className={`p-1 rounded transition-colors cursor-pointer ${
+                className={`p-1 rounded-full hover:bg-slate-700/60 transition-colors cursor-pointer ${
                   isCurrentBookmarked
                     ? 'text-amber-400 hover:text-amber-300'
-                    : 'text-slate-500 hover:text-amber-400'
+                    : 'text-slate-400 hover:text-white'
                 }`}
-                title={isCurrentBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
+                title={isCurrentBookmarked ? 'Remove bookmark' : 'Bookmark this tab (Ctrl+D)'}
               >
-                <Star className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-400' : ''}`} />
+                <Star className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
               </button>
 
+              {/* Copy URL */}
               <button
                 type="button"
                 onClick={handleCopyUrl}
-                className="text-slate-400 hover:text-cyan-300 p-1 transition-colors cursor-pointer"
-                title="Copy URL"
+                className="p-1 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-400"
+                title="Copy page link"
               >
-                {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
           </form>
 
-          {/* Chromium Style Action Toolbar */}
-          <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-full pb-0.5 scrollbar-none py-0.5">
-            {/* Chromium DevTools Button (Desktop Mode) */}
-            {isDesktop && (
+          {/* Right Toolbar Controls: Extensions, Profile, and Chrome 3-dots Menu */}
+          <div className="flex items-center gap-1 shrink-0 text-slate-300">
+            {/* Extensions Puzzle Icon */}
+            <button
+              type="button"
+              onClick={() => handleNavigate('chrome://extensions', false, false)}
+              className="p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-400"
+              title="Extensions (chrome://extensions)"
+            >
+              <Puzzle className="w-4 h-4" />
+            </button>
+
+            {/* User Profile Avatar */}
+            <button
+              type="button"
+              onClick={() => setShowProfileMenu((prev) => !prev)}
+              className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-xs cursor-pointer shadow ml-0.5 transition-colors"
+              title={currentUser?.email || 'Profile & Accounts'}
+            >
+              {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'A'}
+            </button>
+
+            {/* Chrome 3-dots Kebab App Menu Button (BrowserAppMenuButton) */}
+            <button
+              type="button"
+              onClick={() => setShowAppMenu((prev) => !prev)}
+              className="p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-300 ml-0.5"
+              title="Customize and control Chromium"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Padlock Site Information Bubble */}
+          {showPageInfoModal && (
+            <div className="absolute left-16 top-12 z-50 bg-[#282c34] text-slate-200 border border-slate-700 rounded-2xl shadow-2xl p-4 w-80 text-xs font-sans animate-in fade-in zoom-in-95 select-none">
+              <div className="flex items-start justify-between pb-3 border-b border-slate-700/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-100 text-sm">Connection is secure</h4>
+                    <p className="text-[11px] text-slate-400">{activeTab.domain}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPageInfoModal(false)}
+                  className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="py-3 space-y-2 text-xs text-slate-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Certificate</span>
+                  <span className="text-emerald-400 font-mono text-[11px]">Valid (TLS 1.3)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Cookies & Trackers</span>
+                  <span className="text-slate-200 font-mono text-[11px]">0 blocked</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Zero-Trust Score</span>
+                  <span className="text-cyan-400 font-bold font-mono text-[11px]">{activeTab.securityScore}/100</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-700/80 flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPageInfoModal(false);
+                    setShow3DScannerModal(true);
+                  }}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 flex items-center justify-between text-xs transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Inspect in 3D Security Mesh</span>
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPageInfoModal(false);
+                    handleNavigate('chrome://dns', false, false);
+                  }}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-between text-xs transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Globe className="w-3.5 h-3.5 text-teal-400" />
+                    <span>Inspect DNS Origin</span>
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* User Profile Dropdown Menu */}
+          {showProfileMenu && (
+            <div className="absolute right-12 top-12 z-50 bg-[#282c34] text-slate-200 border border-slate-700 rounded-2xl shadow-2xl p-4 w-72 text-xs font-sans animate-in fade-in zoom-in-95 select-none">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-700/80">
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-base shadow">
+                  {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'A'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-semibold text-slate-100 text-sm truncate">
+                    {currentUser?.email ? currentUser.email : 'Chromium User'}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {isGuestModeActive() ? 'Browsing as Guest' : (currentUser?.email || 'Local Profile')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="py-2 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    setShowLinkAuthModal(true);
+                  }}
+                  className="w-full py-1.5 px-3 rounded-lg hover:bg-[#353b47] text-left text-xs transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <Mail className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Switch Account / Sign in with Gmail</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    setGuestModeActive(true);
+                    createGuestAccount();
+                  }}
+                  className="w-full py-1.5 px-3 rounded-lg hover:bg-[#353b47] text-left text-xs transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <EyeOff className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Open Guest Profile</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    handleNavigate('chrome://vault', false, false);
+                  }}
+                  className="w-full py-1.5 px-3 rounded-lg hover:bg-[#353b47] text-left text-xs transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <Key className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Passwords & Autofill</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Chromium 3-Dots App Menu */}
+          {showAppMenu && (
+            <div className="absolute right-3 top-12 z-50 bg-[#282c34] text-slate-200 border border-slate-700 rounded-2xl shadow-2xl py-2 w-72 text-xs font-sans select-none animate-in fade-in-50 zoom-in-95">
               <button
                 type="button"
                 onClick={() => {
-                  try {
-                    if (webviewRef.current?.openDevTools) {
-                      webviewRef.current.openDevTools({ mode: 'detach' });
-                    } else if ((window as any).aegisDesktopApi?.openDevTools) {
-                      (window as any).aegisDesktopApi.openDevTools();
-                    }
-                  } catch {}
+                  setShowAppMenu(false);
+                  handleCreateNewTab();
                 }}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border bg-slate-800 hover:bg-slate-750 text-cyan-300 border-cyan-500/40"
-                title="Open Chromium DevTools (F12 / Ctrl+Shift+I)"
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
               >
-                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline">DevTools</span>
+                <span className="flex items-center gap-2.5">
+                  <Plus className="w-4 h-4 text-slate-400" />
+                  <span>New tab</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Ctrl+T</span>
               </button>
-            )}
 
-            {/* Extensions Action Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeSidebar === 'tools' && activeToolTab === 'extensions') {
-                  setActiveSidebar('none');
-                } else {
-                  setActiveSidebar('tools');
-                  setActiveToolTab('extensions');
-                }
-              }}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono rounded-lg transition-colors cursor-pointer border ${
-                activeSidebar === 'tools' && activeToolTab === 'extensions'
-                  ? 'bg-indigo-500/25 text-indigo-300 border-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
-                  : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
-              }`}
-              title="Aegis Chrome Extensions & Manifest Manager"
-            >
-              <Puzzle className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="hidden sm:inline">Extensions</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  window.open(window.location.origin, '_blank');
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <ExternalLink className="w-4 h-4 text-slate-400" />
+                  <span>New window</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Ctrl+N</span>
+              </button>
 
-            {/* Tools & Settings Side Panel Button (Houses all 12 tools) */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveSidebar((prev) => (prev === 'tools' ? 'none' : 'tools'));
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono rounded-lg transition-all cursor-pointer border ${
-                activeSidebar === 'tools'
-                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-bold'
-                  : 'bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border-cyan-500/40'
-              }`}
-              title="Aegis Tools & Settings (Chromium Depot Tools, jaegeral/security-apis, DNS Scanner, Comparator, 3D Mesh, Threat Shield, Analytics, Vault, Science)"
-            >
-              <Settings className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Tools & Settings</span>
-              <span className="text-[10px] bg-cyan-400 text-slate-950 font-bold px-1.5 py-0.2 rounded-full">
-                12
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  if (onTogglePrivacy) onTogglePrivacy();
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <EyeOff className="w-4 h-4 text-slate-400" />
+                  <span>New Incognito window</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Ctrl+Shift+N</span>
+              </button>
 
-            {/* Quick Sidebars: Read Later */}
-            <button
-              type="button"
-              onClick={() => setActiveSidebar((prev) => (prev === 'read-later' ? 'none' : 'read-later'))}
-              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                activeSidebar === 'read-later'
-                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400'
-                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
-              }`}
-              title={`Read Later Queue (${unreadReadLaterCount})`}
-            >
-              <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-            </button>
+              <div className="my-1.5 border-t border-slate-700/80" />
 
-            {/* Bookmarks */}
-            <button
-              type="button"
-              onClick={() => setActiveSidebar((prev) => (prev === 'bookmarks' ? 'none' : 'bookmarks'))}
-              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                activeSidebar === 'bookmarks'
-                  ? 'bg-amber-500/25 text-amber-300 border-amber-400'
-                  : 'bg-slate-855 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
-              }`}
-              title={`Bookmarks Vault (${bookmarks.length})`}
-            >
-              <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  setActiveSidebar((prev) => (prev === 'history' ? 'none' : 'history'));
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <History className="w-4 h-4 text-slate-400" />
+                  <span>History</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Ctrl+H</span>
+              </button>
 
-            {/* History */}
-            <button
-              type="button"
-              onClick={() => setActiveSidebar((prev) => (prev === 'history' ? 'none' : 'history'))}
-              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                activeSidebar === 'history'
-                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400'
-                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
-              }`}
-              title="Browsing History & Visual Trends"
-            >
-              <History className="w-3.5 h-3.5 text-cyan-400" />
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  handleNavigate('chrome://depot-tools', false, false);
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Download className="w-4 h-4 text-slate-400" />
+                  <span>Downloads / Depot Tools</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Ctrl+J</span>
+              </button>
 
-            {/* Tabs Manager */}
-            <button
-              type="button"
-              onClick={() => setActiveSidebar((prev) => (prev === 'tabs' ? 'none' : 'tabs'))}
-              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                activeSidebar === 'tabs'
-                  ? 'bg-cyan-500/25 text-cyan-300 border-cyan-400'
-                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
-              }`}
-              title={`Tab Manager (${tabs.length} tabs)`}
-            >
-              <Layers className="w-3.5 h-3.5 text-amber-400" />
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBookmarksBar((prev) => !prev);
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Bookmark className="w-4 h-4 text-slate-400" />
+                  <span>Bookmarks bar</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  {showBookmarksBar ? '✓ Shown' : 'Hidden'}
+                </span>
+              </button>
 
-            {/* Resource Monitor */}
-            <button
-              type="button"
-              onClick={() => setActiveSidebar((prev) => (prev === 'resource-monitor' ? 'none' : 'resource-monitor'))}
-              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                activeSidebar === 'resource-monitor'
-                  ? 'bg-rose-500/25 text-rose-300 border-rose-400'
-                  : 'bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-700'
-              }`}
-              title="Resource Monitor (Real-time CPU & RAM per tab)"
-            >
-              <Cpu className="w-3.5 h-3.5 text-rose-400" />
-            </button>
+              <div className="my-1.5 border-t border-slate-700/80" />
+
+              {/* Zoom Controls */}
+              <div className="px-4 py-1.5 flex items-center justify-between text-xs">
+                <span className="text-slate-400">Zoom</span>
+                <div className="flex items-center gap-2 bg-[#1f2229] border border-slate-700 rounded-lg px-2 py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setZoomPercent((prev) => Math.max(50, prev - 10))}
+                    className="p-1 hover:text-white cursor-pointer font-bold"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono text-[11px] w-10 text-center">{zoomPercent}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setZoomPercent((prev) => Math.min(200, prev + 10))}
+                    className="p-1 hover:text-white cursor-pointer font-bold"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Print */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  window.print();
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Printer className="w-4 h-4 text-slate-400" />
+                  <span>Print...</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Ctrl+P</span>
+              </button>
+
+              <div className="my-1.5 border-t border-slate-700/80" />
+
+              {/* More tools with submenu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowMoreToolsMenu((prev) => !prev)}
+                  className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <span className="flex items-center gap-2.5 font-medium text-slate-100">
+                    <Sliders className="w-4 h-4 text-blue-400" />
+                    <span>More tools</span>
+                  </span>
+                  <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showMoreToolsMenu ? 'rotate-90' : ''}`} />
+                </button>
+
+                {/* Submenu of More Tools */}
+                {showMoreToolsMenu && (
+                  <div className="bg-[#1f2229] border-y border-slate-700/80 py-1 text-xs">
+                    {[
+                      { title: '3D Security Mesh Scanner', url: 'chrome://3d-scanner', icon: Shield, color: 'text-cyan-400' },
+                      { title: 'DNS Cryptographic Inspector', url: 'chrome://dns', icon: Globe, color: 'text-teal-400' },
+                      { title: 'Website & Security Comparator', url: 'chrome://compare', icon: GitCompare, color: 'text-purple-400' },
+                      { title: 'Threat Shield & Sandbox Blocker', url: 'chrome://threats', icon: ShieldAlert, color: 'text-rose-400' },
+                      { title: 'Chromium Depot Tools Studio', url: 'chrome://depot-tools', icon: Database, color: 'text-amber-400', badge: 'source.chromium.org' },
+                      { title: 'Cybersecurity APIs Hub', url: 'chrome://security-apis', icon: Cpu, color: 'text-emerald-400', badge: 'jaegeral/security-apis' },
+                      { title: 'Science & Research Engine', url: 'chrome://science', icon: Sparkles, color: 'text-blue-400' },
+                      { title: 'Gemini AI Security Copilot', url: 'chrome://copilot', icon: Bot, color: 'text-teal-400' },
+                      { title: 'Password & Credentials Vault', url: 'chrome://vault', icon: Key, color: 'text-amber-400' },
+                      { title: 'Security Analytics Dashboard', url: 'chrome://analytics', icon: BarChart2, color: 'text-cyan-400' },
+                      { title: 'Chrome Extensions Manager', url: 'chrome://extensions', icon: Puzzle, color: 'text-indigo-400' },
+                    ].map((item) => (
+                      <button
+                        key={item.title}
+                        type="button"
+                        onClick={() => {
+                          setShowAppMenu(false);
+                          setShowMoreToolsMenu(false);
+                          handleNavigate(item.url, false, false);
+                        }}
+                        className="w-full px-5 py-1.5 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <item.icon className={`w-3.5 h-3.5 ${item.color} shrink-0`} />
+                          <span className="truncate">{item.title}</span>
+                        </span>
+                        {item.badge && (
+                          <span className="text-[9px] font-mono bg-slate-800 text-slate-300 px-1 py-0.2 rounded border border-slate-700 shrink-0">
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    <div className="my-1 border-t border-slate-700/80" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAppMenu(false);
+                        setShowMoreToolsMenu(false);
+                        if (webviewRef.current?.openDevTools) {
+                          webviewRef.current.openDevTools({ mode: 'detach' });
+                        } else if ((window as any).aegisDesktopApi?.openDevTools) {
+                          (window as any).aegisDesktopApi.openDevTools();
+                        }
+                      }}
+                      className="w-full px-5 py-1.5 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors text-cyan-300"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Developer tools</span>
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-mono">F12</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="my-1.5 border-t border-slate-700/80" />
+
+              {/* Settings */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  handleNavigate('chrome://settings', false, false);
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  <span>Settings</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">chrome://settings</span>
+              </button>
+
+              {/* Help / About */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  handleNavigate('chrome://version', false, false);
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Info className="w-4 h-4 text-slate-400" />
+                  <span>About Aegis Chromium</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">chrome://version</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Optional Chrome Bookmarks Bar */}
+        {showBookmarksBar && (
+          <div className="h-7 bg-[#22252a] border-b border-slate-800/80 px-3 flex items-center gap-1.5 text-xs font-sans overflow-x-auto scrollbar-none select-none shrink-0 z-10">
+            {[
+              { title: 'YouTube', url: 'https://www.youtube.com' },
+              { title: 'Google', url: 'https://www.google.com' },
+              { title: 'GitHub', url: 'https://github.com' },
+              { title: 'Wikipedia', url: 'https://en.wikipedia.org' },
+              { title: 'Cloudflare', url: 'https://cloudflare.com' },
+              { title: 'DuckDuckGo', url: 'https://duckduckgo.com' },
+              { title: 'arXiv', url: 'https://arxiv.org' },
+              { title: 'PubMed', url: 'https://ncbi.nlm.nih.gov' },
+              ...bookmarks.slice(0, 5),
+            ].map((bm) => (
+              <button
+                key={bm.title}
+                type="button"
+                onClick={() => handleNavigate(bm.url, false, false)}
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-700/50 text-slate-300 hover:text-white text-[11px] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                title={bm.url}
+              >
+                <Globe className="w-3 h-3 text-slate-400" />
+                <span>{bm.title}</span>
+              </button>
+            ))}
           </div>
-        </div>
-
-        {/* Quick Bookmarks Ribbon */}
-        <div className="h-8 bg-[#060a14] border-b border-slate-800/80 px-3 flex items-center gap-1.5 text-xs font-mono overflow-x-auto scrollbar-none select-none shrink-0 z-10">
-          <span className="text-[11px] text-slate-500 flex items-center gap-1 mr-1 shrink-0">
-            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-            <span className="hidden md:inline">Bookmarks:</span>
-          </span>
-          {[
-            { title: 'YouTube', url: 'https://www.youtube.com' },
-            { title: 'Cloudflare', url: 'https://cloudflare.com' },
-            { title: 'Wikipedia', url: 'https://en.wikipedia.org' },
-            { title: 'DuckDuckGo', url: 'https://duckduckgo.com' },
-            { title: 'GitHub', url: 'https://github.com' },
-            { title: 'PubMed Research', url: 'https://ncbi.nlm.nih.gov' },
-            { title: 'arXiv Preprints', url: 'https://arxiv.org' },
-            ...bookmarks.slice(0, 5),
-          ].map((bm) => (
-            <button
-              key={bm.title}
-              type="button"
-              onClick={() => handleNavigate(bm.url, false, false)}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800/80 text-slate-300 hover:text-cyan-300 text-[11px] transition-colors whitespace-nowrap shrink-0 group border border-transparent hover:border-slate-700 cursor-pointer"
-              title={bm.url}
-            >
-              <Globe className="w-3 h-3 text-slate-400 group-hover:text-cyan-400" />
-              <span>{bm.title}</span>
-            </button>
-          ))}
-        </div>
+        )}
 
         {/* Viewport & Slide-In Sidebars Split Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 min-h-0 overflow-hidden">
@@ -2040,6 +2332,23 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     + Open Clean Tab
                   </button>
                 </div>
+              </div>
+            ) : isInternalChromePage ? (
+              /* =========================================================================
+                 NATIVE IN-TAB CHROMIUM SETTINGS & TOOLS (chrome://settings, chrome://depot-tools, etc.)
+                 ========================================================================= */
+              <div className="w-full h-full flex flex-col bg-[#1f2229] overflow-hidden">
+                <AegisSettingsHub
+                  initialSection={mapUrlToSection(activeTab.url)}
+                  activeTab={activeTab}
+                  tabs={tabs}
+                  onClose={() => handleNavigate('aegis://newtab', false, false)}
+                  onNavigateToUrl={(url) => handleNavigate(url, false, false)}
+                  onOpenCommandPalette={onOpenCommandPalette}
+                  onOpenThemeModal={onOpenThemeModal}
+                  isDesktop={isDesktop}
+                  isFullscreen={true}
+                />
               </div>
             ) : ytInfo.isYouTube && ytInfo.videoId ? (
               /* =========================================================================
