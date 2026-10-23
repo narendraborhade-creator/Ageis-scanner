@@ -367,23 +367,51 @@ app.all('/api/proxy', async (req, res) => {
     if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
       let html = await upstreamRes.text();
 
+      // Remove any CSP and X-Frame-Options meta tags from HTML
+      html = html.replace(/<meta[^>]+http-equiv=["']?(?:content-security-policy|x-frame-options)["']?[^>]*>/gi, '');
+
       // Base URL injection so relative assets (CSS, JS, images, fonts) resolve properly
       const baseTag = `<base href="${finalUrl}">`;
 
       // Aegis In-Browser Link, Form, and Navigation Engine:
       // Enables full normal browser experience inside the sandbox:
+      // - Spoofs top/frameElement to neutralize frame-busting scripts
       // - Resolves all relative and root-relative URLs against finalUrl
-      // - Left click navigates in current tab
-      // - Target="_blank", Ctrl-click, middle-click opens in a NEW tab
+      // - Left clicks navigate in current tab (seamless browsing without spamming tabs)
+      // - Ctrl-click, Cmd-click, middle-click opens in a NEW tab
       // - Same-page anchor (#heading) scrolls smoothly within page
       // - Form submits (GET & POST) navigate cleanly
-      // - window.open() opens a clean new Aegis tab
+      // - window.open() dispatches a clean new Aegis tab
       // - history.pushState / replaceState synchronizes the Omnibar address
       // - Dynamic document title syncs with tab header
       const interceptorScript = `
 <script>
 (function() {
   var currentBase = ${JSON.stringify(finalUrl)};
+  var realTop = window.top;
+  var realParent = window.parent;
+
+  function dispatchToAegis(data) {
+    try {
+      if (realParent && realParent !== window) {
+        realParent.postMessage(data, '*');
+      } else if (realTop && realTop !== window) {
+        realTop.postMessage(data, '*');
+      }
+    } catch (e) {}
+  }
+
+  // Prevent frame busting by spoofing top/frameElement for embedded page scripts
+  try {
+    Object.defineProperty(window, 'top', {
+      get: function() { return window; },
+      set: function() {}
+    });
+    Object.defineProperty(window, 'frameElement', {
+      get: function() { return null; },
+      set: function() {}
+    });
+  } catch (e) {}
 
   function resolveUrl(relativeOrAbsolute) {
     try {
@@ -395,14 +423,14 @@ app.all('/api/proxy', async (req, res) => {
 
   // Sync initial page title with Aegis browser tab
   if (document.title) {
-    try { window.parent.postMessage({ type: 'AEGIS_PAGE_TITLE', title: document.title }, '*'); } catch (e) {}
+    dispatchToAegis({ type: 'AEGIS_PAGE_TITLE', title: document.title });
   }
 
   // Observe title changes dynamically
   var titleEl = document.querySelector('title');
   if (titleEl) {
     var titleObserver = new MutationObserver(function() {
-      try { window.parent.postMessage({ type: 'AEGIS_PAGE_TITLE', title: document.title }, '*'); } catch (e) {}
+      dispatchToAegis({ type: 'AEGIS_PAGE_TITLE', title: document.title });
     });
     titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
   }
@@ -422,8 +450,9 @@ app.all('/api/proxy', async (req, res) => {
     var fullUrl = resolveUrl(rawHref);
     if (!fullUrl || fullUrl.startsWith('javascript:')) return;
 
-    // Check if user requested a new tab (target="_blank", middle mouse button, Ctrl key, Cmd/Meta key)
-    var isNewTab = a.target === '_blank' || e.button === 1 || e.ctrlKey || e.metaKey;
+    // Only open in a new tab if user explicitly middle-clicked, Ctrl-clicked, or Cmd-clicked
+    // Normal left clicks always stay in the current tab for seamless browsing
+    var isNewTab = e.button === 1 || e.ctrlKey || e.metaKey;
 
     var now = Date.now();
     if (now - lastNavTime < 250) {
@@ -435,11 +464,11 @@ app.all('/api/proxy', async (req, res) => {
     e.preventDefault();
     e.stopPropagation();
 
-    window.parent.postMessage({
+    dispatchToAegis({
       type: 'AEGIS_NAVIGATE',
       url: fullUrl,
       inNewTab: Boolean(isNewTab)
-    }, '*');
+    });
   }
 
   document.addEventListener('click', handleLinkClick, true);
@@ -469,11 +498,11 @@ app.all('/api/proxy', async (req, res) => {
       var qs = queryParts.join('&');
       var fullUrl = resolvedAction + (resolvedAction.includes('?') ? '&' : '?') + qs;
 
-      window.parent.postMessage({
+      dispatchToAegis({
         type: 'AEGIS_NAVIGATE',
         url: fullUrl,
         inNewTab: Boolean(isNewTab)
-      }, '*');
+      });
     }
   }, true);
 
@@ -481,11 +510,11 @@ app.all('/api/proxy', async (req, res) => {
   window.open = function(url) {
     if (url) {
       var fullUrl = resolveUrl(url);
-      window.parent.postMessage({
+      dispatchToAegis({
         type: 'AEGIS_NAVIGATE',
         url: fullUrl,
         inNewTab: true
-      }, '*');
+      });
     }
     return null;
   };
@@ -497,7 +526,7 @@ app.all('/api/proxy', async (req, res) => {
     var res = originalPushState.apply(this, arguments);
     if (url) {
       var fullUrl = resolveUrl(url);
-      window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true }, '*');
+      dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true });
     }
     return res;
   };
@@ -505,7 +534,7 @@ app.all('/api/proxy', async (req, res) => {
     var res = originalReplaceState.apply(this, arguments);
     if (url) {
       var fullUrl = resolveUrl(url);
-      window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true }, '*');
+      dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true });
     }
     return res;
   };
@@ -1462,6 +1491,8 @@ async function startServer() {
     // If this request originates from inside a proxied iframe, resolve against the upstream site
     // and NEVER serve the top-level SPA index.html!
     const referer = (req.headers['referer'] as string) || '';
+    const isIframe = req.headers['sec-fetch-dest'] === 'iframe' || req.headers['sec-fetch-mode'] === 'nested-navigate';
+
     if (referer.includes('/api/proxy?url=')) {
       try {
         const u = new URL(referer);
@@ -1471,6 +1502,11 @@ async function startServer() {
           return res.redirect(`/api/proxy?url=${encodeURIComponent(resolved)}`);
         }
       } catch {}
+    }
+
+    // Never serve the SPA index.html to nested iframes
+    if (isIframe && (req.path === '/' || req.path === '/index.html')) {
+      return res.status(204).end();
     }
 
     if (

@@ -784,7 +784,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         return;
       }
 
-      // 1b. External Window Dispatch
+      // 1b. Reload frame dispatch
+      if (e.data && e.data.type === 'AEGIS_RELOAD_FRAME') {
+        setRefreshKey((k) => k + 1);
+        return;
+      }
+
+      // 1c. External Window Dispatch
       if (e.data && e.data.type === 'AEGIS_OPEN_EXTERNAL') {
         window.open(activeTab.url, '_blank', 'noopener,noreferrer');
         return;
@@ -2995,7 +3001,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
                       title={activeTab.title}
                       className="w-full h-full border-0 bg-white"
-                      sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads"
+                      sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                       allowFullScreen
                       onLoad={() => setIsScanning(false)}

@@ -38,6 +38,31 @@ export function registerServiceWorker(): void {
     return;
   }
 
+  // On localhost / development, unregister any existing service worker and purge caches
+  // so that proxying and embedded iframes are never intercepted by cached fallbacks
+  const isLocalhost = Boolean(
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '[::1]' ||
+    window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/) ||
+    import.meta.env?.DEV
+  );
+
+  if (isLocalhost) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    });
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        for (const key of keys) {
+          caches.delete(key);
+        }
+      });
+    }
+    return;
+  }
+
   // Register when the window is loaded to prevent competing with initial render
   window.addEventListener('load', async () => {
     try {

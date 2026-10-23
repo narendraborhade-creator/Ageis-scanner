@@ -56,12 +56,15 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // CRITICAL: NEVER intercept /api/ requests or any proxy URL!
-  // Always let the network handle /api/ and proxy calls directly!
+  // CRITICAL: NEVER intercept /api/ requests, proxy URLs, or iframe requests!
+  // Always let the network handle /api/, proxy calls, and all iframe content directly!
   if (
     url.pathname.startsWith('/api/') ||
     request.url.includes('/api/proxy') ||
-    url.searchParams.has('url')
+    url.searchParams.has('url') ||
+    request.destination === 'iframe' ||
+    request.headers.get('sec-fetch-dest') === 'iframe' ||
+    request.headers.get('sec-fetch-mode') === 'nested-navigate'
   ) {
     return;
   }
@@ -73,6 +76,11 @@ self.addEventListener('fetch', (event) => {
 
   // 1. Navigation requests (HTML document / Core App Shell): Network-first with Cache fallback
   if (request.mode === 'navigate' || request.destination === 'document') {
+    // If request is from an iframe, do not hijack it
+    if (request.destination === 'iframe' || request.headers.get('sec-fetch-dest') === 'iframe') {
+      return;
+    }
+
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
