@@ -19,11 +19,32 @@ export default async function handler(req, res) {
     return res.status(400).send('Invalid destination URL');
   }
 
+  // Loop protection: Recursively unwrap any nested /api/proxy layers
+  let unwrapCount = 0;
+  while ((rawUrl.includes('/api/proxy') || rawUrl.includes('%2Fapi%2Fproxy')) && unwrapCount < 10) {
+    unwrapCount++;
+    const idx = rawUrl.indexOf('url=');
+    if (idx !== -1) {
+      try {
+        const after = rawUrl.substring(idx + 4);
+        rawUrl = decodeURIComponent(after).trim();
+      } catch {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  if (!rawUrl || rawUrl.startsWith('aegis://') || rawUrl === 'about:blank') {
+    return res.status(400).send('Invalid destination URL');
+  }
+
   if (!/^https?:\/\//i.test(rawUrl)) {
     rawUrl = `https://${rawUrl}`;
   }
 
-  // Prevent proxy loopback into localhost/private networks
+  // Prevent proxy loopback into localhost/private networks or self-proxy
   try {
     const parsed = new URL(rawUrl);
     const host = parsed.hostname.toLowerCase();
@@ -33,9 +54,10 @@ export default async function handler(req, res) {
       host === '0.0.0.0' ||
       host.startsWith('192.168.') ||
       host.startsWith('10.') ||
-      host.endsWith('.local')
+      host.endsWith('.local') ||
+      (host.includes('aegisscans.dev') && parsed.pathname.includes('/api/proxy'))
     ) {
-      return res.status(403).send('Access to local network destinations is blocked');
+      return res.status(403).send('Access to local network or proxy loopback is blocked');
     }
   } catch {
     return res.status(400).send('Malformed URL destination');
@@ -141,8 +163,32 @@ export default async function handler(req, res) {
     });
   } catch (e) {}
 
+  function unwrapProxyUrl(u) {
+    if (!u || typeof u !== 'string') return u || '';
+    var current = u.trim();
+    var depth = 0;
+    while ((current.indexOf('/api/proxy') !== -1 || current.indexOf('%2Fapi%2Fproxy') !== -1) && depth < 10) {
+      depth++;
+      var idx = current.indexOf('url=');
+      if (idx !== -1) {
+        try {
+          current = decodeURIComponent(current.substring(idx + 4)).trim();
+        } catch (e) {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+    return current;
+  }
+
   function resolveUrl(relativeOrAbsolute) {
     try {
+      if (!relativeOrAbsolute) return relativeOrAbsolute;
+      if (typeof relativeOrAbsolute === 'string' && relativeOrAbsolute.indexOf('/api/proxy') !== -1) {
+        return unwrapProxyUrl(relativeOrAbsolute);
+      }
       return new URL(relativeOrAbsolute, currentBase).href;
     } catch (e) {
       return relativeOrAbsolute;
@@ -171,8 +217,8 @@ export default async function handler(req, res) {
 
     if (rawHref.startsWith('#')) return;
 
-    var fullUrl = resolveUrl(rawHref);
-    if (!fullUrl || fullUrl.startsWith('javascript:')) return;
+    var fullUrl = unwrapProxyUrl(resolveUrl(rawHref));
+    if (!fullUrl || fullUrl.startsWith('javascript:') || fullUrl.indexOf('/api/proxy') !== -1) return;
 
     var isNewTab = e.button === 1 || e.ctrlKey || e.metaKey;
 
@@ -201,7 +247,7 @@ export default async function handler(req, res) {
     if (!form || !form.action) return;
 
     var rawAction = form.getAttribute('action') || form.action;
-    var resolvedAction = resolveUrl(rawAction);
+    var resolvedAction = unwrapProxyUrl(resolveUrl(rawAction));
     var method = (form.method || 'GET').toUpperCase();
     var isNewTab = form.target === '_blank';
 
@@ -217,13 +263,14 @@ export default async function handler(req, res) {
         }
       });
       var qs = queryParts.join('&');
-      var fullUrl = resolvedAction + (resolvedAction.includes('?') ? '&' : '?') + qs;
-
-      dispatchToAegis({
-        type: 'AEGIS_NAVIGATE',
-        url: fullUrl,
-        inNewTab: Boolean(isNewTab)
-      });
+      var fullUrl = unwrapProxyUrl(resolvedAction + (resolvedAction.includes('?') ? '&' : '?') + qs);
+      if (fullUrl && fullUrl.indexOf('/api/proxy') === -1) {
+        dispatchToAegis({
+          type: 'AEGIS_NAVIGATE',
+          url: fullUrl,
+          inNewTab: Boolean(isNewTab)
+        });
+      }
     }
   }, true);
 
@@ -236,12 +283,14 @@ export default async function handler(req, res) {
       try {
         var targetUrl = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
         if (targetUrl && !targetUrl.startsWith('data:') && !targetUrl.startsWith('blob:') && !targetUrl.includes('/api/proxy')) {
-          var fullTarget = resolveUrl(targetUrl);
-          var proxied = '/api/proxy?url=' + encodeURIComponent(fullTarget);
-          if (typeof resource === 'string') {
-            return originalFetch(proxied, init);
-          } else if (resource && typeof resource === 'object' && resource.url) {
-            return originalFetch(new Request(proxied, init || resource));
+          var fullTarget = unwrapProxyUrl(resolveUrl(targetUrl));
+          if (!fullTarget.includes('/api/proxy') && !fullTarget.includes('aegisscans.dev/api/proxy')) {
+            var proxied = '/api/proxy?url=' + encodeURIComponent(fullTarget);
+            if (typeof resource === 'string') {
+              return originalFetch(proxied, init);
+            } else if (resource && typeof resource === 'object' && resource.url) {
+              return originalFetch(new Request(proxied, init || resource));
+            }
           }
         }
       } catch (err) {}
@@ -254,8 +303,10 @@ export default async function handler(req, res) {
     XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
       try {
         if (url && typeof url === 'string' && !url.startsWith('data:') && !url.startsWith('blob:') && !url.includes('/api/proxy')) {
-          var fullTarget = resolveUrl(url);
-          url = '/api/proxy?url=' + encodeURIComponent(fullTarget);
+          var fullTarget = unwrapProxyUrl(resolveUrl(url));
+          if (!fullTarget.includes('/api/proxy') && !fullTarget.includes('aegisscans.dev/api/proxy')) {
+            url = '/api/proxy?url=' + encodeURIComponent(fullTarget);
+          }
         }
       } catch (err) {}
       return originalXhrOpen.call(this, method, url, async !== false, user, password);
@@ -273,12 +324,14 @@ export default async function handler(req, res) {
 
   window.open = function(url) {
     if (url) {
-      var fullUrl = resolveUrl(url);
-      dispatchToAegis({
-        type: 'AEGIS_NAVIGATE',
-        url: fullUrl,
-        inNewTab: true
-      });
+      var fullUrl = unwrapProxyUrl(resolveUrl(url));
+      if (fullUrl && fullUrl.indexOf('/api/proxy') === -1) {
+        dispatchToAegis({
+          type: 'AEGIS_NAVIGATE',
+          url: fullUrl,
+          inNewTab: true
+        });
+      }
     }
     return null;
   };
@@ -288,14 +341,23 @@ export default async function handler(req, res) {
   history.pushState = function(state, unused, url) {
     var res = originalPushState.apply(this, arguments);
     if (url) {
-      var fullUrl = resolveUrl(url);
-      dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true });
+      var fullUrl = unwrapProxyUrl(resolveUrl(url));
+      if (fullUrl && fullUrl.indexOf('/api/proxy') === -1 && fullUrl.indexOf('aegisscans.dev') === -1) {
+        dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true });
+      }
     }
     return res;
   };
   history.replaceState = function(state, unused, url) {
     var res = originalReplaceState.apply(this, arguments);
     if (url) {
+      var fullUrl = unwrapProxyUrl(resolveUrl(url));
+      if (fullUrl && fullUrl.indexOf('/api/proxy') === -1 && fullUrl.indexOf('aegisscans.dev') === -1) {
+        dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true });
+      }
+    }
+    return res;
+  };
       var fullUrl = resolveUrl(url);
       dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true });
     }

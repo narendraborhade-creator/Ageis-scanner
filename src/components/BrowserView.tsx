@@ -139,6 +139,27 @@ export function mapUrlToSection(url: string): SettingsSectionId {
   return 'general';
 }
 
+export function unwrapProxyUrl(url: string): string {
+  if (!url || typeof url !== 'string') return url || '';
+  let current = url.trim();
+  let depth = 0;
+  while ((current.includes('/api/proxy') || current.includes('%2Fapi%2Fproxy')) && depth < 10) {
+    depth++;
+    const idx = current.indexOf('url=');
+    if (idx !== -1) {
+      try {
+        const after = current.substring(idx + 4);
+        current = decodeURIComponent(after).trim();
+      } catch {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+
 function parseYouTubeUrl(url: string) {
   try {
     const clean = (url || '').trim().toLowerCase();
@@ -800,11 +821,15 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
       // 2. Navigation events (links, forms, window.open, SPA history)
       if (e.data && e.data.type === 'AEGIS_NAVIGATE' && typeof e.data.url === 'string') {
-        const targetUrl = e.data.url.trim();
+        let targetUrl = unwrapProxyUrl(e.data.url.trim());
         const inNewTab = Boolean(e.data.inNewTab);
         const isSilentSync = Boolean(e.data.isSilentSync);
 
-        if (!targetUrl || targetUrl.startsWith('javascript:') || targetUrl === 'about:blank') {
+        if (targetUrl.includes('/api/proxy') || targetUrl.includes('%2Fapi%2Fproxy')) {
+          targetUrl = unwrapProxyUrl(targetUrl);
+        }
+
+        if (!targetUrl || targetUrl.includes('/api/proxy') || targetUrl.startsWith('javascript:') || targetUrl === 'about:blank') {
           return;
         }
 
@@ -1170,7 +1195,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     isHistoryNav = false,
     targetHistoryIndex?: number
   ) => {
-    let target = rawUrl.trim();
+    let target = unwrapProxyUrl(rawUrl);
     if (!target) return;
 
     // Strip accidental 'aegis://newtab' prefix if entered
@@ -3136,7 +3161,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   ) : (
                     <iframe
                       key={`${activeTab.id}-${refreshKey}`}
-                      src={`/api/proxy?url=${encodeURIComponent(activeTab.url)}`}
+                      src={`/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.url))}`}
                       title={activeTab.title}
                       className="w-full h-full border-0 bg-white"
                       sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
