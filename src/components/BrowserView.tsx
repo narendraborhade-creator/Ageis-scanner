@@ -105,6 +105,7 @@ import {
   ShieldCheck,
   PanelLeftClose,
   PanelLeft,
+  Palette,
 } from 'lucide-react';
 import { CyberScene3D } from './CyberScene3D';
 import { DnsScannerView } from './DnsScannerView';
@@ -526,7 +527,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const [showOperaSidebar, setShowOperaSidebar] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('aegis_show_opera_sidebar');
-      return stored !== null ? stored === 'true' : true;
+      if (stored !== null) return stored === 'true';
+      return typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
     } catch {
       return true;
     }
@@ -1934,7 +1936,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               type="button"
               disabled={!canGoForward}
               onClick={handleGoForward}
-              className={`p-1.5 rounded-full transition-colors ${
+              className={`hidden sm:inline-flex p-1.5 rounded-full transition-colors ${
                 canGoForward
                   ? 'hover:bg-slate-700/60 text-slate-200 hover:text-white cursor-pointer'
                   : 'text-slate-600 cursor-not-allowed opacity-40'
@@ -1954,7 +1956,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             <button
               type="button"
               onClick={handleGoHome}
-              className="p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-300"
+              className="hidden sm:inline-flex p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-300"
               title="Open the home page"
             >
               <Home className="w-4 h-4" />
@@ -1971,7 +1973,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 setIsEditingUrl(false);
               }
             }}
-            className="flex-1 min-w-[200px] flex items-center justify-between px-3 py-1.5 rounded-full bg-[#181a1f] hover:bg-[#14161a] border border-transparent hover:border-slate-700 focus-within:border-blue-500/80 focus-within:bg-[#181a1f] font-sans text-xs transition-all shadow-inner"
+            className="flex-1 min-w-[120px] sm:min-w-[200px] flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-full bg-[#181a1f] hover:bg-[#14161a] border border-transparent hover:border-slate-700 focus-within:border-blue-500/80 focus-within:bg-[#181a1f] font-sans text-xs transition-all shadow-inner"
           >
             {/* Padlock / Tune Page Info Icon */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -2004,7 +2006,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-1 shrink-0 ml-1 text-slate-400">
+            <div className="hidden sm:flex items-center gap-1 shrink-0 ml-1 text-slate-400">
               {/* Star Bookmark Icon Button */}
               <button
                 type="button"
@@ -2033,11 +2035,21 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
           {/* Right Toolbar Controls: Extensions, Profile, and Chrome 3-dots Menu */}
           <div className="flex items-center gap-1 shrink-0 text-slate-300">
+            {/* Appearance & Themes Palette */}
+            <button
+              type="button"
+              onClick={onOpenThemeModal}
+              className="p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-cyan-400"
+              title="Appearance & Themes"
+            >
+              <Palette className="w-4 h-4" />
+            </button>
+
             {/* Extensions Puzzle Icon */}
             <button
               type="button"
               onClick={() => handleNavigate('chrome://extensions', false, false)}
-              className="p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-400"
+              className="hidden sm:inline-flex p-1.5 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-400"
               title="Extensions (chrome://extensions)"
             >
               <Puzzle className="w-4 h-4" />
@@ -2047,7 +2059,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             <button
               type="button"
               onClick={() => setShowProfileMenu((prev) => !prev)}
-              className="w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-xs cursor-pointer shadow ml-0.5 transition-colors"
+              className="hidden xs:flex w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-500 text-white items-center justify-center font-bold text-xs cursor-pointer shadow ml-0.5 transition-colors"
               title={currentUser?.email || 'Profile & Accounts'}
             >
               {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'A'}
@@ -2408,6 +2420,22 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
               <div className="my-1.5 border-t border-slate-700/80" />
 
+              {/* Appearance & Themes */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAppMenu(false);
+                  if (onOpenThemeModal) onOpenThemeModal();
+                }}
+                className="w-full px-4 py-2 hover:bg-[#353b47] flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Palette className="w-4 h-4 text-cyan-400" />
+                  <span>Appearance & Themes</span>
+                </span>
+                <span className="text-[11px] text-cyan-400 font-mono">Theme</span>
+              </button>
+
               {/* Settings */}
               <button
                 type="button"
@@ -2475,7 +2503,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         <div className="flex flex-1 min-h-0 overflow-hidden relative">
           {/* Opera-style Vertical Left Sidebar */}
           {showOperaSidebar && (
-            <aside className="w-[48px] bg-[#101217] border-r border-slate-800/80 flex flex-col items-center py-2.5 justify-between shrink-0 select-none z-20">
+            <aside className="w-[48px] bg-[#101217] border-r border-slate-800/80 flex flex-col items-center py-2.5 justify-between shrink-0 select-none z-20 absolute sm:relative inset-y-0 left-0 shadow-2xl sm:shadow-none">
               {/* Opera Top Action Items */}
               <div className="flex flex-col items-center gap-1.5 w-full">
                 {/* Speed Dial / Start Page */}

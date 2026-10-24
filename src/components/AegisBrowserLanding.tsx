@@ -20,6 +20,8 @@ import {
   KeyRound,
   Play,
   RotateCw,
+  Palette,
+  Smartphone,
 } from 'lucide-react';
 import { BrowserView } from './BrowserView';
 import { UserAccount } from '../types';
@@ -39,6 +41,11 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
   const [isFullscreenDemo, setIsFullscreenDemo] = useState<boolean>(false);
   const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
   const [downloadType, setDownloadType] = useState<'setup' | 'portable'>('setup');
+
+  const isMobile =
+    typeof window !== 'undefined' &&
+    (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      window.innerWidth < 768);
 
   const GITHUB_REPO = 'https://github.com/narendraborhade-creator/Ageis-scanner';
   const RELEASE_TAG = 'v1.0.0';
@@ -62,7 +69,7 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950 font-sans relative overflow-x-hidden">
+    <div className="min-h-screen w-full theme-bg text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950 font-sans relative overflow-x-hidden transition-colors duration-300">
       {/* Background Cyber Mesh & Glass Glow */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[20%] w-[55vw] h-[55vw] bg-cyan-600/10 rounded-full blur-[140px]" />
@@ -96,7 +103,16 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
         </div>
 
         {/* Action Controls & Download CTA */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={props.onOpenThemeModal}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs text-slate-300 hover:text-white bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-cyan-500/40 transition-colors cursor-pointer"
+            title="Change Visual Theme"
+          >
+            <Palette className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Theme</span>
+          </button>
           <a
             href="#live-demo"
             className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-slate-300 hover:text-white bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 transition-colors"
@@ -114,10 +130,11 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
           <button
             type="button"
             onClick={() => handleTriggerDownload('setup')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
           >
             <Download className="w-4 h-4 stroke-[2.5]" />
-            <span>Download .exe</span>
+            <span className="hidden xs:inline">Download</span>
+            <span>.exe</span>
           </button>
         </div>
       </header>
@@ -165,21 +182,37 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setIsFullscreenDemo(true)}
+                className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Smartphone className="w-5 h-5 stroke-[2.5]" />
+                <span>Launch Mobile Browser</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleTriggerDownload('setup')}
-              className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+              className={`flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm ${
+                isMobile
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                  : 'bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-[0_0_30px_rgba(6,182,212,0.4)]'
+              } transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]`}
             >
               <Download className="w-5 h-5 stroke-[2.5]" />
-              <span>Download .exe (Installer)</span>
+              <span>{isMobile ? 'Download .exe (PC)' : 'Download .exe (Installer)'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => handleTriggerDownload('portable')}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
-            >
-              <span>Portable .exe</span>
-            </button>
+            {!isMobile && (
+              <button
+                type="button"
+                onClick={() => handleTriggerDownload('portable')}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+              >
+                <span>Portable .exe</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -252,7 +285,7 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
         {/* BROWSER VIEWPORT FRAME (SOC GLASSMORPHISM CONTAINER) */}
         <div
           className={`w-full transition-all duration-300 rounded-3xl overflow-hidden border border-cyan-500/30 bg-slate-950/80 shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col ${
-            isFullscreenDemo ? 'fixed inset-0 z-50 rounded-none border-0' : 'h-[750px] sm:h-[850px]'
+            isFullscreenDemo ? 'fixed inset-0 z-50 rounded-none border-0' : 'h-[540px] sm:h-[720px] md:h-[820px]'
           }`}
         >
           {/* Simulated Window Title Bar */}

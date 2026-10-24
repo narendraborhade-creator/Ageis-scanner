@@ -19,7 +19,7 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #030712;
+    background-color: var(--theme-bg, #030712);
     color: #f1f5f9;
     overflow-x: hidden;
     width: 100%;
@@ -27,6 +27,23 @@
     position: relative;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
+}
+
+/* Global App Theme Background & Variables */
+#root, [data-theme] {
+  background-color: var(--theme-bg, #030712);
+}
+
+.theme-bg {
+  background-color: var(--theme-bg, #030712) !important;
+}
+
+.theme-border {
+  border-color: var(--theme-border, rgba(6, 182, 212, 0.3)) !important;
+}
+
+.theme-primary-text {
+  color: var(--theme-primary, #06b6d4) !important;
 }
 
 /* Glassmorphism primitives */

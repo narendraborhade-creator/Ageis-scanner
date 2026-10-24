@@ -128,20 +128,45 @@ export function setStoredTheme(themeId: AppThemeId): void {
   }
 }
 
+// Global helper alias for changing theme from any component or modal
+export const changeTheme = setStoredTheme;
+
+if (typeof window !== 'undefined') {
+  (window as any).changeTheme = changeTheme;
+  (window as any).changetheme = changeTheme;
+  (window as any).setStoredTheme = setStoredTheme;
+}
+
 export function applyThemeToDOM(themeId: AppThemeId): void {
   if (typeof document === 'undefined') return;
 
+  const targetTheme = AVAILABLE_THEMES.find((t) => t.id === themeId) || AVAILABLE_THEMES[0];
   const root = document.documentElement;
-  root.setAttribute('data-theme', themeId);
 
-  // Set body theme class
+  // 1. Set data attribute and theme classes on html and body
+  root.setAttribute('data-theme', targetTheme.id);
   const themeClasses = AVAILABLE_THEMES.map((t) => `theme-${t.id}`);
   document.body.classList.remove(...themeClasses);
-  document.body.classList.add(`theme-${themeId}`);
+  document.body.classList.add(`theme-${targetTheme.id}`);
 
-  // Set theme background color directly for immediate repaint
-  const targetTheme = AVAILABLE_THEMES.find((t) => t.id === themeId);
-  if (targetTheme) {
-    document.body.style.backgroundColor = targetTheme.bgHex;
+  // 2. Dynamically set CSS variables on root & body for instant global repaints
+  root.style.setProperty('--theme-primary', targetTheme.primaryColor);
+  root.style.setProperty('--theme-secondary', targetTheme.secondaryColor);
+  root.style.setProperty('--theme-bg', targetTheme.bgHex);
+  root.style.setProperty('--theme-border', targetTheme.borderHex);
+
+  document.body.style.backgroundColor = targetTheme.bgHex;
+
+  // Also apply to #root container if present
+  const appRoot = document.getElementById('root');
+  if (appRoot) {
+    appRoot.setAttribute('data-theme', targetTheme.id);
+    appRoot.style.backgroundColor = targetTheme.bgHex;
+  }
+
+  // 3. Update the meta theme-color tag for mobile status bar!
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute('content', targetTheme.bgHex);
   }
 }

@@ -56,16 +56,17 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Initialize theme on mount
+  // Apply theme to DOM on mount and whenever currentTheme updates
   useEffect(() => {
-    applyThemeToDOM(getStoredTheme());
-  }, []);
+    applyThemeToDOM(currentTheme);
+  }, [currentTheme]);
 
   // Sync theme changes across application
   useEffect(() => {
     const handleThemeEvent = (e: any) => {
       if (e.detail?.theme) {
         setCurrentTheme(e.detail.theme);
+        applyThemeToDOM(e.detail.theme);
       }
     };
     window.addEventListener(EVENT_THEME_CHANGE, handleThemeEvent);
@@ -89,7 +90,11 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#030712] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950 font-sans">
+    <div
+      className={`w-full min-h-screen theme-bg text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950 font-sans transition-colors duration-300 ${
+        isDesktop ? 'h-screen w-screen overflow-hidden' : 'overflow-x-hidden overflow-y-auto'
+      }`}
+    >
       {/* Toast Notification Alert */}
       {sessionToast && (
         <div className="fixed top-12 right-4 z-50 max-w-md p-3.5 rounded-xl bg-cyan-950/95 border border-cyan-500/40 text-cyan-200 text-xs font-mono shadow-[0_0_25px_rgba(6,182,212,0.25)] backdrop-blur-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
@@ -108,7 +113,11 @@ export default function App() {
       )}
 
       {/* Main View: In Desktop Mode (.exe), render pure native browser. On Web (aegisscans.dev), render Landing & Live Demo */}
-      <main className="w-full h-full flex-1 min-h-0 overflow-hidden flex flex-col">
+      <main
+        className={`w-full flex-1 flex flex-col ${
+          isDesktop ? 'h-full min-h-0 overflow-hidden' : 'min-h-0'
+        }`}
+      >
         {isDesktop ? (
           <BrowserView
             initialUrl={browserInitialUrl}
@@ -166,7 +175,10 @@ export default function App() {
         isOpen={isThemeModalOpen}
         onClose={() => setIsThemeModalOpen(false)}
         currentTheme={currentTheme}
-        onThemeSelect={(t) => setCurrentTheme(t)}
+        onThemeSelect={(t) => {
+          setCurrentTheme(t);
+          applyThemeToDOM(t);
+        }}
       />
     </div>
   );
