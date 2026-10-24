@@ -29,6 +29,58 @@ const assetsToUpload = [
   }
 ];
 
+function apiRequest(options, data) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(body ? JSON.parse(body) : null);
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${body}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+async function removeExistingAsset(name) {
+  try {
+    const assets = await apiRequest({
+      hostname: 'api.github.com',
+      port: 443,
+      path: `/repos/${REPO}/releases/${RELEASE_ID}/assets`,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Node-Aegis-Uploader',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const match = assets.find(a => a.name === name);
+    if (match) {
+      console.log(`Found existing asset ${name} (id: ${match.id}), deleting before re-upload...`);
+      await apiRequest({
+        hostname: 'api.github.com',
+        port: 443,
+        path: `/repos/${REPO}/releases/assets/${match.id}`,
+        method: 'DELETE',
+        headers: {
+          'User-Agent': 'Node-Aegis-Uploader',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log(`Deleted old asset ${name} successfully.`);
+    }
+  } catch (err) {
+    console.warn(`Warning checking/deleting asset ${name}:`, err.message);
+  }
+}
+
 function uploadAsset(asset) {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(asset.localPath)) {
@@ -91,6 +143,7 @@ function uploadAsset(asset) {
 
 async function main() {
   for (const asset of assetsToUpload) {
+    await removeExistingAsset(asset.remoteName);
     await uploadAsset(asset);
   }
   console.log('All release assets successfully uploaded to GitHub Release v1.0.0!');

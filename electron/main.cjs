@@ -1,9 +1,9 @@
 const { app, BrowserWindow, ipcMain, shell, session, Menu, MenuItem } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const http = require('http');
+const fs = require('fs');
 
 let mainWindow = null;
-let serverProcess = null;
 
 const PORT = process.env.PORT || 3000;
 const SERVER_URL = `http://localhost:${PORT}`;
@@ -12,70 +12,82 @@ const SERVER_URL = `http://localhost:${PORT}`;
 const CHROMIUM_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-// Start local Express + CyberBot Server automatically
+// Built-in zero-dependency local static server for packaged desktop runtime
 function startLocalBackend() {
+  // In packaged production desktop mode (.exe), boot our high-speed zero-dependency embedded server immediately
+  if (app.isPackaged || process.env.NODE_ENV === 'production') {
+    return new Promise((resolve) => {
+      try {
+        const distPath = path.join(__dirname, '../dist');
+
+        const mimeTypes = {
+          '.html': 'text/html; charset=utf-8',
+          '.js': 'application/javascript; charset=utf-8',
+          '.css': 'text/css; charset=utf-8',
+          '.json': 'application/json',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.svg': 'image/svg+xml',
+          '.ico': 'image/x-icon',
+          '.webmanifest': 'application/manifest+json',
+          '.woff2': 'font/woff2',
+          '.woff': 'font/woff',
+          '.ttf': 'font/ttf',
+        };
+
+        const server = http.createServer((sReq, sRes) => {
+          let reqPath = sReq.url.split('?')[0];
+          if (reqPath === '/' || !reqPath) reqPath = '/index.html';
+          let filePath = path.join(distPath, reqPath);
+
+          // Prevent path traversal
+          if (!filePath.startsWith(distPath)) {
+            sRes.statusCode = 403;
+            return sRes.end('Forbidden');
+          }
+
+          fs.stat(filePath, (err, stats) => {
+            if (err || !stats.isFile()) {
+              filePath = path.join(distPath, 'index.html');
+            }
+
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+            sRes.setHeader('Content-Type', contentType);
+            sRes.setHeader('Access-Control-Allow-Origin', '*');
+            fs.createReadStream(filePath).pipe(sRes);
+          });
+        });
+
+        server.listen(0, '127.0.0.1', () => {
+          const dynamicPort = server.address().port;
+          const dynamicUrl = `http://127.0.0.1:${dynamicPort}`;
+          console.log('[Aegis Desktop] Standalone zero-dependency embedded server active at', dynamicUrl);
+          resolve(dynamicUrl);
+        });
+
+        server.on('error', (embeddedErr) => {
+          console.warn('[Aegis Desktop] Embedded server fallback to loadFile:', embeddedErr);
+          resolve(null);
+        });
+      } catch (embeddedErr) {
+        console.warn('[Aegis Desktop] Embedded server fallback to loadFile:', embeddedErr);
+        resolve(null);
+      }
+    });
+  }
+
+  // Development mode: check if dev server is running on localhost:3000
   return new Promise((resolve) => {
-    const http = require('http');
     const req = http.get(SERVER_URL, (res) => {
-      console.log('[Aegis Desktop] Server is already running on port', PORT);
+      console.log('[Aegis Desktop] Dev server is active on port', PORT);
       resolve(SERVER_URL);
     });
 
     req.on('error', () => {
-      // In packaged production desktop mode, boot a high-speed zero-dependency embedded server
-      if (app.isPackaged || process.env.NODE_ENV === 'production') {
-        console.log('[Aegis Desktop] Production packaged mode: starting embedded local static server...');
-        try {
-          const express = require('express');
-          const serverApp = express();
-          const distPath = path.join(__dirname, '../dist');
-
-          serverApp.use(express.static(distPath));
-          serverApp.get('*', (sReq, sRes) => {
-            sRes.sendFile(path.join(distPath, 'index.html'));
-          });
-
-          const server = serverApp.listen(0, '127.0.0.1', () => {
-            const dynamicPort = server.address().port;
-            const dynamicUrl = `http://127.0.0.1:${dynamicPort}`;
-            console.log('[Aegis Desktop] Standalone embedded server active at', dynamicUrl);
-            resolve(dynamicUrl);
-          });
-          return;
-        } catch (embeddedErr) {
-          console.warn('[Aegis Desktop] Embedded server fallback to loadFile:', embeddedErr);
-          resolve(null);
-          return;
-        }
-      }
-
-      console.log('[Aegis Desktop] Starting development backend server process...');
-      const isWin = process.platform === 'win32';
-      const npxCmd = isWin ? 'npx.cmd' : 'npx';
-
-      serverProcess = spawn(npxCmd, ['tsx', 'server.ts'], {
-        cwd: path.resolve(__dirname, '..'),
-        env: { ...process.env, NODE_ENV: 'development', PORT: String(PORT) },
-        stdio: 'inherit',
-      });
-
-      // Poll until server is ready
-      let attempts = 0;
-      const interval = setInterval(() => {
-        attempts++;
-        const checkReq = http.get(SERVER_URL, (res) => {
-          clearInterval(interval);
-          console.log('[Aegis Desktop] Backend server is ready!');
-          resolve(SERVER_URL);
-        });
-        checkReq.on('error', () => {
-          if (attempts > 30) {
-            clearInterval(interval);
-            console.warn('[Aegis Desktop] Timeout waiting for backend server.');
-            resolve(SERVER_URL);
-          }
-        });
-      }, 500);
+      console.log('[Aegis Desktop] Dev server not detected, serving built dist bundle...');
+      resolve(null);
     });
   });
 }
@@ -355,22 +367,8 @@ app.whenReady().then(async () => {
   });
 });
 
-function cleanup() {
-  if (serverProcess) {
-    try {
-      serverProcess.kill();
-    } catch {}
-    serverProcess = null;
-  }
-}
-
 app.on('window-all-closed', () => {
-  cleanup();
   if (process.platform !== 'darwin') {
     app.quit();
   }
-});
-
-app.on('will-quit', () => {
-  cleanup();
 });

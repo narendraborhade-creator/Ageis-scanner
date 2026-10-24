@@ -22,7 +22,10 @@ import {
   RotateCw,
   Palette,
   Smartphone,
+  Monitor,
+  Share2,
 } from 'lucide-react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { BrowserView } from './BrowserView';
 import { UserAccount } from '../types';
 
@@ -38,14 +41,19 @@ interface AegisBrowserLandingProps {
 }
 
 export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) => {
+  const pwa = usePWAInstall();
   const [isFullscreenDemo, setIsFullscreenDemo] = useState<boolean>(false);
   const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
-  const [downloadType, setDownloadType] = useState<'setup' | 'portable'>('setup');
+  const [downloadType, setDownloadType] = useState<'setup' | 'portable' | 'mobile'>('setup');
 
   const isMobile =
     typeof window !== 'undefined' &&
     (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
       window.innerWidth < 768);
+
+  const [downloadPlatform, setDownloadPlatform] = useState<'windows' | 'mobile'>(() => {
+    return isMobile ? 'mobile' : 'windows';
+  });
 
   const GITHUB_REPO = 'https://github.com/narendraborhade-creator/Ageis-scanner';
   const RELEASE_TAG = 'v1.0.0';
@@ -158,53 +166,118 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
           SOC telemetry HUD, real-time quantum DNS shielding, and high-performance WebGL threat topology.
         </p>
 
-        {/* BENTO HERO DOWNLOAD CENTER */}
-        <div className="w-full max-w-3xl p-6 sm:p-8 rounded-3xl bg-slate-900/60 border border-slate-700/60 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="text-left space-y-2">
-            <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
-              <Cpu className="w-4 h-4" />
-              <span>NATIVE CHROMIUM ENGINE (x64 WINDOWS)</span>
-            </div>
-            <h3 className="text-lg font-bold text-white">Get Aegis Safe Browser for Windows</h3>
-            <p className="text-xs text-slate-400 max-w-md">
-              Standalone executable with built-in Chromium runtime. Enjoy unrestricted access to YouTube, Google,
-              banking, and social platforms with zero CORS errors and zero latency.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono text-slate-400">
-              <span className="flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" /> 64-bit Windows 10/11
-              </span>
-              <span>·</span>
-              <span>149 MB</span>
-              <span>·</span>
-              <span className="text-cyan-300">Self-Contained Installer</span>
-            </div>
-          </div>
+        {/* PLATFORM SELECTOR TABS (WINDOWS DESKTOP VS MOBILE VERSION) */}
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl">
+          <button
+            type="button"
+            onClick={() => setDownloadPlatform('windows')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              downloadPlatform === 'windows'
+                ? 'bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-md shadow-cyan-500/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Monitor className="w-4 h-4" />
+            <span>Windows Desktop (.exe)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDownloadPlatform('mobile')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              downloadPlatform === 'mobile'
+                ? 'bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 shadow-md shadow-cyan-500/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Smartphone className="w-4 h-4" />
+            <span>Mobile Version (Android & iOS)</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+              PWA
+            </span>
+          </button>
+        </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
-            {isMobile && (
+        {/* BENTO HERO DOWNLOAD CENTER */}
+        {downloadPlatform === 'mobile' ? (
+          <div className="w-full max-w-3xl p-6 sm:p-8 rounded-3xl bg-slate-900/60 border border-cyan-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="text-left space-y-2">
+              <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
+                <Smartphone className="w-4 h-4" />
+                <span>MOBILE BROWSER APP (ANDROID & iOS)</span>
+              </div>
+              <h3 className="text-lg font-bold text-white">Aegis Mobile Safe Browser</h3>
+              <p className="text-xs text-slate-400 max-w-md">
+                Install directly to your Android or iPhone home screen. Enjoy zero-latency browsing, ad-free YouTube player, quantum DNS shield, and threat analytics on mobile.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono text-slate-400">
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Android (Chrome/Brave) & iOS (Safari)
+                </span>
+                <span>·</span>
+                <span className="text-cyan-300">Offline PWA Cache</span>
+                <span>·</span>
+                <span className="text-emerald-300">Zero App Store Overhead</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (pwa.isInstallable) {
+                    await pwa.promptInstall();
+                  } else {
+                    setDownloadType('mobile');
+                    setShowDownloadModal(true);
+                  }
+                }}
+                className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Download className="w-5 h-5 stroke-[2.5]" />
+                <span>{pwa.isInstalled ? 'App Already Installed' : 'Install Mobile App (PWA)'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setIsFullscreenDemo(true)}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+              >
+                <Maximize2 className="w-4 h-4 text-cyan-400" />
+                <span>Launch Mobile Web</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full max-w-3xl p-6 sm:p-8 rounded-3xl bg-slate-900/60 border border-slate-700/60 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="text-left space-y-2">
+              <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
+                <Cpu className="w-4 h-4" />
+                <span>NATIVE CHROMIUM ENGINE (x64 WINDOWS)</span>
+              </div>
+              <h3 className="text-lg font-bold text-white">Get Aegis Safe Browser for Windows</h3>
+              <p className="text-xs text-slate-400 max-w-md">
+                Standalone executable with built-in Chromium runtime. Enjoy unrestricted access to YouTube, Google,
+                banking, and social platforms with zero CORS errors and zero latency.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono text-slate-400">
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> 64-bit Windows 10/11
+                </span>
+                <span>·</span>
+                <span>143 MB</span>
+                <span>·</span>
+                <span className="text-cyan-300">Self-Contained Installer</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => handleTriggerDownload('setup')}
                 className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Smartphone className="w-5 h-5 stroke-[2.5]" />
-                <span>Launch Mobile Browser</span>
+                <Download className="w-5 h-5 stroke-[2.5]" />
+                <span>Download .exe (Installer)</span>
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => handleTriggerDownload('setup')}
-              className={`flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm ${
-                isMobile
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                  : 'bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-[0_0_30px_rgba(6,182,212,0.4)]'
-              } transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]`}
-            >
-              <Download className="w-5 h-5 stroke-[2.5]" />
-              <span>{isMobile ? 'Download .exe (PC)' : 'Download .exe (Installer)'}</span>
-            </button>
-            {!isMobile && (
               <button
                 type="button"
                 onClick={() => handleTriggerDownload('portable')}
@@ -212,9 +285,9 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
               >
                 <span>Portable .exe</span>
               </button>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Quick PowerShell Command */}
         <div className="w-full max-w-xl flex items-center justify-between gap-3 px-4 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] font-mono text-slate-400">
@@ -475,7 +548,7 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
         </div>
       </footer>
 
-      {/* DOWNLOAD INSTRUCTIONS MODAL */}
+      {/* DOWNLOAD & MOBILE INSTALLATION INSTRUCTIONS MODAL */}
       {showDownloadModal && (
         <div
           role="dialog"
@@ -489,12 +562,18 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                  <Download className="w-5 h-5" />
+                  {downloadType === 'mobile' ? <Smartphone className="w-5 h-5" /> : <Download className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Downloading Aegis Safe Browser...</h3>
+                  <h3 className="text-base font-bold text-white">
+                    {downloadType === 'mobile' ? 'Install Aegis Mobile Browser' : 'Downloading Aegis Safe Browser...'}
+                  </h3>
                   <p className="text-xs text-slate-400 font-mono">
-                    {downloadType === 'portable' ? 'Aegis-3D-Safe-Browser.exe (Portable)' : 'Aegis-3D-Safe-Browser-Setup.exe'}
+                    {downloadType === 'mobile'
+                      ? 'Progressive Web App (Android & iOS)'
+                      : downloadType === 'portable'
+                      ? 'Aegis-3D-Safe-Browser.exe (Portable)'
+                      : 'Aegis-3D-Safe-Browser-Setup.exe'}
                   </p>
                 </div>
               </div>
@@ -507,69 +586,139 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-3 text-xs text-slate-300">
-              <div className="flex items-center gap-2 text-cyan-300 font-bold font-mono">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Download should start automatically</span>
-              </div>
-              <p className="text-slate-400 leading-relaxed">
-                If your browser blocked the download or it didn't start, click the direct link below:
-              </p>
-              <div className="flex gap-2 pt-1">
-                <a
-                  href={downloadType === 'portable' ? PORTABLE_EXE_URL : SETUP_EXE_URL}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs"
-                >
-                  Direct Download Link
-                </a>
-                <a
-                  href={`${GITHUB_REPO}/releases`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs flex items-center gap-1"
-                >
-                  <span>All Releases</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            </div>
+            {downloadType === 'mobile' ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-3 text-xs text-slate-300">
+                  <div className="flex items-center gap-2 text-cyan-300 font-bold font-mono">
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <span>Instant Mobile Home Screen Installation</span>
+                  </div>
+                  <p className="text-slate-400 leading-relaxed">
+                    Install Aegis Safe Browser directly to your phone. It runs in standalone fullscreen with offline caching, zero CORS errors, and built-in quantum DNS defense.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {pwa.isInstallable && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await pwa.promptInstall();
+                          setShowDownloadModal(false);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-xs shadow-md"
+                      >
+                        Install App Now
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDownloadModal(false);
+                        setIsFullscreenDemo(true);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700"
+                    >
+                      Launch Fullscreen Web Browser
+                    </button>
+                  </div>
+                </div>
 
-            {/* Quick 3-Step Setup Instructions */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">Next Steps:</h4>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
-                    1
-                  </span>
-                  <span className="text-slate-300">
-                    Open your browser downloads and run <strong className="text-white">Aegis-3D-Safe-Browser-Setup.exe</strong>.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
-                    2
-                  </span>
-                  <span className="text-slate-300">
-                    If Windows Defender prompts, click <strong className="text-white">"More info"</strong> then{' '}
-                    <strong className="text-white">"Run anyway"</strong>.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
-                    3
-                  </span>
-                  <span className="text-slate-300">
-                    Aegis Browser launches with native Chromium speed, 0 CORS errors, and full web compatibility!
-                  </span>
+                {/* Mobile Step-by-Step Guide */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                    How to Install on Mobile:
+                  </h4>
+                  <div className="space-y-2 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+                      <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                        <span>Android (Chrome / Brave / Edge)</span>
+                      </div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        Tap the 3-dots menu <strong className="text-white">⋮</strong> at top right, then select{' '}
+                        <strong className="text-cyan-300">"Install app"</strong> or{' '}
+                        <strong className="text-cyan-300">"Add to Home screen"</strong>.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+                      <div className="font-bold text-cyan-400 flex items-center gap-1.5">
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>iPhone & iPad (Safari)</span>
+                      </div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        Tap the Share button <strong className="text-white">⎋</strong> at the bottom of Safari, scroll down, and tap{' '}
+                        <strong className="text-cyan-300">"Add to Home Screen"</strong>.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-3 text-xs text-slate-300">
+                  <div className="flex items-center gap-2 text-cyan-300 font-bold font-mono">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Download should start automatically</span>
+                  </div>
+                  <p className="text-slate-400 leading-relaxed">
+                    If your browser blocked the download or it didn't start, click the direct link below:
+                  </p>
+                  <div className="flex gap-2 pt-1">
+                    <a
+                      href={downloadType === 'portable' ? PORTABLE_EXE_URL : SETUP_EXE_URL}
+                      className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs"
+                    >
+                      Direct Download Link
+                    </a>
+                    <a
+                      href={`${GITHUB_REPO}/releases`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs flex items-center gap-1"
+                    >
+                      <span>All Releases</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Quick 3-Step Setup Instructions */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">Next Steps:</h4>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                        1
+                      </span>
+                      <span className="text-slate-300">
+                        Open your browser downloads and run <strong className="text-white">Aegis-3D-Safe-Browser-Setup-1.0.0.exe</strong>.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                        2
+                      </span>
+                      <span className="text-slate-300">
+                        If Windows Defender prompts, click <strong className="text-white">"More info"</strong> then{' '}
+                        <strong className="text-white">"Run anyway"</strong>.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                        3
+                      </span>
+                      <span className="text-slate-300">
+                        Aegis Browser launches instantly with native Chromium speed, 0 CORS errors, and full web compatibility!
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             <button
               type="button"
               onClick={() => setShowDownloadModal(false)}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
             >
               Close
             </button>

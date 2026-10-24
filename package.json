@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "aegis-3d-safe-browser",
   "private": true,
   "version": "1.0.0",
   "main": "electron/main.cjs",
