@@ -3,6 +3,11 @@ const path = require('path');
 const http = require('http');
 const fs = require('fs');
 
+// Append Chromium switches to prevent any "refused to connect" or frame-busting on Google, YouTube, etc.
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('disable-features', 'BlockInsecurePrivateNetworkRequests,IsolateOrigins,site-per-process');
+app.commandLine.appendSwitch('ignore-certificate-errors');
+
 let mainWindow = null;
 
 const PORT = process.env.PORT || 3000;
@@ -92,45 +97,82 @@ function startLocalBackend() {
   });
 }
 
-function configureChromiumSession() {
-  const ses = session.defaultSession;
+function configureChromiumSession(targetSession) {
+  const ses = targetSession || session.defaultSession;
+  if (!ses) return;
 
   // Set modern standard Chrome User Agent
-  ses.setUserAgent(CHROMIUM_USER_AGENT);
+  try {
+    ses.setUserAgent(CHROMIUM_USER_AGENT);
+  } catch {}
 
-  // Strip restrictive headers so native Chromium <webview> can render any website without frame-busting
-  ses.webRequest.onHeadersReceived((details, callback) => {
-    const responseHeaders = { ...details.responseHeaders };
+  const filter = { urls: ['*://*/*'] };
 
-    // Remove X-Frame-Options
-    for (const key of Object.keys(responseHeaders)) {
-      if (key.toLowerCase() === 'x-frame-options') {
-        delete responseHeaders[key];
+  // Intercept request headers so Google, YouTube, and web servers see a direct top-level browser navigation
+  try {
+    ses.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+      const requestHeaders = { ...details.requestHeaders };
+
+      requestHeaders['User-Agent'] = CHROMIUM_USER_AGENT;
+
+      // Ensure Sec-Fetch headers mimic standard top-level desktop browser navigation
+      if (requestHeaders['Sec-Fetch-Dest'] === 'iframe') {
+        requestHeaders['Sec-Fetch-Dest'] = 'document';
       }
-      // Relax Content-Security-Policy frame-ancestors restrictions
-      if (key.toLowerCase() === 'content-security-policy') {
-        responseHeaders[key] = responseHeaders[key].map((csp) =>
-          csp.replace(/frame-ancestors[^;]+;?/gi, '')
-        );
+      if (requestHeaders['Sec-Fetch-Mode'] === 'nested-navigate') {
+        requestHeaders['Sec-Fetch-Mode'] = 'navigate';
       }
-    }
+      if (requestHeaders['Sec-Fetch-Site'] === 'cross-site') {
+        requestHeaders['Sec-Fetch-Site'] = 'none';
+      }
 
-    callback({ cancel: false, responseHeaders });
-  });
+      callback({ cancel: false, requestHeaders });
+    });
+  } catch (err) {
+    console.warn('[Aegis Desktop] onBeforeSendHeaders warning:', err);
+  }
+
+  // Strip restrictive headers (X-Frame-Options, CSP, COOP, COEP) so Google and any website can render seamlessly
+  try {
+    ses.webRequest.onHeadersReceived(filter, (details, callback) => {
+      const responseHeaders = { ...details.responseHeaders };
+
+      for (const key of Object.keys(responseHeaders)) {
+        const lower = key.toLowerCase();
+        if (
+          lower === 'x-frame-options' ||
+          lower === 'content-security-policy' ||
+          lower === 'content-security-policy-report-only' ||
+          lower === 'cross-origin-opener-policy' ||
+          lower === 'cross-origin-embedder-policy' ||
+          lower === 'cross-origin-resource-policy'
+        ) {
+          delete responseHeaders[key];
+        }
+      }
+
+      callback({ cancel: false, responseHeaders });
+    });
+  } catch (err) {
+    console.warn('[Aegis Desktop] onHeadersReceived warning:', err);
+  }
 
   // Safe permission handler for Web APIs
-  ses.setPermissionRequestHandler((webContents, permission, callback) => {
-    const allowedPermissions = [
-      'fullscreen',
-      'clipboard-read',
-      'clipboard-sanitized-write',
-      'media',
-      'audioCapture',
-      'videoCapture',
-      'notifications',
-    ];
-    callback(allowedPermissions.includes(permission));
-  });
+  try {
+    ses.setPermissionRequestHandler((webContents, permission, callback) => {
+      const allowedPermissions = [
+        'fullscreen',
+        'clipboard-read',
+        'clipboard-sanitized-write',
+        'media',
+        'audioCapture',
+        'videoCapture',
+        'notifications',
+        'geolocation',
+      ];
+      callback(allowedPermissions.includes(permission));
+    });
+  } catch {}
 }
 
 async function createWindow(targetUrl) {
@@ -150,6 +192,8 @@ async function createWindow(targetUrl) {
       contextIsolation: true,
       sandbox: false,
       spellcheck: true,
+      webSecurity: false, // Disables iframe/webview frame-busting blocks for authentic full-fidelity browsing
+      allowRunningInsecureContent: true,
     },
   });
 
@@ -356,7 +400,16 @@ ipcMain.on('zoom-reset', () => {
 });
 
 app.whenReady().then(async () => {
-  configureChromiumSession();
+  // Configure default session and webview partitions
+  configureChromiumSession(session.defaultSession);
+  configureChromiumSession(session.fromPartition('persist:aegis-browser'));
+  configureChromiumSession(session.fromPartition('persist:aegis'));
+
+  // Ensure any newly spawned webview or window partition inherits Google-compatible headers
+  app.on('session-created', (ses) => {
+    configureChromiumSession(ses);
+  });
+
   const targetUrl = await startLocalBackend();
   await createWindow(targetUrl);
 

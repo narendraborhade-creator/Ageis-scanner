@@ -758,6 +758,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       }
     };
 
+    const handleDidFailLoad = (e: any) => {
+      if (e.errorCode === -3) return;
+      setIsScanning(false);
+    };
+
     wv.addEventListener('did-start-loading', handleStartLoading);
     wv.addEventListener('did-stop-loading', handleStopLoading);
     wv.addEventListener('did-navigate', handleDidNavigate);
@@ -765,6 +770,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     wv.addEventListener('page-title-updated', handleTitleUpdated);
     wv.addEventListener('page-favicon-updated', handleFaviconUpdated);
     wv.addEventListener('new-window', handleNewWindow);
+    wv.addEventListener('did-fail-load', handleDidFailLoad);
 
     return () => {
       try {
@@ -775,6 +781,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         wv.removeEventListener('page-title-updated', handleTitleUpdated);
         wv.removeEventListener('page-favicon-updated', handleFaviconUpdated);
         wv.removeEventListener('new-window', handleNewWindow);
+        wv.removeEventListener('did-fail-load', handleDidFailLoad);
       } catch {}
     };
   }, [activeTab.id, activeTab.url, isDesktop]);
@@ -3155,7 +3162,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       ref={webviewRef}
                       key={`desktop-webview-${activeTab.id}-${refreshKey}`}
                       src={activeTab.url}
+                      partition="persist:aegis-browser"
                       allowpopups=""
+                      webpreferences="webSecurity=no, contextIsolation=no, nativeWindowOpen=yes"
                       className="w-full h-full border-0 bg-white"
                     />
                   ) : (
