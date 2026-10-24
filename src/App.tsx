@@ -11,6 +11,7 @@ import {
   clearSessionState,
 } from './services/sessionStateService';
 import { BrowserView } from './components/BrowserView';
+import { AegisBrowserLanding } from './components/AegisBrowserLanding';
 import { CloudflareVerificationModal } from './components/CloudflareVerificationModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { ThemeSelectorModal } from './components/ThemeSelectorModal';
@@ -40,6 +41,7 @@ export default function App() {
   const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
   const [currentTheme, setCurrentTheme] = useState<AppThemeId>(() => getStoredTheme());
   const [privacyMode, setPrivacyMode] = useState<boolean>(() => getPrivacyModeStatus());
+  const isDesktop = typeof window !== 'undefined' && Boolean((window as any).isAegisDesktop);
 
   // Global Ctrl+K / Cmd+K Command Palette Keyboard Shortcut Listener
   useEffect(() => {
@@ -105,18 +107,31 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Single Browser View: Full Height, Zero Duplicate Header/Footer, Unified Chromium Chrome */}
+      {/* Main View: In Desktop Mode (.exe), render pure native browser. On Web (aegisscans.dev), render Landing & Live Demo */}
       <main className="w-full h-full flex-1 min-h-0 overflow-hidden flex flex-col">
-        <BrowserView
-          initialUrl={browserInitialUrl}
-          currentUser={user}
-          onUserChange={setUser}
-          onOpenThemeModal={() => setIsThemeModalOpen(true)}
-          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-          onOpenCloudflareModal={() => setShowCfModal(true)}
-          privacyMode={privacyMode}
-          onTogglePrivacy={handleTogglePrivacy}
-        />
+        {isDesktop ? (
+          <BrowserView
+            initialUrl={browserInitialUrl}
+            currentUser={user}
+            onUserChange={setUser}
+            onOpenThemeModal={() => setIsThemeModalOpen(true)}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            onOpenCloudflareModal={() => setShowCfModal(true)}
+            privacyMode={privacyMode}
+            onTogglePrivacy={handleTogglePrivacy}
+          />
+        ) : (
+          <AegisBrowserLanding
+            initialUrl={browserInitialUrl}
+            currentUser={user}
+            onUserChange={setUser}
+            onOpenThemeModal={() => setIsThemeModalOpen(true)}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            onOpenCloudflareModal={() => setShowCfModal(true)}
+            privacyMode={privacyMode}
+            onTogglePrivacy={handleTogglePrivacy}
+          />
+        )}
       </main>
 
       {/* Global Modals */}

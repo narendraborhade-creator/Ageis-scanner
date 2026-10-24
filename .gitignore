@@ -11,3 +11,5 @@ __pycache__/
 *.pyc
 .depot_tools/
 .security-apis-ref/
+release/
+

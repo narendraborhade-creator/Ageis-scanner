@@ -18,11 +18,38 @@ function startLocalBackend() {
     const http = require('http');
     const req = http.get(SERVER_URL, (res) => {
       console.log('[Aegis Desktop] Server is already running on port', PORT);
-      resolve(true);
+      resolve(SERVER_URL);
     });
 
     req.on('error', () => {
-      console.log('[Aegis Desktop] Starting backend server process...');
+      // In packaged production desktop mode, boot a high-speed zero-dependency embedded server
+      if (app.isPackaged || process.env.NODE_ENV === 'production') {
+        console.log('[Aegis Desktop] Production packaged mode: starting embedded local static server...');
+        try {
+          const express = require('express');
+          const serverApp = express();
+          const distPath = path.join(__dirname, '../dist');
+
+          serverApp.use(express.static(distPath));
+          serverApp.get('*', (sReq, sRes) => {
+            sRes.sendFile(path.join(distPath, 'index.html'));
+          });
+
+          const server = serverApp.listen(0, '127.0.0.1', () => {
+            const dynamicPort = server.address().port;
+            const dynamicUrl = `http://127.0.0.1:${dynamicPort}`;
+            console.log('[Aegis Desktop] Standalone embedded server active at', dynamicUrl);
+            resolve(dynamicUrl);
+          });
+          return;
+        } catch (embeddedErr) {
+          console.warn('[Aegis Desktop] Embedded server fallback to loadFile:', embeddedErr);
+          resolve(null);
+          return;
+        }
+      }
+
+      console.log('[Aegis Desktop] Starting development backend server process...');
       const isWin = process.platform === 'win32';
       const npxCmd = isWin ? 'npx.cmd' : 'npx';
 
@@ -39,13 +66,13 @@ function startLocalBackend() {
         const checkReq = http.get(SERVER_URL, (res) => {
           clearInterval(interval);
           console.log('[Aegis Desktop] Backend server is ready!');
-          resolve(true);
+          resolve(SERVER_URL);
         });
         checkReq.on('error', () => {
           if (attempts > 30) {
             clearInterval(interval);
             console.warn('[Aegis Desktop] Timeout waiting for backend server.');
-            resolve(false);
+            resolve(SERVER_URL);
           }
         });
       }, 500);
@@ -94,7 +121,7 @@ function configureChromiumSession() {
   });
 }
 
-async function createWindow() {
+async function createWindow(targetUrl) {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 920,
@@ -116,8 +143,12 @@ async function createWindow() {
 
   mainWindow.setMenuBarVisibility(false);
 
-  // Load the application
-  await mainWindow.loadURL(SERVER_URL);
+  // Load the application from local embedded server or directly from dist/index.html
+  if (targetUrl) {
+    await mainWindow.loadURL(targetUrl);
+  } else {
+    await mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -314,12 +345,12 @@ ipcMain.on('zoom-reset', () => {
 
 app.whenReady().then(async () => {
   configureChromiumSession();
-  await startLocalBackend();
-  await createWindow();
+  const targetUrl = await startLocalBackend();
+  await createWindow(targetUrl);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      createWindow(targetUrl);
     }
   });
 });
