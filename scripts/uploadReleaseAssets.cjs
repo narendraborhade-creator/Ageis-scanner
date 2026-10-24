@@ -20,6 +20,10 @@ const REPO = 'narendraborhade-creator/Ageis-scanner';
 
 const assetsToUpload = [
   {
+    localPath: path.resolve(__dirname, '../release/Aegis-3D-Safe-Browser.apk'),
+    remoteName: 'Aegis-3D-Safe-Browser.apk'
+  },
+  {
     localPath: path.resolve(__dirname, '../release/Aegis 3D Safe Browser Setup 1.0.0.exe'),
     remoteName: 'Aegis-3D-Safe-Browser-Setup-1.0.0.exe'
   },

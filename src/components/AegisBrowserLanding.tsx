@@ -44,7 +44,7 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
   const pwa = usePWAInstall();
   const [isFullscreenDemo, setIsFullscreenDemo] = useState<boolean>(false);
   const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
-  const [downloadType, setDownloadType] = useState<'setup' | 'portable' | 'mobile'>('setup');
+  const [downloadType, setDownloadType] = useState<'setup' | 'portable' | 'apk' | 'mobile'>('setup');
 
   const isMobile =
     typeof window !== 'undefined' &&
@@ -59,13 +59,22 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
   const RELEASE_TAG = 'v1.0.0';
   const SETUP_EXE_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser-Setup-1.0.0.exe`;
   const PORTABLE_EXE_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser-1.0.0.exe`;
+  const ANDROID_APK_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser.apk`;
 
-  const handleTriggerDownload = (type: 'setup' | 'portable') => {
+  const handleTriggerDownload = (type: 'setup' | 'portable' | 'apk') => {
     setDownloadType(type);
     setShowDownloadModal(true);
 
-    const targetUrl = type === 'portable' ? PORTABLE_EXE_URL : SETUP_EXE_URL;
-    const fileName = type === 'portable' ? 'Aegis-3D-Safe-Browser.exe' : 'Aegis-3D-Safe-Browser-Setup.exe';
+    let targetUrl = SETUP_EXE_URL;
+    let fileName = 'Aegis-3D-Safe-Browser-Setup.exe';
+
+    if (type === 'portable') {
+      targetUrl = PORTABLE_EXE_URL;
+      fileName = 'Aegis-3D-Safe-Browser.exe';
+    } else if (type === 'apk') {
+      targetUrl = ANDROID_APK_URL;
+      fileName = 'Aegis-3D-Safe-Browser.apk';
+    }
 
     // Trigger direct browser download
     const link = document.createElement('a');
@@ -220,7 +229,15 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
+            <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleTriggerDownload('apk')}
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black text-xs sm:text-sm bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 text-slate-950 shadow-[0_0_25px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Smartphone className="w-4 h-4 stroke-[2.5]" />
+                <span>Download Android APK (.apk)</span>
+              </button>
               <button
                 type="button"
                 onClick={async () => {
@@ -231,18 +248,18 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
                     setShowDownloadModal(true);
                   }
                 }}
-                className="flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
               >
-                <Download className="w-5 h-5 stroke-[2.5]" />
-                <span>{pwa.isInstalled ? 'App Already Installed' : 'Install Mobile App (PWA)'}</span>
+                <Download className="w-4 h-4" />
+                <span>{pwa.isInstalled ? 'PWA Installed' : 'Install PWA'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsFullscreenDemo(true)}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
               >
                 <Maximize2 className="w-4 h-4 text-cyan-400" />
-                <span>Launch Mobile Web</span>
+                <span>Launch Web Sandbox</span>
               </button>
             </div>
           </div>
@@ -662,12 +679,12 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
                   <p className="text-slate-400 leading-relaxed">
                     If your browser blocked the download or it didn't start, click the direct link below:
                   </p>
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2 pt-1 flex-wrap">
                     <a
-                      href={downloadType === 'portable' ? PORTABLE_EXE_URL : SETUP_EXE_URL}
+                      href={downloadType === 'apk' ? ANDROID_APK_URL : downloadType === 'portable' ? PORTABLE_EXE_URL : SETUP_EXE_URL}
                       className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs"
                     >
-                      Direct Download Link
+                      {downloadType === 'apk' ? 'Download .apk Directly' : 'Direct Download Link'}
                     </a>
                     <a
                       href={`${GITHUB_REPO}/releases`}
@@ -681,36 +698,65 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
                   </div>
                 </div>
 
-                {/* Quick 3-Step Setup Instructions */}
+                {/* Quick Setup Instructions */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400">Next Steps:</h4>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
-                        1
-                      </span>
-                      <span className="text-slate-300">
-                        Open your browser downloads and run <strong className="text-white">Aegis-3D-Safe-Browser-Setup-1.0.0.exe</strong>.
-                      </span>
+                  {downloadType === 'apk' ? (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                          1
+                        </span>
+                        <span className="text-slate-300">
+                          If Android prompts <strong className="text-white">"File might be harmful"</strong>, tap <strong className="text-white">"Download anyway"</strong>.
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                          2
+                        </span>
+                        <span className="text-slate-300">
+                          Open <strong className="text-white">Aegis-3D-Safe-Browser.apk</strong> from your notifications or Downloads.
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                          3
+                        </span>
+                        <span className="text-slate-300">
+                          Tap <strong className="text-white">"Install"</strong> (enable install unknown apps if prompted) to launch Aegis Safe Browser on your phone!
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
-                        2
-                      </span>
-                      <span className="text-slate-300">
-                        If Windows Defender prompts, click <strong className="text-white">"More info"</strong> then{' '}
-                        <strong className="text-white">"Run anyway"</strong>.
-                      </span>
+                  ) : (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                          1
+                        </span>
+                        <span className="text-slate-300">
+                          Open your browser downloads and run <strong className="text-white">Aegis-3D-Safe-Browser-Setup-1.0.0.exe</strong>.
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                          2
+                        </span>
+                        <span className="text-slate-300">
+                          If Windows Defender prompts, click <strong className="text-white">"More info"</strong> then{' '}
+                          <strong className="text-white">"Run anyway"</strong>.
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
+                          3
+                        </span>
+                        <span className="text-slate-300">
+                          Aegis Browser launches instantly with native Chromium speed, 0 CORS errors, and full web compatibility!
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono flex items-center justify-center shrink-0 text-[10px]">
-                        3
-                      </span>
-                      <span className="text-slate-300">
-                        Aegis Browser launches instantly with native Chromium speed, 0 CORS errors, and full web compatibility!
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </>
             )}
