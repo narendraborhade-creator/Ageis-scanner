@@ -634,6 +634,33 @@ app.all('/api/proxy', async (req, res) => {
   }
 });
 
+// 2b. Live Google Database Search Suggestions / Autocomplete API
+app.get('/api/search/suggestions', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) {
+      return res.json({ query: '', suggestions: [] });
+    }
+    const response = await fetch(
+      `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(q)}`,
+      {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        },
+      }
+    );
+    if (!response.ok) {
+      return res.json({ query: q, suggestions: [] });
+    }
+    const data = await response.json();
+    const suggestions = Array.isArray(data?.[1]) ? data[1] : [];
+    res.json({ query: q, suggestions: suggestions.slice(0, 8) });
+  } catch (err) {
+    res.json({ query: '', suggestions: [] });
+  }
+});
+
 // 2c. Aegis Universal Secure Web Search API (Zero-Trace, Clean Structured Results)
 app.get('/api/search', async (req, res) => {
   try {

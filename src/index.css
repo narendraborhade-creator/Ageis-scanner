@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Chromium Desktop Embedded Webview Display Rules */
+webview {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
 @layer base {
   :root {
     --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;

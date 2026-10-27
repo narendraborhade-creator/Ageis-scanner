@@ -1,11 +1,24 @@
 const { app, BrowserWindow, ipcMain, shell, session, Menu, MenuItem } = require('electron');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 
-// Append Chromium switches to prevent any "refused to connect" or frame-busting on Google, YouTube, etc.
-app.commandLine.appendSwitch('disable-site-isolation-trials');
-app.commandLine.appendSwitch('disable-features', 'BlockInsecurePrivateNetworkRequests,IsolateOrigins,site-per-process');
+// Single Instance Lock: prevents duplicate background processes from locking cache and storage
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+// Chromium flags for high-performance zero-trust desktop rendering and Google authentication
 app.commandLine.appendSwitch('ignore-certificate-errors');
 // Disable Blink automation flag so Google accounts does not block sign-in with "browser not secure"
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
@@ -52,6 +65,37 @@ function startLocalBackend() {
         };
 
         const server = http.createServer((sReq, sRes) => {
+          // Live Google Database Search Suggestions / Autocomplete API
+          if (sReq.url.startsWith('/api/search/suggestions')) {
+            const urlObj = new URL(sReq.url, 'http://127.0.0.1');
+            const q = urlObj.searchParams.get('q') || '';
+            const gUrl = `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(q)}`;
+            https.get(
+              gUrl,
+              { headers: { 'User-Agent': CHROMIUM_USER_AGENT } },
+              (gRes) => {
+                let body = '';
+                gRes.on('data', (chunk) => (body += chunk));
+                gRes.on('end', () => {
+                  sRes.setHeader('Content-Type', 'application/json');
+                  sRes.setHeader('Access-Control-Allow-Origin', '*');
+                  try {
+                    const parsed = JSON.parse(body);
+                    const suggestions = Array.isArray(parsed?.[1]) ? parsed[1].slice(0, 8) : [];
+                    sRes.end(JSON.stringify({ query: q, suggestions }));
+                  } catch {
+                    sRes.end(JSON.stringify({ query: q, suggestions: [] }));
+                  }
+                });
+              }
+            ).on('error', () => {
+              sRes.setHeader('Content-Type', 'application/json');
+              sRes.setHeader('Access-Control-Allow-Origin', '*');
+              sRes.end(JSON.stringify({ query: q, suggestions: [] }));
+            });
+            return;
+          }
+
           let reqPath = sReq.url.split('?')[0];
           if (reqPath === '/' || !reqPath) reqPath = '/index.html';
           let filePath = path.join(distPath, reqPath);
@@ -136,17 +180,6 @@ function configureChromiumSession(targetSession) {
         }
       } else {
         requestHeaders['User-Agent'] = CHROMIUM_USER_AGENT;
-      }
-
-      // Ensure Sec-Fetch headers mimic standard top-level desktop browser navigation
-      if (requestHeaders['Sec-Fetch-Dest'] === 'iframe') {
-        requestHeaders['Sec-Fetch-Dest'] = 'document';
-      }
-      if (requestHeaders['Sec-Fetch-Mode'] === 'nested-navigate') {
-        requestHeaders['Sec-Fetch-Mode'] = 'navigate';
-      }
-      if (requestHeaders['Sec-Fetch-Site'] === 'cross-site') {
-        requestHeaders['Sec-Fetch-Site'] = 'none';
       }
 
       callback({ cancel: false, requestHeaders });

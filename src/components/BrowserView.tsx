@@ -532,6 +532,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   } | null>(null);
   const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
   const [urlInputValue, setUrlInputValue] = useState<string>('');
+  const [googleSuggestions, setGoogleSuggestions] = useState<string[]>([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
   const [startPageSearchInput, setStartPageSearchInput] = useState<string>('');
 
   // Real In-Browser Rendering & YouTube States
@@ -736,6 +738,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             return {
               ...t,
               url: navUrl,
+              initialUrl: t.initialUrl || navUrl,
               domain,
               isHttps,
               historyStack: stack,
@@ -901,6 +904,42 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       setUrlInputValue(current.url === 'aegis://newtab' ? '' : current.url);
     }
   }, [activeTabId, tabs, isEditingUrl]);
+
+  // Real-time Google Database Search Suggestions / Autocomplete Query Engine
+  useEffect(() => {
+    const query = urlInputValue.trim();
+    if (!isEditingUrl || !query || query.startsWith('aegis://') || query.startsWith('http://') || query.startsWith('https://')) {
+      setGoogleSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data?.suggestions) && data.suggestions.length > 0) {
+            setGoogleSuggestions(data.suggestions);
+            setSelectedSuggestionIndex(-1);
+            return;
+          }
+        }
+      } catch {}
+
+      // Resilient direct fallback to Google Suggest API
+      try {
+        const direct = await fetch(`https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`);
+        if (direct.ok) {
+          const d = await direct.json();
+          if (Array.isArray(d?.[1])) {
+            setGoogleSuggestions(d[1].slice(0, 8));
+            setSelectedSuggestionIndex(-1);
+          }
+        }
+      } catch {}
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [urlInputValue, isEditingUrl]);
 
   // Synchronize In-Browser Secure Search results when visiting aegis://search
   useEffect(() => {
@@ -1401,6 +1440,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       id: targetTabId,
       title,
       url: target,
+      initialUrl: target,
       domain,
       isHttps,
       threatStatus: isQuarantined ? 'blocked' : 'clean',
@@ -1435,6 +1475,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       setTabs((prev) =>
         prev.map((t) => (t.id === activeTab.id ? updatedTab : t))
       );
+      if (isDesktop && webviewRef.current && typeof webviewRef.current.loadURL === 'function' && !target.startsWith('aegis://')) {
+        try {
+          webviewRef.current.loadURL(target);
+        } catch (err) {
+          console.warn('[Aegis Desktop] loadURL error:', err);
+        }
+      }
     }
 
     setUrlInputValue(target);
@@ -2023,75 +2070,138 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </button>
           </div>
 
-          {/* Center: Chromium Omnibox (LocationBarView) */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const val = (urlInputValue || activeTab.url).trim();
-              if (val) {
-                handleNavigate(val, false, false);
-                setIsEditingUrl(false);
-              }
-            }}
-            className="flex-1 min-w-[120px] sm:min-w-[200px] flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-full bg-[#181a1f] hover:bg-[#14161a] border border-transparent hover:border-slate-700 focus-within:border-blue-500/80 focus-within:bg-[#181a1f] font-sans text-xs transition-all shadow-inner"
-          >
-            {/* Padlock / Tune Page Info Icon */}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <button
-                type="button"
-                onClick={() => setShowPageInfoModal((prev) => !prev)}
-                className="p-1 rounded-full hover:bg-slate-700/60 transition-colors cursor-pointer text-slate-400 hover:text-slate-200"
-                title="View site information & security"
-              >
-                {activeTab.isHttps ? (
-                  <Lock className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
-                ) : (
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+          {/* Center: Chromium Omnibox (LocationBarView) with Google Database Search Suggestions */}
+          <div className="flex-1 min-w-[120px] sm:min-w-[200px] relative">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const selected =
+                  selectedSuggestionIndex >= 0 && googleSuggestions[selectedSuggestionIndex]
+                    ? googleSuggestions[selectedSuggestionIndex]
+                    : (urlInputValue || activeTab.url).trim();
+                if (selected) {
+                  handleNavigate(selected, false, false);
+                  setGoogleSuggestions([]);
+                  setIsEditingUrl(false);
+                }
+              }}
+              className="w-full flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-full bg-[#181a1f] hover:bg-[#14161a] border border-transparent hover:border-slate-700 focus-within:border-blue-500/80 focus-within:bg-[#181a1f] font-sans text-xs transition-all shadow-inner"
+            >
+              {/* Padlock / Tune Page Info Icon */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setShowPageInfoModal((prev) => !prev)}
+                  className="p-1 rounded-full hover:bg-slate-700/60 transition-colors cursor-pointer text-slate-400 hover:text-slate-200"
+                  title="View site information & security"
+                >
+                  {activeTab.isHttps ? (
+                    <Lock className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
+                  ) : (
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                  )}
+                </button>
+
+                <input
+                  type="text"
+                  value={isEditingUrl ? urlInputValue : (activeTab.url === 'aegis://newtab' ? '' : activeTab.url)}
+                  onFocus={() => {
+                    setIsEditingUrl(true);
+                    setUrlInputValue(activeTab.url === 'aegis://newtab' ? '' : activeTab.url);
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setIsEditingUrl(false);
+                      setGoogleSuggestions([]);
+                    }, 250);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown' && googleSuggestions.length > 0) {
+                      e.preventDefault();
+                      setSelectedSuggestionIndex((prev) => Math.min(prev + 1, googleSuggestions.length - 1));
+                    } else if (e.key === 'ArrowUp' && googleSuggestions.length > 0) {
+                      e.preventDefault();
+                      setSelectedSuggestionIndex((prev) => Math.max(prev - 1, -1));
+                    } else if (e.key === 'Escape') {
+                      setGoogleSuggestions([]);
+                      setIsEditingUrl(false);
+                    }
+                  }}
+                  onChange={(e) => {
+                    setUrlInputValue(e.target.value);
+                    setSelectedSuggestionIndex(-1);
+                  }}
+                  placeholder="Search Google or type a URL"
+                  className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none truncate font-sans text-xs"
+                />
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1 shrink-0 ml-1 text-slate-400">
+                {/* Star Bookmark Icon Button */}
+                <button
+                  type="button"
+                  onClick={handleToggleActiveBookmark}
+                  className={`p-1 rounded-full hover:bg-slate-700/60 transition-colors cursor-pointer ${
+                    isCurrentBookmarked
+                      ? 'text-amber-400 hover:text-amber-300'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title={isCurrentBookmarked ? 'Remove bookmark' : 'Bookmark this tab (Ctrl+D)'}
+                >
+                  <Star className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
+                </button>
+
+                {/* Copy URL */}
+                <button
+                  type="button"
+                  onClick={handleCopyUrl}
+                  className="p-1 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-400"
+                  title="Copy link address"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+
+                {copiedUrl && (
+                  <span className="text-[10px] text-emerald-400 font-mono animate-in fade-in">
+                    Copied!
+                  </span>
                 )}
-              </button>
+              </div>
+            </form>
 
-              <input
-                type="text"
-                value={isEditingUrl ? urlInputValue : (activeTab.url === 'aegis://newtab' ? '' : activeTab.url)}
-                onFocus={() => {
-                  setIsEditingUrl(true);
-                  setUrlInputValue(activeTab.url === 'aegis://newtab' ? '' : activeTab.url);
-                }}
-                onBlur={() => {
-                  setTimeout(() => setIsEditingUrl(false), 250);
-                }}
-                onChange={(e) => setUrlInputValue(e.target.value)}
-                placeholder="Search Google or type a URL"
-                className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none truncate font-sans text-xs"
-              />
-            </div>
-
-            <div className="hidden sm:flex items-center gap-1 shrink-0 ml-1 text-slate-400">
-              {/* Star Bookmark Icon Button */}
-              <button
-                type="button"
-                onClick={handleToggleActiveBookmark}
-                className={`p-1 rounded-full hover:bg-slate-700/60 transition-colors cursor-pointer ${
-                  isCurrentBookmarked
-                    ? 'text-amber-400 hover:text-amber-300'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title={isCurrentBookmarked ? 'Remove bookmark' : 'Bookmark this tab (Ctrl+D)'}
-              >
-                <Star className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
-              </button>
-
-              {/* Copy URL */}
-              <button
-                type="button"
-                onClick={handleCopyUrl}
-                className="p-1 rounded-full hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer text-slate-400"
-                title="Copy page link"
-              >
-                {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </form>
+            {/* Google Database Autocomplete Suggestions Dropdown */}
+            {isEditingUrl && googleSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 py-1.5 rounded-xl bg-slate-900/98 border border-slate-700/80 shadow-2xl backdrop-blur-xl z-50 overflow-hidden font-sans">
+                <div className="px-3.5 py-1 text-[10px] font-mono uppercase tracking-wider text-cyan-400/80 border-b border-slate-800/80 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Search className="w-3 h-3 text-cyan-400" />
+                    Google Database Suggestions
+                  </span>
+                  <span className="text-slate-500 text-[9px]">Google Instant Search</span>
+                </div>
+                {googleSuggestions.map((sug, idx) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleNavigate(sug, false, false);
+                      setGoogleSuggestions([]);
+                      setIsEditingUrl(false);
+                    }}
+                    className={`w-full px-3.5 py-2 text-left text-xs flex items-center gap-2.5 transition-colors cursor-pointer ${
+                      idx === selectedSuggestionIndex
+                        ? 'bg-cyan-950/70 text-cyan-300 font-semibold'
+                        : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="truncate">{sug}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Right Toolbar Controls: Extensions, Profile, and Chrome 3-dots Menu */}
           <div className="flex items-center gap-1 shrink-0 text-slate-300">
@@ -3189,12 +3299,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     <webview
                       ref={webviewRef}
                       key={`desktop-webview-${activeTab.id}-${refreshKey}`}
-                      src={activeTab.url}
+                      src={activeTab.initialUrl || activeTab.url}
                       partition="persist:aegis-browser"
                       allowpopups=""
                       useragent={isGoogleAuthEndpoint(activeTab.url) ? GOOGLE_AUTH_UA : CHROMIUM_DESKTOP_UA}
                       webpreferences="webSecurity=no, contextIsolation=no, nativeWindowOpen=yes"
                       className="w-full h-full border-0 bg-white"
+                      style={{ width: '100%', height: '100%', display: 'flex' }}
                     />
                   ) : (
                     <iframe

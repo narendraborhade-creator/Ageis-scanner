@@ -23,6 +23,7 @@ export interface BrowserTab {
   securityScore: number;
   sslGrade: 'A+' | 'A' | 'B' | 'C' | 'F';
   isQuarantined: boolean;
+  initialUrl?: string;
   isPinned?: boolean;
   isSuspended?: boolean;
   groupId?: string;
