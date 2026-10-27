@@ -1,4 +1,5 @@
 import { DailyThreatData, AISecuritySummary } from '../types';
+import { apiUrl } from './apiConfig';
 
 const HEATMAP_STORAGE_KEY = 'aegis_threat_heatmap_30d';
 
@@ -144,7 +145,7 @@ Return a concise JSON object with these keys:
 }`;
 
   try {
-    const res = await fetch('/api/gemini/chat', {
+    const res = await fetch(apiUrl('/api/gemini/chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

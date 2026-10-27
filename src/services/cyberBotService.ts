@@ -6,6 +6,7 @@
  */
 
 import { BrowserTab } from '../types';
+import { apiUrl } from './apiConfig';
 import {
   answerWithWebAndCyberKnowledge,
   isExplicitPageAuditRequest,
@@ -349,7 +350,7 @@ export async function queryAegisCopilot(params: {
 
   // 2. Try calling the backend endpoint (/api/gemini/chat)
   try {
-    const res = await fetch('/api/gemini/chat', {
+    const res = await fetch(apiUrl('/api/gemini/chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

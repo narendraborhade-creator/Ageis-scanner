@@ -1,4 +1,5 @@
 import { ThreatItem, WebsiteAudit } from '../types';
+import { apiUrl } from './apiConfig';
 
 // Known malicious / simulated risk test domains
 const KNOWN_SUSPICIOUS_TLDS = ['.xyz', '.top', '.buzz', '.work', '.click', '.loan', '.gq', '.ml', '.cf', '.tk'];
@@ -158,7 +159,7 @@ export async function auditWebsiteSecurity(targetUrl: string): Promise<WebsiteAu
   }
 
   try {
-    const res = await fetch(`/api/inspect/website?url=${encodeURIComponent(cleanUrl)}`);
+    const res = await fetch(apiUrl(`/api/inspect/website?url=${encodeURIComponent(cleanUrl)}`));
     if (res.ok) {
       const data = await res.json();
       const vulns: string[] = [];

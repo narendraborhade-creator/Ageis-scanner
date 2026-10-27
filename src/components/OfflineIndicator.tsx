@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { WifiOff, Wifi, RefreshCw, CheckCircle2, Shield, HardDrive } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { subscribeServiceWorkerStatus, ServiceWorkerStatus } from '../serviceWorkerRegistration';
+import { apiUrl } from '../services/apiConfig';
 
 export const OfflineIndicator: React.FC = () => {
   const isOnline = useOnlineStatus();
@@ -36,7 +37,7 @@ export const OfflineIndicator: React.FC = () => {
   const handleCheckConnection = async () => {
     setChecking(true);
     try {
-      await fetch('/api/health', { cache: 'no-store' });
+      await fetch(apiUrl('/api/health'), { cache: 'no-store' });
       // If we reach here without throwing
     } catch {
       // Still offline

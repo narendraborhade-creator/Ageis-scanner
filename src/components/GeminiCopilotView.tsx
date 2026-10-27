@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../types';
 import { queryAegisCopilot, inspectPayloadClient, FALLBACK_TERMS_CATALOG } from '../services/cyberBotService';
+import { apiUrl } from '../services/apiConfig';
 import {
   Cpu,
   Send,
@@ -161,7 +162,7 @@ Try asking about any cybersecurity term below or switch to the **Payload Inspect
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await fetch('/api/cyber-bot/health');
+        const res = await fetch(apiUrl('/api/cyber-bot/health'));
         const contentType = res.headers.get('content-type') || '';
         if (res.ok && contentType.includes('application/json')) {
           const data = await res.json();
@@ -192,7 +193,7 @@ Try asking about any cybersecurity term below or switch to the **Payload Inspect
   useEffect(() => {
     const loadTerms = async () => {
       try {
-        const res = await fetch('/api/cyber-bot/terms');
+        const res = await fetch(apiUrl('/api/cyber-bot/terms'));
         const contentType = res.headers.get('content-type') || '';
         if (res.ok && contentType.includes('application/json')) {
           const data = await res.json();
@@ -280,7 +281,7 @@ Try asking about any cybersecurity term below or switch to the **Payload Inspect
 
     setInspectLoading(true);
     try {
-      const res = await fetch('/api/cyber-bot/analyze', {
+      const res = await fetch(apiUrl('/api/cyber-bot/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ payload }),
@@ -818,7 +819,7 @@ Try asking about any cybersecurity term below or switch to the **Payload Inspect
                     key={term.key}
                     onClick={async () => {
                       try {
-                        const res = await fetch(`/api/cyber-bot/term/${term.key}`);
+                        const res = await fetch(apiUrl(`/api/cyber-bot/term/${term.key}`));
                         if (res.ok) {
                           const data = await res.json();
                           setSelectedTermDetail(data);

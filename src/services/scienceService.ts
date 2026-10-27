@@ -1,4 +1,5 @@
 import { SciencePaper } from '../types';
+import { apiUrl } from './apiConfig';
 
 // Inverted index abstract reconstructor per Science Skill guidelines
 export function reconstructOpenAlexAbstract(
@@ -134,7 +135,7 @@ export async function searchOpenAlex(query: string, maxResults = 6): Promise<Sci
 // 4. Search arXiv (Via Express backend proxy to avoid CORS)
 export async function searchArxiv(query: string, maxResults = 5): Promise<SciencePaper[]> {
   try {
-    const res = await fetch(`/api/arxiv?query=${encodeURIComponent(query)}&max_results=${maxResults}`);
+    const res = await fetch(apiUrl(`/api/arxiv?query=${encodeURIComponent(query)}&max_results=${maxResults}`));
     if (!res.ok) throw new Error('arXiv proxy failed');
     const xmlText = await res.text();
     const doc = new DOMParser().parseFromString(xmlText, 'application/xml');

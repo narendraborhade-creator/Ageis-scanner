@@ -37,6 +37,7 @@ import {
   getAuthPromptPreference,
 } from '../services/authStorage';
 import { UserAccount } from '../types';
+import { getApiBaseUrl, apiUrl, isMobileDevice } from '../services/apiConfig';
 import {
   Shield,
   ShieldAlert,
@@ -887,6 +888,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           return;
         }
         if (!inNewTab && targetUrl === activeTab.url) {
+          setIsScanning(false);
           return;
         }
         lastNavTime = now;
@@ -914,7 +916,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`);
+        const res = await fetch(apiUrl(`/api/search/suggestions?q=${encodeURIComponent(query)}`));
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data?.suggestions) && data.suggestions.length > 0) {
@@ -957,7 +959,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       const clientFallback = generateVerifiedSearchResults(q, searchInfo.category);
       setSearchResults(clientFallback);
 
-      fetch(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(searchInfo.category)}`)
+      fetch(apiUrl(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(searchInfo.category)}`))
         .then((r) => r.json())
         .then((data) => {
           if (data && Array.isArray(data.results) && data.results.length > 0) {
@@ -981,7 +983,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       const matched = searchFallbackYtVideos(q);
       setYtVideos(matched);
 
-      fetch(`/api/youtube/search?q=${encodeURIComponent(q)}`)
+      fetch(apiUrl(`/api/youtube/search?q=${encodeURIComponent(q)}`))
         .then((r) => r.json())
         .then((data) => {
           if (data && Array.isArray(data.videos) && data.videos.length > 0) {
@@ -1405,7 +1407,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     const domain = formatDomain(target);
     const isHttps = target.startsWith('https://');
 
-    setIsScanning(true);
+    if (!target.startsWith('aegis://') && !target.startsWith('chrome://')) {
+      setIsScanning(true);
+      setTimeout(() => setIsScanning(false), 3500);
+    } else {
+      setIsScanning(false);
+    }
 
     // Compute history stack
     let newStack = activeTab.historyStack ? [...activeTab.historyStack] : [activeTab.url];
@@ -1941,7 +1948,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     );
                   }
                 }}
-                className={`group relative flex items-center gap-2 px-3 py-2 rounded-t-xl text-xs font-sans transition-all cursor-pointer max-w-[240px] min-w-[130px] border-t border-x ${
+                className={`group relative flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-t-xl text-xs font-sans transition-all cursor-pointer max-w-[160px] min-w-[90px] sm:max-w-[240px] sm:min-w-[130px] border-t border-x ${
                   isActive
                     ? 'bg-[#282c34] border-slate-700/80 text-white font-medium z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.25)]'
                     : isSuspended
@@ -3310,7 +3317,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   ) : (
                     <iframe
                       key={`${activeTab.id}-${refreshKey}`}
-                      src={`/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.url))}`}
+                      src={`${getApiBaseUrl()}/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.url))}`}
                       title={activeTab.title}
                       className="w-full h-full border-0 bg-white"
                       sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
@@ -3911,6 +3918,67 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </div>
           )}
         </div>
+        </div>
+
+        {/* Sleek Mobile Bottom Navigation Bar (Visible on mobile / touchscreens) */}
+        <div className="sm:hidden flex items-center justify-around px-2 py-2 bg-[#181a1f] border-t border-slate-800 text-slate-300 z-30 select-none pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+          <button
+            type="button"
+            disabled={!canGoBack}
+            onClick={handleGoBack}
+            className={`p-2 rounded-xl flex flex-col items-center gap-0.5 transition-colors ${
+              canGoBack ? 'text-slate-200 active:bg-slate-800' : 'text-slate-600 opacity-40'
+            }`}
+            title="Back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[9px]">Back</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={!canGoForward}
+            onClick={handleGoForward}
+            className={`p-2 rounded-xl flex flex-col items-center gap-0.5 transition-colors ${
+              canGoForward ? 'text-slate-200 active:bg-slate-800' : 'text-slate-600 opacity-40'
+            }`}
+            title="Forward"
+          >
+            <ArrowRight className="w-4 h-4" />
+            <span className="text-[9px]">Forward</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoHome}
+            className="p-2 rounded-xl flex flex-col items-center gap-0.5 text-slate-200 active:bg-slate-800 transition-colors"
+            title="Home"
+          >
+            <Home className="w-4 h-4 text-cyan-400" />
+            <span className="text-[9px] text-cyan-300">Home</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCreateNewTab}
+            className="p-2 rounded-xl flex flex-col items-center gap-0.5 text-slate-200 active:bg-slate-800 transition-colors"
+            title="New Tab"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="text-[9px]">New Tab</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowAppMenu((prev) => !prev)}
+            className="p-2 rounded-xl flex flex-col items-center gap-0.5 text-slate-200 active:bg-slate-800 transition-colors"
+            title="Tabs & Menu"
+          >
+            <div className="w-4 h-4 rounded border border-slate-400 flex items-center justify-center text-[10px] font-bold">
+              {tabs.length}
+            </div>
+            <span className="text-[9px]">Menu</span>
+          </button>
         </div>
       </div>
 

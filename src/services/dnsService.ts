@@ -1,4 +1,5 @@
 import { DnsScanResult } from '../types';
+import { apiUrl } from './apiConfig';
 
 export async function scanDomainDNS(rawDomain: string): Promise<DnsScanResult> {
   const domain = rawDomain
@@ -14,7 +15,7 @@ export async function scanDomainDNS(rawDomain: string): Promise<DnsScanResult> {
   const fetchRecord = async (type: string) => {
     try {
       // First try our server proxy endpoint
-      const res = await fetch(`/api/dns/scan?domain=${encodeURIComponent(domain)}&type=${type}`);
+      const res = await fetch(apiUrl(`/api/dns/scan?domain=${encodeURIComponent(domain)}&type=${type}`));
       if (res.ok) {
         const data = await res.json();
         return {

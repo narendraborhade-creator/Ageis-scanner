@@ -26,9 +26,15 @@ import {
   AppThemeId,
   EVENT_THEME_CHANGE,
 } from './services/themeService';
+import { isCapacitorPlatform } from './services/apiConfig';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
+  // Recursion Frame-Buster Guard: If index.html is loaded inside an iframe (e.g. proxy fallback), never mount React app
+  if (typeof window !== 'undefined' && window.self !== window.top) {
+    return null;
+  }
+
   const initialSession = getStoredSessionState();
 
   const [user, setUser] = useState<UserAccount | null>(() => getStoredUser());
@@ -42,6 +48,17 @@ export default function App() {
   const [currentTheme, setCurrentTheme] = useState<AppThemeId>(() => getStoredTheme());
   const [privacyMode, setPrivacyMode] = useState<boolean>(() => getPrivacyModeStatus());
   const isDesktop = typeof window !== 'undefined' && Boolean((window as any).isAegisDesktop);
+  const isCapacitor = isCapacitorPlatform();
+  const isNativeApp = isDesktop || isCapacitor;
+
+  const [viewMode, setViewMode] = useState<'landing' | 'browser'>(() => {
+    if (isNativeApp) return 'browser';
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'browser' || params.get('view') === 'browser') return 'browser';
+    }
+    return 'landing';
+  });
 
   // Global Ctrl+K / Cmd+K Command Palette Keyboard Shortcut Listener
   useEffect(() => {
@@ -92,7 +109,7 @@ export default function App() {
   return (
     <div
       className={`w-full min-h-screen theme-bg text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950 font-sans transition-colors duration-300 ${
-        isDesktop ? 'h-screen w-screen overflow-hidden' : 'overflow-x-hidden overflow-y-auto'
+        isNativeApp || viewMode === 'browser' ? 'h-screen w-screen overflow-hidden' : 'overflow-x-hidden overflow-y-auto'
       }`}
     >
       {/* Toast Notification Alert */}
@@ -112,13 +129,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Main View: In Desktop Mode (.exe), render pure native browser. On Web (aegisscans.dev), render Landing & Live Demo */}
+      {/* Main View: In Native App Mode (Windows .exe or Android APK) or Browser Mode, render pure browser */}
       <main
         className={`w-full flex-1 flex flex-col ${
-          isDesktop ? 'h-full min-h-0 overflow-hidden' : 'min-h-0'
+          isNativeApp || viewMode === 'browser' ? 'h-full min-h-0 overflow-hidden' : 'min-h-0'
         }`}
       >
-        {isDesktop ? (
+        {isNativeApp || viewMode === 'browser' ? (
           <BrowserView
             initialUrl={browserInitialUrl}
             currentUser={user}
