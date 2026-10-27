@@ -16,6 +16,11 @@ contextBridge.exposeInMainWorld('aegisDesktopApi', {
   zoomIn: () => ipcRenderer.send('zoom-in'),
   zoomOut: () => ipcRenderer.send('zoom-out'),
   zoomReset: () => ipcRenderer.send('zoom-reset'),
+  openExternal: (url) => {
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      ipcRenderer.send('open-external', url);
+    }
+  },
   onOpenNewTab: (callback) => {
     const listener = (_event, url) => callback(url);
     ipcRenderer.on('aegis-open-new-tab', listener);

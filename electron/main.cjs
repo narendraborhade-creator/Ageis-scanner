@@ -7,6 +7,8 @@ const fs = require('fs');
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('disable-features', 'BlockInsecurePrivateNetworkRequests,IsolateOrigins,site-per-process');
 app.commandLine.appendSwitch('ignore-certificate-errors');
+// Disable Blink automation flag so Google accounts does not block sign-in with "browser not secure"
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 
 let mainWindow = null;
 
@@ -16,6 +18,15 @@ const SERVER_URL = `http://localhost:${PORT}`;
 // Modern standard Chrome User-Agent to ensure all web platforms (Google, YouTube, GitHub, Reddit, Cloudflare) load with full desktop Chromium fidelity
 const CHROMIUM_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
+// Firefox User-Agent for Google accounts, YouTube sign-in, and OAuth endpoints to bypass Google's "This browser or app may not be secure" block
+const GOOGLE_AUTH_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0';
+
+function isGoogleAuthUrl(url) {
+  if (!url) return false;
+  return /accounts\.google\.|myaccount\.google\.|accounts\.youtube\.|oauth\.google\.|google\.[a-z.]+\/(signin|ServiceLogin|o\/oauth2|interactiveconsent)/i.test(url);
+}
 
 // Built-in zero-dependency local static server for packaged desktop runtime
 function startLocalBackend() {
@@ -112,8 +123,20 @@ function configureChromiumSession(targetSession) {
   try {
     ses.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
       const requestHeaders = { ...details.requestHeaders };
+      const url = details.url || '';
 
-      requestHeaders['User-Agent'] = CHROMIUM_USER_AGENT;
+      if (isGoogleAuthUrl(url)) {
+        // Use Firefox User-Agent for Google accounts and OAuth sign-in to bypass Google's "This browser or app may not be secure" block
+        requestHeaders['User-Agent'] = GOOGLE_AUTH_USER_AGENT;
+        // Strip Sec-CH-UA client hints because Firefox does not send Chromium client hints
+        for (const h of Object.keys(requestHeaders)) {
+          if (h.toLowerCase().startsWith('sec-ch-ua')) {
+            delete requestHeaders[h];
+          }
+        }
+      } else {
+        requestHeaders['User-Agent'] = CHROMIUM_USER_AGENT;
+      }
 
       // Ensure Sec-Fetch headers mimic standard top-level desktop browser navigation
       if (requestHeaders['Sec-Fetch-Dest'] === 'iframe') {
@@ -396,6 +419,12 @@ ipcMain.on('zoom-out', () => {
 ipcMain.on('zoom-reset', () => {
   if (mainWindow) {
     mainWindow.webContents.setZoomFactor(1.0);
+  }
+});
+
+ipcMain.on('open-external', (_e, url) => {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    shell.openExternal(url);
   }
 });
 

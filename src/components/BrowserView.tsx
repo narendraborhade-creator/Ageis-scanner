@@ -681,6 +681,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const canGoBack = isDesktop
     ? (wvCanGoBack || (activeTab.historyIndex ?? 0) > 0)
     : ((activeTab.historyIndex ?? 0) > 0);
+
+  const CHROMIUM_DESKTOP_UA =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+  const GOOGLE_AUTH_UA =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0';
+  const isGoogleAuthEndpoint = (url: string) =>
+    Boolean(url) && /accounts\.google\.|myaccount\.google\.|accounts\.youtube\.|oauth\.google\.|google\.[a-z.]+\/(signin|ServiceLogin|o\/oauth2|interactiveconsent)/i.test(url);
   
   const isInternalChromePage =
     activeTab.url.startsWith('chrome://') ||
@@ -714,6 +721,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       const navUrl = e.url;
       if (!navUrl || navUrl.startsWith('about:blank')) return;
       syncNavState();
+      if (typeof wv.setUserAgent === 'function') {
+        try {
+          wv.setUserAgent(isGoogleAuthEndpoint(navUrl) ? GOOGLE_AUTH_UA : CHROMIUM_DESKTOP_UA);
+        } catch {}
+      }
       if (navUrl !== activeTab.url) {
         const domain = formatDomain(navUrl);
         const isHttps = navUrl.startsWith('https://');
@@ -734,6 +746,20 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         setUrlInputValue(navUrl);
         setIsEditingUrl(false);
       }
+    };
+
+    const handleDomReady = () => {
+      try {
+        // Disarm bot-detection / automation flags so Google Sign-in and OAuth endpoints authenticate securely
+        wv.executeJavaScript(`
+          try {
+            Object.defineProperty(navigator, 'webdriver', {
+              get: () => false,
+              configurable: true
+            });
+          } catch(e) {}
+        `);
+      } catch {}
     };
 
     const handleTitleUpdated = (e: any) => {
@@ -771,6 +797,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     wv.addEventListener('page-favicon-updated', handleFaviconUpdated);
     wv.addEventListener('new-window', handleNewWindow);
     wv.addEventListener('did-fail-load', handleDidFailLoad);
+    wv.addEventListener('dom-ready', handleDomReady);
 
     return () => {
       try {
@@ -782,6 +809,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         wv.removeEventListener('page-favicon-updated', handleFaviconUpdated);
         wv.removeEventListener('new-window', handleNewWindow);
         wv.removeEventListener('did-fail-load', handleDidFailLoad);
+        wv.removeEventListener('dom-ready', handleDomReady);
       } catch {}
     };
   }, [activeTab.id, activeTab.url, isDesktop]);
@@ -3164,6 +3192,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       src={activeTab.url}
                       partition="persist:aegis-browser"
                       allowpopups=""
+                      useragent={isGoogleAuthEndpoint(activeTab.url) ? GOOGLE_AUTH_UA : CHROMIUM_DESKTOP_UA}
                       webpreferences="webSecurity=no, contextIsolation=no, nativeWindowOpen=yes"
                       className="w-full h-full border-0 bg-white"
                     />
