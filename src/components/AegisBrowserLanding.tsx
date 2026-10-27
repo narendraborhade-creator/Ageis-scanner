@@ -312,13 +312,13 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
             <Terminal className="w-4 h-4 text-cyan-400 shrink-0" />
             <span className="text-slate-500">PowerShell:</span>
             <code className="text-cyan-300 select-all truncate">
-              irm https://aegisscans.dev/downloads/Install-AegisBrowser.ps1 | iex
+              irm https://www.aegisscans.dev/downloads/Install-AegisBrowser.ps1 | iex
             </code>
           </div>
           <button
             type="button"
             onClick={() => {
-              navigator.clipboard.writeText('irm https://aegisscans.dev/downloads/Install-AegisBrowser.ps1 | iex');
+              navigator.clipboard.writeText('irm https://www.aegisscans.dev/downloads/Install-AegisBrowser.ps1 | iex');
               alert('Copied PowerShell installer command to clipboard!');
             }}
             className="text-[10px] text-cyan-400 hover:text-cyan-200 bg-slate-900 px-2 py-0.5 rounded border border-slate-700"

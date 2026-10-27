@@ -1,5 +1,5 @@
 # Aegis 3D Safe Browser - Official Windows PowerShell Installer
-# Run: irm https://aegisscans.dev/downloads/Install-AegisBrowser.ps1 | iex
+# Run: irm https://www.aegisscans.dev/downloads/Install-AegisBrowser.ps1 | iex
 
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "   AEGIS 3D SAFE BROWSER - ZERO-TRUST CHROMIUM INSTALLER" -ForegroundColor Cyan
