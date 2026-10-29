@@ -38,6 +38,7 @@ interface AegisBrowserLandingProps {
   onOpenCloudflareModal: () => void;
   privacyMode: boolean;
   onTogglePrivacy: () => void;
+  onLaunchBrowser?: () => void;
 }
 
 export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) => {
@@ -146,12 +147,12 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
           </a>
           <button
             type="button"
-            onClick={() => handleTriggerDownload('setup')}
+            onClick={() => handleTriggerDownload(isMobile ? 'apk' : 'setup')}
             className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
           >
             <Download className="w-4 h-4 stroke-[2.5]" />
             <span className="hidden xs:inline">Download</span>
-            <span>.exe</span>
+            <span>{isMobile ? '.apk' : '.exe'}</span>
           </button>
         </div>
       </header>
@@ -255,11 +256,17 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
               </button>
               <button
                 type="button"
-                onClick={() => setIsFullscreenDemo(true)}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+                onClick={() => {
+                  if (props.onLaunchBrowser) {
+                    props.onLaunchBrowser();
+                  } else {
+                    setIsFullscreenDemo(true);
+                  }
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition-colors cursor-pointer"
               >
                 <Maximize2 className="w-4 h-4 text-cyan-400" />
-                <span>Launch Web Sandbox</span>
+                <span>Open Browser Now</span>
               </button>
             </div>
           </div>

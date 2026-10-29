@@ -146,10 +146,22 @@ export function unwrapProxyUrl(url: string): string {
   let depth = 0;
   while ((current.includes('/api/proxy') || current.includes('%2Fapi%2Fproxy')) && depth < 10) {
     depth++;
+    try {
+      const u = new URL(current, 'https://www.aegisscans.dev');
+      const param = u.searchParams.get('url');
+      if (param) {
+        current = param.trim();
+        continue;
+      }
+    } catch {}
     const idx = current.indexOf('url=');
     if (idx !== -1) {
       try {
-        const after = current.substring(idx + 4);
+        let after = current.substring(idx + 4);
+        const ampIdx = after.indexOf('&');
+        if (ampIdx !== -1) {
+          after = after.substring(0, ampIdx);
+        }
         current = decodeURIComponent(after).trim();
       } catch {
         break;
@@ -887,7 +899,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         if (now - lastNavTime < 250) {
           return;
         }
-        if (!inNewTab && targetUrl === activeTab.url) {
+        if (!inNewTab && (targetUrl === activeTab.url || targetUrl === activeTab.initialUrl)) {
           setIsScanning(false);
           return;
         }
@@ -897,7 +909,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     };
     window.addEventListener('message', handleWindowMessage);
     return () => window.removeEventListener('message', handleWindowMessage);
-  }, [activeTab.url, activeTab.id, activeTab.title]);
+  }, [activeTab.url, activeTab.initialUrl, activeTab.id, activeTab.title]);
 
   // Keep address bar in sync with the active tab when switching tabs
   useEffect(() => {
@@ -3298,7 +3310,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 </div>
 
                 {/* Viewport: Native Chromium Webview in Desktop App, or Zero-Trust Proxy Sandbox in Web */}
-                <div className="flex-1 w-full h-full relative overflow-hidden bg-white">
+                <div className="flex-1 w-full h-full relative overflow-hidden bg-slate-900">
                   {isScanning && (
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 animate-pulse z-20" />
                   )}
@@ -3317,7 +3329,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   ) : (
                     <iframe
                       key={`${activeTab.id}-${refreshKey}`}
-                      src={`${getApiBaseUrl()}/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.url))}`}
+                      src={`${getApiBaseUrl()}/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.initialUrl || activeTab.url))}`}
                       title={activeTab.title}
                       className="w-full h-full border-0 bg-white"
                       sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"

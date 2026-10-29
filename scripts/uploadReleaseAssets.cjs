@@ -146,11 +146,16 @@ function uploadAsset(asset) {
 }
 
 async function main() {
-  for (const asset of assetsToUpload) {
+  const filterArg = process.argv[2];
+  const targetAssets = filterArg
+    ? assetsToUpload.filter(a => a.remoteName.toLowerCase().includes(filterArg.toLowerCase()))
+    : assetsToUpload;
+
+  for (const asset of targetAssets) {
     await removeExistingAsset(asset.remoteName);
     await uploadAsset(asset);
   }
-  console.log('All release assets successfully uploaded to GitHub Release v1.0.0!');
+  console.log('All requested release assets successfully uploaded to GitHub Release v1.0.0!');
 }
 
 main().catch(err => {

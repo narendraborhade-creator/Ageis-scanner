@@ -26,7 +26,7 @@ import {
   AppThemeId,
   EVENT_THEME_CHANGE,
 } from './services/themeService';
-import { isCapacitorPlatform } from './services/apiConfig';
+import { isCapacitorPlatform, isMobileDevice } from './services/apiConfig';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -49,14 +49,18 @@ export default function App() {
   const [privacyMode, setPrivacyMode] = useState<boolean>(() => getPrivacyModeStatus());
   const isDesktop = typeof window !== 'undefined' && Boolean((window as any).isAegisDesktop);
   const isCapacitor = isCapacitorPlatform();
+  const isMobile = isMobileDevice();
   const isNativeApp = isDesktop || isCapacitor;
 
   const [viewMode, setViewMode] = useState<'landing' | 'browser'>(() => {
-    if (isNativeApp) return 'browser';
+    // 1. Explicit query parameter overrides
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'landing') return 'landing';
       if (params.get('mode') === 'browser' || params.get('view') === 'browser') return 'browser';
     }
+    // 2. Android APK, Windows Desktop (.exe), installed PWA, or any mobile browser opens the browser directly!
+    if (isNativeApp || isMobile) return 'browser';
     return 'landing';
   });
 
