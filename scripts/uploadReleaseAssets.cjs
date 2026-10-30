@@ -152,8 +152,20 @@ async function main() {
     : assetsToUpload;
 
   for (const asset of targetAssets) {
-    await removeExistingAsset(asset.remoteName);
-    await uploadAsset(asset);
+    let uploaded = false;
+    let attempts = 0;
+    while (!uploaded && attempts < 3) {
+      attempts++;
+      try {
+        await removeExistingAsset(asset.remoteName);
+        await uploadAsset(asset);
+        uploaded = true;
+      } catch (err) {
+        console.warn(`Attempt ${attempts} failed for ${asset.remoteName}: ${err.message}. Retrying in 3 seconds...`);
+        if (attempts >= 3) throw err;
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
   }
   console.log('All requested release assets successfully uploaded to GitHub Release v1.0.0!');
 }

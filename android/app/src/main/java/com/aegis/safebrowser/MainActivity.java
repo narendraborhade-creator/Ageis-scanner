@@ -9,9 +9,18 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        configureWebView();
+    }
 
-        WebView webView = getBridge() != null ? getBridge().getWebView() : null;
-        if (webView != null) {
+    @Override
+    public void onStart() {
+        super.onStart();
+        configureWebView();
+    }
+
+    private void configureWebView() {
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            WebView webView = getBridge().getWebView();
             WebSettings settings = webView.getSettings();
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);
@@ -20,6 +29,11 @@ public class MainActivity extends BridgeActivity {
             settings.setAllowContentAccess(true);
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             settings.setMediaPlaybackRequiresUserGesture(false);
+
+            String defaultUa = settings.getUserAgentString();
+            if (defaultUa != null && !defaultUa.contains("AegisSafeBrowserMobile")) {
+                settings.setUserAgentString(defaultUa + " AegisSafeBrowserMobile/1.0");
+            }
         }
     }
 }

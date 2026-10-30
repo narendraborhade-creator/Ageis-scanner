@@ -12,10 +12,11 @@ __pycache__/
 .depot_tools/
 .security-apis-ref/
 release/
+public/*.apk
+public/downloads/*.apk
 android/app/build/
 android/build/
 android/.gradle/
 android/local.properties
-public/*.apk
 
 

@@ -52,17 +52,20 @@ export default function App() {
   const isMobile = isMobileDevice();
   const isNativeApp = isDesktop || isCapacitor;
 
+  // By default, the application opens the real Aegis Safe Browser!
+  // Only explicitly passing ?view=landing or ?mode=landing shows the landing page,
+  // and landing page is never shown inside the native Android APK or Desktop app.
   const [viewMode, setViewMode] = useState<'landing' | 'browser'>(() => {
-    // 1. Explicit query parameter overrides
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('mode') === 'landing') return 'landing';
-      if (params.get('mode') === 'browser' || params.get('view') === 'browser') return 'browser';
+      if (params.get('mode') === 'landing' || params.get('view') === 'landing') {
+        return 'landing';
+      }
     }
-    // 2. Android APK, Windows Desktop (.exe), installed PWA, or any mobile browser opens the browser directly!
-    if (isNativeApp || isMobile) return 'browser';
-    return 'landing';
+    return 'browser';
   });
+
+  const shouldShowLanding = viewMode === 'landing' && !isNativeApp;
 
   // Global Ctrl+K / Cmd+K Command Palette Keyboard Shortcut Listener
   useEffect(() => {
@@ -113,7 +116,7 @@ export default function App() {
   return (
     <div
       className={`w-full min-h-screen theme-bg text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-slate-950 font-sans transition-colors duration-300 ${
-        isNativeApp || viewMode === 'browser' ? 'h-screen w-screen overflow-hidden' : 'overflow-x-hidden overflow-y-auto'
+        !shouldShowLanding ? 'h-screen w-screen overflow-hidden' : 'overflow-x-hidden overflow-y-auto'
       }`}
     >
       {/* Toast Notification Alert */}
@@ -136,10 +139,10 @@ export default function App() {
       {/* Main View: In Native App Mode (Windows .exe or Android APK) or Browser Mode, render pure browser */}
       <main
         className={`w-full flex-1 flex flex-col ${
-          isNativeApp || viewMode === 'browser' ? 'h-full min-h-0 overflow-hidden' : 'min-h-0'
+          !shouldShowLanding ? 'h-full min-h-0 overflow-hidden' : 'min-h-0'
         }`}
       >
-        {isNativeApp || viewMode === 'browser' ? (
+        {!shouldShowLanding ? (
           <BrowserView
             initialUrl={browserInitialUrl}
             currentUser={user}

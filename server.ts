@@ -274,6 +274,19 @@ app.get('/api/dns/scan', async (req, res) => {
   }
 });
 
+// Direct download endpoints for Native Apps
+app.get(['/download/apk', '/downloads/apk', '/Aegis-3D-Safe-Browser.apk', '/downloads/Aegis-3D-Safe-Browser.apk'], (req, res) => {
+  return res.redirect('https://github.com/narendraborhade-creator/Ageis-scanner/releases/download/v1.0.0/Aegis-3D-Safe-Browser.apk');
+});
+
+app.get(['/download/setup', '/downloads/setup', '/downloads/Aegis-3D-Safe-Browser-Setup-1.0.0.exe'], (req, res) => {
+  return res.redirect('https://github.com/narendraborhade-creator/Ageis-scanner/releases/download/v1.0.0/Aegis-3D-Safe-Browser-Setup-1.0.0.exe');
+});
+
+app.get(['/download/portable', '/downloads/portable', '/downloads/Aegis-3D-Safe-Browser-1.0.0.exe'], (req, res) => {
+  return res.redirect('https://github.com/narendraborhade-creator/Ageis-scanner/releases/download/v1.0.0/Aegis-3D-Safe-Browser-1.0.0.exe');
+});
+
 // 2b. Universal In-Browser Web Proxy & Link Interceptor (Enables Zero-Trust In-Browser Browsing)
 app.all('/api/proxy', async (req, res) => {
   try {
