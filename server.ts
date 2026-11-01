@@ -19,12 +19,16 @@ const PYTHON_API_URL = `http://127.0.0.1:${PYTHON_PORT}`;
 let pythonProcess: ChildProcess | null = null;
 
 
-function isAllowedUrl(urlString: string): boolean {
+// 🛡️ Sentinel: Helper function to validate outbound URLs and mitigate SSRF attacks
+export function isAllowedUrl(urlString: string): boolean {
   try {
     const url = new URL(urlString);
+    if (!url.hostname || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
+      return false;
+    }
     const hostname = url.hostname.toLowerCase();
 
-    // Block common internal/local hostnames and IPs
+    // Block common internal/local hostnames, private IPs, loopback, and cloud metadata
     const blockedPatterns = [
       /^localhost$/,
       /^127\./,
@@ -299,15 +303,15 @@ app.all('/api/proxy', async (req, res) => {
       rawUrl = `https://${rawUrl}`;
     }
 
-    // Block internal loopback to completely prevent loading the browser inside itself
+    // 🛡️ Sentinel: Enforce SSRF protection on proxy target URLs
     try {
-      const u = new URL(rawUrl);
-      const host = u.hostname.toLowerCase();
-      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host === '0.0.0.0') {
-        return res.status(403).send('Access to local host is forbidden in proxy sandbox');
-      }
+      new URL(rawUrl);
     } catch {
       return res.status(400).send('Malformed URL');
+    }
+
+    if (!isAllowedUrl(rawUrl)) {
+      return res.status(403).send('Access to local host is forbidden in proxy sandbox');
     }
 
     const controller = new AbortController();
