@@ -98,7 +98,10 @@ export function getApiBaseUrl(): string {
   }
 
   // 3. Android APK, iOS, PWA, Mobile, and Production Web:
-  // All traffic routes to canonical high-performance backend at https://www.aegisscans.dev
+  // If running on a live web host (GitHub Pages, custom domain, Vercel), use current origin; fallback to aegisscans.dev
+  if (window.location.origin && !window.location.origin.startsWith('file:') && !window.location.origin.startsWith('capacitor:')) {
+    return window.location.origin;
+  }
   return 'https://www.aegisscans.dev';
 }
 

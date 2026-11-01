@@ -29,11 +29,8 @@ public class MainActivity extends BridgeActivity {
             settings.setAllowContentAccess(true);
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             settings.setMediaPlaybackRequiresUserGesture(false);
-
-            String defaultUa = settings.getUserAgentString();
-            if (defaultUa != null && !defaultUa.contains("AegisSafeBrowserMobile")) {
-                settings.setUserAgentString(defaultUa + " AegisSafeBrowserMobile/1.0");
-            }
+            settings.setJavaScriptCanOpenWindowsAutomatically(true);
+            settings.setSupportMultipleWindows(true);
         }
     }
 }
