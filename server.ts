@@ -22,6 +22,9 @@ let pythonProcess: ChildProcess | null = null;
 function isAllowedUrl(urlString: string): boolean {
   try {
     const url = new URL(urlString);
+    if (!url.hostname || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
+      return false;
+    }
     const hostname = url.hostname.toLowerCase();
 
     // Block common internal/local hostnames and IPs
@@ -34,6 +37,7 @@ function isAllowedUrl(urlString: string): boolean {
       /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
       /^0\.0\.0\.0$/,
       /^\[?::1\]?$/,
+      /^\[::ffff:7f00:1\]$/,
       /.*\.local$/
     ];
 
@@ -1058,8 +1062,14 @@ app.get('/api/inspect/website', async (req, res) => {
       targetUrl = `https://${targetUrl}`;
     }
 
+    try {
+      new URL(targetUrl);
+    } catch (e) {
+      return res.status(400).json({ error: 'Malformed URL' });
+    }
+
     if (!isAllowedUrl(targetUrl)) {
-      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+      return res.status(403).json({ error: 'Access to internal or restricted network addresses is not allowed' });
     }
 
     const startTime = Date.now();
@@ -1151,8 +1161,14 @@ app.get('/api/security/vulnerability-scan', async (req, res) => {
     if (!targetUrl) targetUrl = 'https://cloudflare.com';
     if (!/^https?:\/\//i.test(targetUrl)) targetUrl = `https://${targetUrl}`;
 
+    try {
+      new URL(targetUrl);
+    } catch (e) {
+      return res.status(400).json({ error: 'Malformed URL' });
+    }
+
     if (!isAllowedUrl(targetUrl)) {
-      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+      return res.status(403).json({ error: 'Access to internal or restricted network addresses is not allowed' });
     }
 
     const isHttps = targetUrl.startsWith('https://');
