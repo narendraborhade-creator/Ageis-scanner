@@ -136,8 +136,8 @@ export default async function handler(req, res) {
     if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
       let html = await upstreamRes.text();
 
-      // Strip CSP and X-Frame-Options meta tags
-      html = html.replace(/<meta[^>]+http-equiv=["']?(?:content-security-policy|x-frame-options)["']?[^>]*>/gi, '');
+      // Strip CSP, X-Frame-Options, and meta refresh tags
+      html = html.replace(/<meta[^>]+http-equiv=["']?(?:content-security-policy|x-frame-options|refresh)["']?[^>]*>/gi, '');
 
       const baseTag = `<base href="${finalUrl}">`;
 
@@ -365,11 +365,20 @@ export default async function handler(req, res) {
     }
     return res;
   };
-      var fullUrl = resolveUrl(url);
-      dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: fullUrl, inNewTab: false, isSilentSync: true });
-    }
-    return res;
-  };
+
+  // Prevent frame-busting scripts from navigating window.location directly
+  try {
+    window.location.replace = function(u) {
+      var target = unwrapProxyUrl(resolveUrl(u));
+      dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: target, inNewTab: false });
+    };
+  } catch (e) {}
+  try {
+    window.location.assign = function(u) {
+      var target = unwrapProxyUrl(resolveUrl(u));
+      dispatchToAegis({ type: 'AEGIS_NAVIGATE', url: target, inNewTab: false });
+    };
+  } catch (e) {}
 })();
 </script>
 `;

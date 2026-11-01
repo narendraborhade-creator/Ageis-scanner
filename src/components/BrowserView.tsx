@@ -447,8 +447,8 @@ function parseSearchUrl(url: string) {
       const cat = (parsed.searchParams.get('category') || 'all') as 'all' | 'news' | 'tech' | 'videos' | 'science';
       return { isSearch: true, query: q, category: cat };
     }
-    // Transparently support Google Search URLs on mobile/web so it never gets blocked or shows blank page
-    if (clean.includes('google.') && clean.includes('/search')) {
+    // Transparently support Google Search URLs and Google homepage on mobile/web so it never gets blocked or shows blank page
+    if (clean.includes('google.') && (clean.includes('/search') || clean.endsWith('google.com') || clean.endsWith('google.com/'))) {
       const parsed = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
       const q = parsed.searchParams.get('q') || '';
       return { isSearch: true, query: q, category: 'all' as const };
@@ -462,7 +462,7 @@ function parseSearchUrl(url: string) {
   } catch {
     const qMatch = url.match(/[?&]q=([^&]+)/i);
     return {
-      isSearch: url.startsWith('aegis://search') || url.includes('/search?q='),
+      isSearch: url.startsWith('aegis://search') || url.includes('/search?q=') || url.includes('google.com'),
       query: qMatch ? decodeURIComponent(qMatch[1]) : '',
       category: 'all' as const,
     };
@@ -3263,6 +3263,63 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                         </div>
                       ))}
                     </div>
+                  ) : !searchInfo.query ? (
+                    <div className="text-center py-10 sm:py-16 space-y-6 max-w-lg mx-auto">
+                      <div className="space-y-2">
+                        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-rose-400 to-amber-300">
+                          Google
+                        </h1>
+                        <p className="text-xs font-mono text-cyan-400 tracking-wider uppercase">
+                          Safe Database Search Engine · Zero-Trust Sandbox
+                        </p>
+                      </div>
+
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const q = searchQueryInput.trim();
+                          if (q) {
+                            handleNavigate(`aegis://search?q=${encodeURIComponent(q)}&category=${searchCategory}`, false, false);
+                          }
+                        }}
+                        className="flex items-center bg-slate-900/90 border border-slate-700 hover:border-cyan-500 focus-within:border-cyan-400 rounded-2xl p-2.5 shadow-2xl transition-all"
+                      >
+                        <Search className="w-5 h-5 text-cyan-400 ml-3 mr-2 shrink-0" />
+                        <input
+                          type="text"
+                          value={searchQueryInput}
+                          onChange={(e) => setSearchQueryInput(e.target.value)}
+                          placeholder="Search Google Database or type a query..."
+                          className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none font-mono py-1"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold text-xs font-mono cursor-pointer shrink-0 transition-all shadow-md"
+                        >
+                          Google Search
+                        </button>
+                      </form>
+
+                      <div className="space-y-2 text-xs font-mono">
+                        <span className="text-slate-500 uppercase tracking-wider text-[10px]">Popular Searches:</span>
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                          {['SpaceX Launch', 'Artificial Intelligence', 'Latest Tech News', 'Cybersecurity Tools', 'World News'].map((item) => (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => {
+                                setSearchQueryInput(item);
+                                handleNavigate(`aegis://search?q=${encodeURIComponent(item)}&category=all`, false, false);
+                              }}
+                              className="px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 transition-colors cursor-pointer text-[11px]"
+                            >
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   ) : searchResults.length === 0 ? (
                     <div className="text-center py-16 space-y-3">
                       <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-400">
@@ -3550,6 +3607,15 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     >
                       <Shield className="w-3 h-3" />
                       <span>3D Scanner</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLaunchExternalWindow}
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-cyan-950 text-cyan-400 border border-cyan-500/30 text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Open in external browser window"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>External</span>
                     </button>
                     <button
                       type="button"

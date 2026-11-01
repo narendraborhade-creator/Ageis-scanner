@@ -387,8 +387,8 @@ app.all('/api/proxy', async (req, res) => {
     if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
       let html = await upstreamRes.text();
 
-      // Remove any CSP and X-Frame-Options meta tags from HTML
-      html = html.replace(/<meta[^>]+http-equiv=["']?(?:content-security-policy|x-frame-options)["']?[^>]*>/gi, '');
+      // Remove any CSP, X-Frame-Options, and meta refresh tags from HTML
+      html = html.replace(/<meta[^>]+http-equiv=["']?(?:content-security-policy|x-frame-options|refresh)["']?[^>]*>/gi, '');
 
       // Base URL injection so relative assets (CSS, JS, images, fonts) resolve properly
       const baseTag = `<base href="${finalUrl}">`;
