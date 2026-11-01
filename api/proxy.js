@@ -15,6 +15,13 @@ export default async function handler(req, res) {
   }
 
   let rawUrl = (req.query?.url || req.body?.url || '').trim();
+  if (rawUrl.startsWith('aegis://search')) {
+    const qMatch = rawUrl.match(/[?&]q=([^&]+)/);
+    const q = qMatch ? decodeURIComponent(qMatch[1]) : '';
+    const catMatch = rawUrl.match(/[?&]category=([^&]+)/);
+    const cat = catMatch ? decodeURIComponent(catMatch[1]) : 'all';
+    return res.redirect(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(cat)}`);
+  }
   if (!rawUrl || rawUrl.startsWith('aegis://') || rawUrl === 'about:blank') {
     return res.status(400).send('Invalid destination URL');
   }

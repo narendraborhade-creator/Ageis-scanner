@@ -154,16 +154,16 @@ async function main() {
   for (const asset of targetAssets) {
     let uploaded = false;
     let attempts = 0;
-    while (!uploaded && attempts < 3) {
+    while (!uploaded && attempts < 5) {
       attempts++;
       try {
         await removeExistingAsset(asset.remoteName);
         await uploadAsset(asset);
         uploaded = true;
       } catch (err) {
-        console.warn(`Attempt ${attempts} failed for ${asset.remoteName}: ${err.message}. Retrying in 3 seconds...`);
-        if (attempts >= 3) throw err;
-        await new Promise(r => setTimeout(r, 3000));
+        console.warn(`Attempt ${attempts} failed for ${asset.remoteName}: ${err.message}. Retrying in 5 seconds...`);
+        if (attempts >= 5) throw err;
+        await new Promise(r => setTimeout(r, 5000));
       }
     }
   }
