@@ -6,6 +6,7 @@ import fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { isAllowedUrl } from './src/services/urlSecurityService.ts';
 
 dotenv.config();
 
@@ -17,31 +18,6 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const PYTHON_PORT = 5005;
 const PYTHON_API_URL = `http://127.0.0.1:${PYTHON_PORT}`;
 let pythonProcess: ChildProcess | null = null;
-
-
-function isAllowedUrl(urlString: string): boolean {
-  try {
-    const url = new URL(urlString);
-    const hostname = url.hostname.toLowerCase();
-
-    // Block common internal/local hostnames and IPs
-    const blockedPatterns = [
-      /^localhost$/,
-      /^127\./,
-      /^169\.254\./,
-      /^10\./,
-      /^192\.168\./,
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
-      /^0\.0\.0\.0$/,
-      /^\[?::1\]?$/,
-      /.*\.local$/
-    ];
-
-    return !blockedPatterns.some(pattern => pattern.test(hostname));
-  } catch {
-    return false;
-  }
-}
 
 
 app.use(express.json());
@@ -306,15 +282,15 @@ app.all('/api/proxy', async (req, res) => {
       rawUrl = `https://${rawUrl}`;
     }
 
-    // Block internal loopback to completely prevent loading the browser inside itself
+    // Validate URL format and enforce SSRF protections against internal/private resources
     try {
-      const u = new URL(rawUrl);
-      const host = u.hostname.toLowerCase();
-      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host === '0.0.0.0') {
-        return res.status(403).send('Access to local host is forbidden in proxy sandbox');
-      }
+      new URL(rawUrl);
     } catch {
       return res.status(400).send('Malformed URL');
+    }
+
+    if (!isAllowedUrl(rawUrl)) {
+      return res.status(403).send('Access to local host is forbidden in proxy sandbox');
     }
 
     const controller = new AbortController();
