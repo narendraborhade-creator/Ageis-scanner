@@ -11,3 +11,7 @@
 **Vulnerability:** Found a DOM-based Cross-Site Scripting (XSS) vulnerability in `src/components/ExtensionExportView.tsx`. The template string used to export `browser.js` contained insecure DOM manipulation via `innerHTML` where an untrusted variable `tab.title` was concatenated directly.
 **Learning:** Even generated code in an export or template needs strict DOM-based XSS protections. Vulnerabilities can be shipped to users via exported extensions if string concatenation is used to build DOM elements from potentially unsafe input.
 **Prevention:** Instead of generating JS code that uses `innerHTML` with string concatenation, the template must use secure DOM creation methods (like `document.createElement` and `.textContent`) when handling any user input, such as `tab.title`.
+## 2025-02-28 - Regex Bypass in SSRF Filter
+**Vulnerability:** The SSRF mitigation `isAllowedUrl` used unanchored prefix matching (e.g. `^127\.`) which caused false positives for domains like `127.0.0.1.example.com`. Also, no protocol validation meant `file:` schemes could bypass filtering.
+**Learning:** `new URL()` parses IPs and standardizes them. We must anchor regex patterns precisely (e.g., `^127\.\d+\.\d+\.\d+$`) for normalized IPs. We also must enforce `http:`/`https:` explicitly since `new URL` parses many unexpected schemes that might yield empty hostnames and bypass filters.
+**Prevention:** Use strictly anchored exact matches for IP ranges in node-based SSRF blocklists. Always explicitly enforce permitted protocols (`http:` / `https:`).
