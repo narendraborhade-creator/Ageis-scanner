@@ -36,7 +36,21 @@ export interface BrowserTab {
   snapshotThumbnail?: string;
   historyStack?: string[];
   historyIndex?: number;
+  isMuted?: boolean;
   createdAt: number;
+}
+
+export interface SearchResultItem {
+  title: string;
+  url: string;
+  domain: string;
+  snippet: string;
+  securityScore: number;
+  sslGrade: string;
+  threatStatus: 'clean' | 'warning' | 'blocked';
+  isHttps: boolean;
+  source?: string;
+  published?: string;
 }
 
 export type TabGroupColor = 'cyan' | 'purple' | 'emerald' | 'amber' | 'rose' | 'blue' | 'slate';

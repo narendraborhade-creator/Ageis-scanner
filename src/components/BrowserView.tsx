@@ -21,7 +21,7 @@ import {
 } from '../services/readLaterStorage';
 import { getStoredSessionState, saveSessionState } from '../services/sessionStateService';
 import { calculatePageLoadMetrics, PageLoadMetrics } from '../services/performanceMetricsService';
-import { BrowserTab, BrowserHistoryItem, BookmarkItem, ReadLaterItem, TabGroup, TabGroupColor } from '../types';
+import { BrowserTab, BrowserHistoryItem, BookmarkItem, ReadLaterItem, TabGroup, TabGroupColor, SearchResultItem } from '../types';
 import { ResourceMonitorSidebar } from './ResourceMonitorSidebar';
 import { SmartTabGroupModal } from './SmartTabGroupModal';
 import { TabHoverPreviewCard } from './TabHoverPreviewCard';
@@ -38,6 +38,10 @@ import {
 } from '../services/authStorage';
 import { UserAccount } from '../types';
 import { getApiBaseUrl, apiUrl, isMobileDevice } from '../services/apiConfig';
+import {
+  fetchGoogleSuggestionsDirect,
+  fetchGoogleDatabaseSearchResults,
+} from '../services/googleDatabaseService';
 import {
   Shield,
   ShieldAlert,
@@ -695,16 +699,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const [ytSearchInput, setYtSearchInput] = useState<string>('');
 
   // In-Browser Secure Web Search Engine States
-  const [searchResults, setSearchResults] = useState<Array<{
-    title: string;
-    url: string;
-    domain: string;
-    snippet: string;
-    securityScore: number;
-    sslGrade: string;
-    threatStatus: 'clean' | 'warning';
-    isHttps: boolean;
-  }>>([]);
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [searchCategory, setSearchCategory] = useState<'all' | 'news' | 'tech' | 'videos' | 'science'>('all');
   const [searchQueryInput, setSearchQueryInput] = useState<string>('');
@@ -952,6 +947,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       return;
     }
     const timer = setTimeout(async () => {
+      // 1. Try local/backend suggestions first if available
       try {
         const res = await fetch(apiUrl(`/api/search?type=suggestions&q=${encodeURIComponent(query)}`));
         if (res.ok) {
@@ -964,15 +960,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         }
       } catch {}
 
-      // Resilient direct fallback to Google Suggest API
+      // 2. Direct CORS-immune Google Database Autocomplete via JSONP & Edge Fallback
       try {
-        const direct = await fetch(`https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`);
-        if (direct.ok) {
-          const d = await direct.json();
-          if (Array.isArray(d?.[1])) {
-            setGoogleSuggestions(d[1].slice(0, 8));
-            setSelectedSuggestionIndex(-1);
-          }
+        const directSuggestions = await fetchGoogleSuggestionsDirect(query);
+        if (Array.isArray(directSuggestions) && directSuggestions.length > 0) {
+          setGoogleSuggestions(directSuggestions);
+          setSelectedSuggestionIndex(-1);
         }
       } catch {}
     }, 120);
@@ -992,52 +985,34 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       }
       setSearchLoading(true);
 
-      // Instant verified client-side results so the user never sees an empty screen
+      // Instant verified client-side baseline so the user never sees an empty screen
       const clientFallback = generateVerifiedSearchResults(q, searchInfo.category);
       setSearchResults(clientFallback);
 
-      fetch(apiUrl(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(searchInfo.category)}`))
-        .then((r) => r.json())
-        .then((data) => {
-          if (data && Array.isArray(data.results) && data.results.length > 0) {
-            setSearchResults(data.results);
-          }
-          if (data && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
-            setGoogleSuggestions(data.suggestions);
+      // Multi-tier Google Database Search Resolver (Backend API -> Real-time Edge Index -> Knowledge Grounding)
+      fetchGoogleDatabaseSearchResults(
+        q,
+        searchInfo.category,
+        apiUrl(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(searchInfo.category)}`)
+      )
+        .then((resData) => {
+          if (resData && Array.isArray(resData.results) && resData.results.length > 0) {
+            setSearchResults(resData.results);
           }
         })
-        .catch(async () => {
-          // Direct client-side resilience for GitHub Pages and serverless offline mode
-          try {
-            const wikiRes = await fetch(
-              `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(q)}&limit=6&format=json&origin=*`
-            );
-            if (wikiRes.ok) {
-              const d = await wikiRes.json();
-              if (Array.isArray(d) && d.length >= 4) {
-                const wikiItems: typeof clientFallback = [];
-                for (let i = 0; i < (d[1] || []).length; i++) {
-                  if (d[3]?.[i]) {
-                    wikiItems.push({
-                      title: `${d[1][i]} - Wikipedia`,
-                      url: d[3][i],
-                      domain: 'en.wikipedia.org',
-                      snippet: d[2]?.[i] || `Encyclopedia documentation and reference covering ${d[1][i]}.`,
-                      securityScore: 99,
-                      sslGrade: 'A+',
-                      threatStatus: 'clean' as const,
-                      isHttps: true,
-                    });
-                  }
-                }
-                if (wikiItems.length > 0) {
-                  setSearchResults([...wikiItems, ...clientFallback]);
-                }
-              }
-            }
-          } catch {}
+        .catch(() => {
+          setSearchResults(clientFallback);
         })
         .finally(() => setSearchLoading(false));
+
+      // Also fetch live Google suggestions for the active query in the background
+      fetchGoogleSuggestionsDirect(q)
+        .then((sugs) => {
+          if (Array.isArray(sugs) && sugs.length > 0) {
+            setGoogleSuggestions(sugs);
+          }
+        })
+        .catch(() => {});
     }
   }, [activeTab.url, searchInfo.isSearch, searchInfo.query, searchInfo.category]);
 
@@ -1438,20 +1413,18 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       target = `https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`;
     } else if (
       lowerTarget === 'google' ||
-      lowerTarget === 'google.com' ||
-      lowerTarget === 'www.google.com' ||
-      lowerTarget === 'https://www.google.com' ||
-      lowerTarget === 'https://google.com' ||
-      lowerTarget === 'http://www.google.com' ||
-      lowerTarget === 'http://google.com' ||
-      lowerTarget === 'https://www.google.com/' ||
-      lowerTarget === 'https://google.com/'
+      lowerTarget.startsWith('google.') ||
+      lowerTarget.startsWith('www.google.') ||
+      lowerTarget.startsWith('https://google.') ||
+      lowerTarget.startsWith('http://google.') ||
+      lowerTarget.startsWith('https://www.google.') ||
+      lowerTarget.startsWith('http://www.google.') ||
+      lowerTarget.includes('google.com') ||
+      lowerTarget.includes('google.co')
     ) {
-      target = 'aegis://search';
-    } else if (lowerTarget.includes('google.') && lowerTarget.includes('search')) {
       try {
         const u = new URL(target.startsWith('http') ? target : `https://${target}`);
-        const q = u.searchParams.get('q');
+        const q = u.searchParams.get('q') || '';
         target = q ? `aegis://search?q=${encodeURIComponent(q)}` : 'aegis://search';
       } catch {
         target = 'aegis://search';
@@ -1607,6 +1580,24 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     } else if (lowerNav.startsWith('youtube ') || lowerNav.startsWith('yt ')) {
       const q = target.replace(/^(youtube|yt)\s+/i, '').trim();
       target = `https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`;
+    } else if (
+      lowerNav === 'google' ||
+      lowerNav.startsWith('google.') ||
+      lowerNav.startsWith('www.google.') ||
+      lowerNav.startsWith('https://google.') ||
+      lowerNav.startsWith('http://google.') ||
+      lowerNav.startsWith('https://www.google.') ||
+      lowerNav.startsWith('http://www.google.') ||
+      lowerNav.includes('google.com') ||
+      lowerNav.includes('google.co')
+    ) {
+      try {
+        const u = new URL(target.startsWith('http') ? target : `https://${target}`);
+        const q = u.searchParams.get('q') || '';
+        target = q ? `aegis://search?q=${encodeURIComponent(q)}` : 'aegis://search';
+      } catch {
+        target = 'aegis://search';
+      }
     }
 
     // Internal Browser Settings & Tools Navigation
@@ -3182,9 +3173,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                           <span className="font-bold text-sm text-slate-100 tracking-wide">
                             Google Database Safe Search
                           </span>
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono">
+                          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            Live Index
+                            Google Database Connected
                           </span>
                         </div>
                         <p className="text-[11px] font-mono text-slate-400">
@@ -3701,7 +3692,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       key={`desktop-webview-${activeTab.id}-${refreshKey}`}
                       src={activeTab.initialUrl || activeTab.url}
                       partition="persist:aegis-browser"
-                      allowpopups=""
+                      allowpopups={true as any}
                       useragent={isGoogleAuthEndpoint(activeTab.url) ? GOOGLE_AUTH_UA : CHROMIUM_DESKTOP_UA}
                       webpreferences="webSecurity=no, contextIsolation=no, nativeWindowOpen=yes"
                       className="w-full h-full border-0 bg-white"
@@ -4082,7 +4073,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     {tabs.length > 1 && (
                       <button
                         type="button"
-                        onClick={handleCloseOtherTabs}
+                        onClick={() => handleCloseOtherTabs()}
                         className="py-1.5 px-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 text-xs font-mono transition-colors cursor-pointer"
                         title="Close other tabs"
                       >

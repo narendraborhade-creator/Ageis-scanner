@@ -404,7 +404,7 @@ export const AegisSettingsHub: React.FC<AegisSettingsHubProps> = ({
                   </span>
                 </div>
                 <div className="w-full h-72 rounded-xl overflow-hidden bg-black/80 border border-slate-800 relative">
-                  <CyberScene3D statusMode={activeTab.threatStatus === 'clean' ? 'safe' : 'alert'} interactive={true} className="w-full h-full" />
+                  <CyberScene3D statusMode={activeTab.threatStatus === 'clean' ? 'safe' : 'threat'} interactive={true} className="w-full h-full" />
                   <div className="absolute bottom-2 left-2 text-[10px] font-mono text-cyan-300 bg-black/70 px-2 py-0.5 rounded">
                     Interactive 3D Quantum Core · Drag to rotate geometry
                   </div>

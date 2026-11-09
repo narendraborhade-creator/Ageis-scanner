@@ -17,6 +17,7 @@ import { User, Lock, Mail, Database, Shield, CheckCircle2, AlertCircle, LogOut, 
 import { PasswordVaultManager } from './PasswordVaultManager';
 import { CloudflareVerificationModal } from './CloudflareVerificationModal';
 import { testCloudflareD1Database } from '../services/cloudflareVerificationService';
+import { testGoogleFirestoreDatabase } from '../services/googleDatabaseService';
 
 interface AuthViewProps {
   currentUser: UserAccount | null;
@@ -179,18 +180,28 @@ export const AuthView: React.FC<AuthViewProps> = ({ currentUser, onUserChange, o
       return;
     }
 
-    setTimeout(() => {
-      setTestingDb(false);
-      if (dbConfig.activeEngine === 'firebase') {
+    if (dbConfig.activeEngine === 'firebase') {
+      try {
+        const gRes = await testGoogleFirestoreDatabase(dbConfig.firebaseConfig);
+        setTestingDb(false);
         setDbConfig((prev) => ({
           ...prev,
           firebaseConfig: { ...prev.firebaseConfig, isConnected: true },
         }));
         setStatusMessage({
           type: 'success',
-          text: `Firebase Firestore connected: Project [${dbConfig.firebaseConfig.projectId}] verified. Collections: users, threat_logs, bookmarks.`,
+          text: `Google Cloud / Firebase Firestore connected (${gRes.latencyMs}ms): Project [${gRes.projectId}] database verified. Collections: ${gRes.collections.map((c) => c.name).join(', ')}. Status: Active & Secured.`,
         });
-      } else if (dbConfig.activeEngine === 'mongodb') {
+      } catch (err: any) {
+        setTestingDb(false);
+        setStatusMessage({ type: 'error', text: err.message || 'Google Cloud Firestore connection failed' });
+      }
+      return;
+    }
+
+    setTimeout(() => {
+      setTestingDb(false);
+      if (dbConfig.activeEngine === 'mongodb') {
         setDbConfig((prev) => ({
           ...prev,
           mongoConfig: { ...prev.mongoConfig, isConnected: true },
