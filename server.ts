@@ -24,16 +24,21 @@ function isAllowedUrl(urlString: string): boolean {
     const url = new URL(urlString);
     const hostname = url.hostname.toLowerCase();
 
+    if (!hostname || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
+      return false;
+    }
+
     // Block common internal/local hostnames and IPs
     const blockedPatterns = [
       /^localhost$/,
-      /^127\./,
-      /^169\.254\./,
-      /^10\./,
-      /^192\.168\./,
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^127\.\d+\.\d+\.\d+$/,
+      /^169\.254\.\d+\.\d+$/,
+      /^10\.\d+\.\d+\.\d+$/,
+      /^192\.168\.\d+\.\d+$/,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/,
       /^0\.0\.0\.0$/,
       /^\[?::1\]?$/,
+      /^\[?::ffff:7f00:1\]?$/,
       /.*\.local$/
     ];
 
@@ -308,13 +313,13 @@ app.all('/api/proxy', async (req, res) => {
 
     // Block internal loopback to completely prevent loading the browser inside itself
     try {
-      const u = new URL(rawUrl);
-      const host = u.hostname.toLowerCase();
-      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host === '0.0.0.0') {
-        return res.status(403).send('Access to local host is forbidden in proxy sandbox');
-      }
+      new URL(rawUrl);
     } catch {
       return res.status(400).send('Malformed URL');
+    }
+
+    if (!isAllowedUrl(rawUrl)) {
+      return res.status(403).send('Access to local host is forbidden in proxy sandbox');
     }
 
     const controller = new AbortController();
@@ -1058,8 +1063,14 @@ app.get('/api/inspect/website', async (req, res) => {
       targetUrl = `https://${targetUrl}`;
     }
 
+    try {
+      new URL(targetUrl);
+    } catch {
+      return res.status(400).json({ error: 'Malformed URL' });
+    }
+
     if (!isAllowedUrl(targetUrl)) {
-      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+      return res.status(403).json({ error: 'Access to internal or restricted network addresses is not allowed' });
     }
 
     const startTime = Date.now();
@@ -1151,8 +1162,14 @@ app.get('/api/security/vulnerability-scan', async (req, res) => {
     if (!targetUrl) targetUrl = 'https://cloudflare.com';
     if (!/^https?:\/\//i.test(targetUrl)) targetUrl = `https://${targetUrl}`;
 
+    try {
+      new URL(targetUrl);
+    } catch {
+      return res.status(400).json({ error: 'Malformed URL' });
+    }
+
     if (!isAllowedUrl(targetUrl)) {
-      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+      return res.status(403).json({ error: 'Access to internal or restricted network addresses is not allowed' });
     }
 
     const isHttps = targetUrl.startsWith('https://');
