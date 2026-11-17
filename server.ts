@@ -21,6 +21,35 @@ const PYTHON_API_URL = `http://127.0.0.1:${PYTHON_PORT}`;
 let pythonProcess: ChildProcess | null = null;
 
 
+function isAllowedUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    const hostname = url.hostname.toLowerCase();
+
+    if (!hostname || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
+      return false;
+    }
+
+    // Block common internal/local hostnames and IPs
+    const blockedPatterns = [
+      /^localhost$/,
+      /^127\.\d+\.\d+\.\d+$/,
+      /^169\.254\.\d+\.\d+$/,
+      /^10\.\d+\.\d+\.\d+$/,
+      /^192\.168\.\d+\.\d+$/,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/,
+      /^0\.0\.0\.0$/,
+      /^\[?::1\]?$/,
+      /^\[?::ffff:7f00:1\]?$/,
+      /.*\.local$/
+    ];
+
+    return !blockedPatterns.some(pattern => pattern.test(hostname));
+  } catch {
+    return false;
+  }
+}
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -1036,8 +1065,14 @@ app.get('/api/inspect/website', async (req, res) => {
       targetUrl = `https://${targetUrl}`;
     }
 
+    try {
+      new URL(targetUrl);
+    } catch {
+      return res.status(400).json({ error: 'Malformed URL' });
+    }
+
     if (!isAllowedUrl(targetUrl)) {
-      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+      return res.status(403).json({ error: 'Access to internal or restricted network addresses is not allowed' });
     }
 
     const startTime = Date.now();
@@ -1129,8 +1164,14 @@ app.get('/api/security/vulnerability-scan', async (req, res) => {
     if (!targetUrl) targetUrl = 'https://cloudflare.com';
     if (!/^https?:\/\//i.test(targetUrl)) targetUrl = `https://${targetUrl}`;
 
+    try {
+      new URL(targetUrl);
+    } catch {
+      return res.status(400).json({ error: 'Malformed URL' });
+    }
+
     if (!isAllowedUrl(targetUrl)) {
-      return res.status(400).json({ error: 'Access to internal or restricted network addresses is not allowed' });
+      return res.status(403).json({ error: 'Access to internal or restricted network addresses is not allowed' });
     }
 
     const isHttps = targetUrl.startsWith('https://');
