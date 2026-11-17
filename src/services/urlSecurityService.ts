@@ -5,6 +5,7 @@ export function isAllowedUrl(urlString: string): boolean {
   try {
     const url = new URL(urlString);
 
+    // Explicitly verify that the parsed URL has a truthy hostname and an http: or https: protocol
     // Require standard http / https protocol and non-empty hostname
     if (!url.hostname || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
       return false;
@@ -12,6 +13,7 @@ export function isAllowedUrl(urlString: string): boolean {
 
     const hostname = url.hostname.toLowerCase();
 
+    // Block common internal/local hostnames and IPs
     // Block internal/local hostnames, private subnets (RFC 1918), link-local metadata (169.254.x.x),
     // loopbacks (127.x.x.x, ::1, IPv4-mapped IPv6 [::ffff:127.0.0.1] -> [::ffff:7f00:1])
     const blockedPatterns = [
@@ -23,6 +25,9 @@ export function isAllowedUrl(urlString: string): boolean {
       /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/,
       /^0\.0\.0\.0$/,
       /^\[?::1\]?$/,
+      /^\[?::ffff:127\.0\.0\.1\]?$/, // IPv4-mapped IPv6 loopback addresses
+      /^\[?::ffff:7f00:1\]?$/, // Normalized IPv4-mapped IPv6 loopback addresses
+      /\.local$/
       /^\[?::ffff:(127\.\d+\.\d+\.\d+|7f[0-9a-f]{2}:[0-9a-f]{1,4})\]?$/i,
       /.*\.local$/
     ];

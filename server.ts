@@ -1,3 +1,4 @@
+import { isAllowedUrl } from './src/services/urlSecurityService.js';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -18,6 +19,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const PYTHON_PORT = 5005;
 const PYTHON_API_URL = `http://127.0.0.1:${PYTHON_PORT}`;
 let pythonProcess: ChildProcess | null = null;
+
 
 
 app.use(express.json());
