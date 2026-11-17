@@ -1,3 +1,4 @@
+import { isAllowedUrl } from './src/services/urlSecurityService.js';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -6,6 +7,7 @@ import fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { isAllowedUrl } from './src/services/urlSecurityService';
 
 dotenv.config();
 
@@ -311,7 +313,7 @@ app.all('/api/proxy', async (req, res) => {
       rawUrl = `https://${rawUrl}`;
     }
 
-    // Block internal loopback to completely prevent loading the browser inside itself
+    // Validate destination URL to prevent SSRF and proxy sandbox loopbacks
     try {
       new URL(rawUrl);
     } catch {

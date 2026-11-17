@@ -94,7 +94,12 @@ const QUICK_SECURITY_PROMPTS = [
   'What are the OWASP Top 10 web vulnerabilities?',
 ];
 
-export const GeminiCopilotView: React.FC = () => {
+export interface GeminiCopilotViewProps {
+  currentUrl?: string;
+  currentDomain?: string;
+}
+
+export const GeminiCopilotView: React.FC<GeminiCopilotViewProps> = ({ currentUrl, currentDomain }) => {
   const [activeSubTab, setActiveSubTab] = useState<'chat' | 'inspector' | 'terms'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {

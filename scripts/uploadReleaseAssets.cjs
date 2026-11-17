@@ -91,8 +91,8 @@ function uploadAsset(asset) {
       return reject(new Error(`File not found: ${asset.localPath}`));
     }
 
-    const stats = fs.statSync(asset.localPath);
-    const fileSize = stats.size;
+    const fileBuffer = fs.readFileSync(asset.localPath);
+    const fileSize = fileBuffer.length;
     console.log(`Starting upload: ${asset.remoteName} (${(fileSize / (1024 * 1024)).toFixed(2)} MB)...`);
 
     const options = {
@@ -127,21 +127,7 @@ function uploadAsset(asset) {
       reject(err);
     });
 
-    // Stream file with progress logging
-    const readStream = fs.createReadStream(asset.localPath, { highWaterMark: 1024 * 1024 });
-    let uploadedBytes = 0;
-    let lastPercent = 0;
-
-    readStream.on('data', chunk => {
-      uploadedBytes += chunk.length;
-      const percent = Math.floor((uploadedBytes / fileSize) * 100);
-      if (percent >= lastPercent + 10 || percent === 100) {
-        lastPercent = percent;
-        console.log(`  ${asset.remoteName}: ${percent}% (${(uploadedBytes / (1024 * 1024)).toFixed(1)} MB / ${(fileSize / (1024 * 1024)).toFixed(1)} MB)`);
-      }
-    });
-
-    readStream.pipe(req);
+    req.end(fileBuffer);
   });
 }
 
