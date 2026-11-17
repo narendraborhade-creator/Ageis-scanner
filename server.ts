@@ -7,6 +7,7 @@ import fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import { isAllowedUrl } from './src/services/urlSecurityService';
 
 dotenv.config();
 
@@ -283,15 +284,15 @@ app.all('/api/proxy', async (req, res) => {
       rawUrl = `https://${rawUrl}`;
     }
 
-    // Block internal loopback to completely prevent loading the browser inside itself
+    // Validate destination URL to prevent SSRF and proxy sandbox loopbacks
     try {
-      const u = new URL(rawUrl);
-      const host = u.hostname.toLowerCase();
-      if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host === '0.0.0.0') {
-        return res.status(403).send('Access to local host is forbidden in proxy sandbox');
-      }
+      new URL(rawUrl);
     } catch {
       return res.status(400).send('Malformed URL');
+    }
+
+    if (!isAllowedUrl(rawUrl)) {
+      return res.status(403).send('Access to local host is forbidden in proxy sandbox');
     }
 
     const controller = new AbortController();
