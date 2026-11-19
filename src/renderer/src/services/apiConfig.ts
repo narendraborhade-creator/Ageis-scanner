@@ -72,13 +72,87 @@ export function isMobileDevice(): boolean {
 }
 
 /**
+ * Detects whether the app is executing on GitHub Pages (static CDN hosting with no Node.js backend).
+ */
+export function isGitHubPages(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname.endsWith('github.io') || window.location.hostname.includes('github.io');
+}
+
+/**
+ * Detects whether the app is running in a static web hosting context (GitHub Pages or local file: protocol).
+ */
+export function isStaticHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return isGitHubPages() || window.location.protocol === 'file:' || window.location.protocol === 'capacitor:';
+}
+
+/**
+ * Retrieves any custom proxy/backend URL set in localStorage or environment variables.
+ */
+export function getCustomProxyUrl(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const custom = localStorage.getItem('AEGIS_BACKEND_API_URL');
+    if (custom && custom.trim()) {
+      return custom.trim().replace(/\/+$/, '');
+    }
+  } catch {}
+  return ((import.meta as any).env?.VITE_BACKEND_API_URL as string) || '';
+}
+
+/**
+ * Sets a custom backend proxy endpoint (e.g. deployed Vercel proxy or local server).
+ */
+export function setCustomProxyUrl(url: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (url && url.trim()) {
+      localStorage.setItem('AEGIS_BACKEND_API_URL', url.trim().replace(/\/+$/, ''));
+    } else {
+      localStorage.removeItem('AEGIS_BACKEND_API_URL');
+    }
+  } catch {}
+}
+
+/**
+ * Determines whether a functional backend proxy (/api/proxy) is reachable.
+ * On static GitHub Pages without a custom proxy URL, returns false.
+ */
+export function hasBackendProxy(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const win = window as any;
+  if (Boolean(win.isAegisDesktop)) return true; // Desktop Electron handles WebContentsView / native tabs
+  if (getCustomProxyUrl()) return true;
+
+  // Local development server with Express proxy running
+  const isLocalDevServer =
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+    (window.location.port === '3000' || window.location.port === '5173') &&
+    !isCapacitorPlatform();
+  if (isLocalDevServer) return true;
+
+  // Static GitHub Pages host has NO Express / Node backend proxy
+  if (isGitHubPages()) return false;
+
+  // Capacitor native protocols or local files
+  if (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:') return false;
+
+  // Live web hosts (e.g. Vercel deployment with serverless /api/proxy)
+  return Boolean(window.location.origin && !window.location.origin.includes('github.io'));
+}
+
+/**
  * Resolves the backend base URL for API proxying and security scanning.
  * - On Electron Desktop (.exe): returns http://127.0.0.1:3000 (embedded desktop proxy).
  * - On Local Dev Server: returns '' (relative to dev server port).
- * - On Android APK, iOS, Mobile Web, and Production Web: ALWAYS returns https://www.aegisscans.dev!
+ * - If custom backend URL is configured: returns that URL.
+ * - On GitHub Pages: returns '' (endpoints handled client-side or via fallback).
+ * - On Vercel / server hosting: returns window.location.origin.
  */
 export function getApiBaseUrl(): string {
-  if (typeof window === 'undefined') return 'https://www.aegisscans.dev';
+  if (typeof window === 'undefined') return '';
 
   const win = window as any;
 
@@ -87,7 +161,11 @@ export function getApiBaseUrl(): string {
     return 'http://127.0.0.1:3000';
   }
 
-  // 2. Local Node/Vite development server (port 3000 or 5173 on localhost) when NOT in Capacitor
+  // 2. Custom Proxy / Backend URL if configured by user/env
+  const custom = getCustomProxyUrl();
+  if (custom) return custom;
+
+  // 3. Local Node/Vite development server (port 3000 or 5173 on localhost) when NOT in Capacitor
   const isLocalDevServer =
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
     (window.location.port === '3000' || window.location.port === '5173') &&
@@ -97,12 +175,17 @@ export function getApiBaseUrl(): string {
     return '';
   }
 
-  // 3. Android APK, iOS, PWA, Mobile, and Production Web:
-  // If running on a live web host (GitHub Pages, custom domain, Vercel), use current origin; fallback to aegisscans.dev
+  // 4. On GitHub Pages, NEVER return window.location.origin for backend APIs because GitHub Pages is 100% static!
+  if (isGitHubPages()) {
+    return '';
+  }
+
+  // 5. Live web host (e.g. Vercel with serverless functions)
   if (window.location.origin && !window.location.origin.startsWith('file:') && !window.location.origin.startsWith('capacitor:')) {
     return window.location.origin;
   }
-  return 'https://www.aegisscans.dev';
+
+  return '';
 }
 
 /**
