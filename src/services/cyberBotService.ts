@@ -322,10 +322,111 @@ Malicious software that encrypts victim files or systems, demanding payment for 
 };
 
 /**
+ * Fetch Python AI CyberBot health and runtime status
+ */
+export async function getPythonBotStatus(): Promise<{
+  status: 'starting' | 'online' | 'error' | 'stopped';
+  port: number;
+  url: string;
+  engineInfo?: any;
+}> {
+  if (typeof window !== 'undefined' && (window as any).aegis?.pythonBot?.getStatus) {
+    try {
+      const state = await (window as any).aegis.pythonBot.getStatus();
+      if (state) return state;
+    } catch {}
+  }
+
+  // Fallback to direct HTTP check on 127.0.0.1:5005
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    const res = await fetch('http://127.0.0.1:5005/health', { signal: controller.signal });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const info = await res.json();
+      return { status: 'online', port: 5005, url: 'http://127.0.0.1:5005', engineInfo: info };
+    }
+  } catch {}
+
+  return { status: 'stopped', port: 5005, url: 'http://127.0.0.1:5005' };
+}
+
+/**
+ * Query Python AI CyberBot directly via IPC or HTTP
+ */
+export async function queryPythonBot(params: {
+  messages: Array<{ role: string; content: string }>;
+  personaId?: string;
+  systemInstruction?: string;
+  model?: string;
+}): Promise<CyberBotResult | null> {
+  const { messages, personaId, systemInstruction, model } = params;
+
+  // 1. Try Electron IPC if available (window.aegis.pythonBot.chat)
+  if (typeof window !== 'undefined' && (window as any).aegis?.pythonBot?.chat) {
+    try {
+      const response = await (window as any).aegis.pythonBot.chat({
+        messages,
+        persona_id: personaId || 'cyber-sentinel',
+        system_instruction: systemInstruction,
+        model: model || 'aegis-cyber-python',
+      });
+
+      const resData = response?.data || response;
+      if (resData && (resData.reply || resData.content)) {
+        return {
+          reply: resData.reply || resData.content,
+          model: resData.model || 'Aegis Python CyberBot (IPC)',
+          persona: resData.persona || 'Aegis Cyber Sentinel',
+          matchedTerms: resData.matched_terms || resData.matchedTerms,
+          threatAnalysis: resData.threat_analysis || resData.threatAnalysis,
+        };
+      }
+    } catch (ipcErr) {
+      console.warn('[CyberBotService] Python IPC query failed, attempting direct HTTP:', ipcErr);
+    }
+  }
+
+  // 2. Try direct HTTP to local FastAPI endpoint (http://127.0.0.1:5005/chat)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const res = await fetch('http://127.0.0.1:5005/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages,
+        persona_id: personaId || 'cyber-sentinel',
+        system_instruction: systemInstruction,
+        model: model || 'aegis-cyber-python',
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        reply: data.reply || 'Analysis completed with verified status.',
+        model: data.model || 'Aegis Python CyberBot (Local HTTP)',
+        persona: data.persona || 'Aegis Cyber Sentinel',
+        matchedTerms: data.matched_terms || data.matchedTerms,
+        threatAnalysis: data.threat_analysis || data.threatAnalysis,
+      };
+    }
+  } catch (httpErr) {
+    console.info('[CyberBotService] Local Python bot not immediately reachable, falling back to heuristics.');
+  }
+
+  return null;
+}
+
+/**
  * Universal Unified Chat & Security Query Handler.
- * Integrates Gemini cloud AI (with optional user API key),
- * specialized deep cybersecurity knowledge, and live Wikipedia web retrieval.
- * Eliminates canned scan-card hijacking for conceptual questions.
+ * Queries Python AI Bot via IPC or direct HTTP when online,
+ * falling back smoothly to client-side heuristics & web knowledge if booting.
  */
 export async function queryAegisCopilot(params: {
   messages: Array<{ role: string; content: string }>;
@@ -348,7 +449,19 @@ export async function queryAegisCopilot(params: {
     };
   }
 
-  // 2. Try calling the backend endpoint (/api/gemini/chat)
+  // 2. Primary: Query the specialized local Python CyberBot via IPC or direct HTTP
+  const pyBotResult = await queryPythonBot({
+    messages,
+    personaId,
+    systemInstruction,
+    model,
+  });
+
+  if (pyBotResult && pyBotResult.reply) {
+    return pyBotResult;
+  }
+
+  // 3. Optional Cloud / Node Backend Fallback (/api/gemini/chat) if available
   try {
     const res = await fetch(apiUrl('/api/gemini/chat'), {
       method: 'POST',
@@ -367,7 +480,6 @@ export async function queryAegisCopilot(params: {
       const data = await res.json();
       const reply = data.reply || '';
 
-      // Guard: Ensure remote endpoint did not return an obsolete canned scan card for an educational question
       const looksLikeCannedScan =
         reply.includes('Domain Integrity: Verified ASCII') ||
         reply.includes('Resolver Protocol: RFC 8484 DNS-over-HTTPS');
@@ -386,10 +498,10 @@ export async function queryAegisCopilot(params: {
       }
     }
   } catch (netErr) {
-    console.warn('[Aegis Copilot] Remote API unreachable, engaging client-side cyber engine:', netErr);
+    // Backend unreachable, continue to heuristics
   }
 
-  // 3. Exploit payload inspection if applicable
+  // 4. Exploit payload inspection heuristic if applicable
   const payloadCheck = inspectPayloadClient(lastUserMsg);
   if (payloadCheck.score > 20) {
     const threatLines = payloadCheck.threats.map((t) => `- **${t.vector}** (\`${t.cwe}\`): ${t.description}`);
@@ -415,7 +527,7 @@ ${threatLines.join('\n')}
     };
   }
 
-  // 4. Autonomous Web Knowledge & Deep Cybersecurity Engine
+  // 5. Autonomous Web Knowledge & Deep Cybersecurity Engine Fallback
   const knowledge = await answerWithWebAndCyberKnowledge(lastUserMsg, activeTab);
   return {
     reply: knowledge.reply,

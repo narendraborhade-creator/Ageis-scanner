@@ -36,7 +36,9 @@ describe('urlSecurityService', () => {
     it('should block SSRF bypass attempts', () => {
       expect(isAllowedUrl('http://127.0.0.1.example.com')).toBe(true); // Should allow if it's just part of a larger hostname
     });
-describe('isAllowedUrl SSRF Protection', () => {
+  });
+
+  describe('isAllowedUrl SSRF Protection', () => {
   it('allows valid public URLs', () => {
     expect(isAllowedUrl('https://google.com')).toBe(true);
     expect(isAllowedUrl('https://cloudflare.com/security')).toBe(true);
@@ -89,4 +91,5 @@ describe('isAllowedUrl SSRF Protection', () => {
     expect(isAllowedUrl('not a url')).toBe(false);
     expect(isAllowedUrl('')).toBe(false);
   });
+});
 });

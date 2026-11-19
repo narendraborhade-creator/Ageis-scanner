@@ -27,7 +27,6 @@ export function isAllowedUrl(urlString: string): boolean {
       /^\[?::1\]?$/,
       /^\[?::ffff:127\.0\.0\.1\]?$/, // IPv4-mapped IPv6 loopback addresses
       /^\[?::ffff:7f00:1\]?$/, // Normalized IPv4-mapped IPv6 loopback addresses
-      /\.local$/
       /^\[?::ffff:(127\.\d+\.\d+\.\d+|7f[0-9a-f]{2}:[0-9a-f]{1,4})\]?$/i,
       /.*\.local$/
     ];
