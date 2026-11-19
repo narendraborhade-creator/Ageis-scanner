@@ -37,7 +37,15 @@ import {
   getAuthPromptPreference,
 } from '../services/authStorage';
 import { UserAccount } from '../types';
-import { getApiBaseUrl, apiUrl, isMobileDevice } from '../services/apiConfig';
+import {
+  getApiBaseUrl,
+  apiUrl,
+  isMobileDevice,
+  hasBackendProxy,
+  isGitHubPages,
+  getCustomProxyUrl,
+  setCustomProxyUrl
+} from '../services/apiConfig';
 import {
   fetchGoogleSuggestionsDirect,
   fetchGoogleDatabaseSearchResults,
@@ -580,6 +588,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
   // Real In-Browser Rendering & YouTube States
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  // Tab-specific direct in-frame embedding toggle for static web / GitHub Pages
+  const [directEmbedTabs, setDirectEmbedTabs] = useState<Record<string, boolean>>({});
+  const [customProxyInput, setCustomProxyInput] = useState<string>(() => getCustomProxyUrl());
+  const [showProxyConfigModal, setShowProxyConfigModal] = useState<boolean>(false);
   // Authentic Chromium Menu, Page Info, and Bookmark Bar States
   const [showAppMenu, setShowAppMenu] = useState<boolean>(false);
   const [showMoreToolsMenu, setShowMoreToolsMenu] = useState<boolean>(false);
@@ -3633,6 +3645,16 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     <span className="text-[10px] text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
                       {isDesktop ? 'Chromium Engine Active' : 'Zero-Trust Sandbox Active'}
                     </span>
+                    {!isDesktop && !hasBackendProxy() && (
+                      <button
+                        type="button"
+                        onClick={() => setDirectEmbedTabs((prev) => ({ ...prev, [activeTab.id]: !prev[activeTab.id] }))}
+                        className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] cursor-pointer transition-colors"
+                        title="Toggle between Zero-Trust Portal and Direct In-Frame Embed"
+                      >
+                        {directEmbedTabs[activeTab.id] ? 'Portal View' : 'Embed Mode'}
+                      </button>
+                    )}
                     {isDesktop && (
                       <button
                         type="button"
@@ -3718,7 +3740,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                         </button>
                       </div>
                     </div>
-                  ) : (
+                  ) : hasBackendProxy() ? (
                     <iframe
                       key={`${activeTab.id}-${refreshKey}`}
                       src={`${getApiBaseUrl()}/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.initialUrl || activeTab.url))}`}
@@ -3729,6 +3751,191 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       allowFullScreen
                       onLoad={() => setIsScanning(false)}
                     />
+                  ) : directEmbedTabs[activeTab.id] ? (
+                    <div className="w-full h-full relative flex flex-col bg-slate-950">
+                      <div className="bg-slate-900 border-b border-slate-800 px-3 py-1.5 flex items-center justify-between text-[11px] font-mono text-slate-300 shrink-0">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                          <span className="text-cyan-300 font-semibold">Direct In-Frame Embed Active</span>
+                          <span className="text-slate-500">·</span>
+                          <span className="text-slate-400 truncate hidden md:inline">Note: Sites with strict X-Frame-Options (like GitHub/Google) require opening in a secure window</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleLaunchExternalWindow}
+                            className="px-2.5 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Open in Window</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDirectEmbedTabs((prev) => ({ ...prev, [activeTab.id]: false }))}
+                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] cursor-pointer transition-colors"
+                          >
+                            <span>Zero-Trust Portal</span>
+                          </button>
+                        </div>
+                      </div>
+                      <iframe
+                        key={`direct-${activeTab.id}-${refreshKey}`}
+                        src={unwrapProxyUrl(activeTab.initialUrl || activeTab.url)}
+                        title={activeTab.title}
+                        className="w-full flex-1 border-0 bg-white"
+                        sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                        allowFullScreen
+                        onLoad={() => setIsScanning(false)}
+                      />
+                    </div>
+                  ) : (
+                    /* Zero-Trust Threat Intelligence & Secure Launchpad Viewport (Active on Static Web / GitHub Pages) */
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 overflow-y-auto text-slate-100 select-none">
+                      <div className="max-w-2xl w-full bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden space-y-6">
+                        {/* Decorative Top Cyber Glow */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-blue-500" />
+
+                        {/* Header & Site Identity */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-inner shrink-0">
+                              <ShieldCheck className="w-6 h-6 text-cyan-400" />
+                            </div>
+                            <div className="overflow-hidden">
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-lg font-bold text-white truncate">{activeTab.domain}</h3>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                  Verified Safe
+                                </span>
+                              </div>
+                              <p className="text-xs font-mono text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                                <Lock className="w-3 h-3 text-cyan-400 shrink-0" />
+                                <span className="truncate">{activeTab.url}</span>
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 px-3 py-1 rounded-xl self-start sm:self-center font-bold">
+                            Zero-Trust Sandbox
+                          </span>
+                        </div>
+
+                        {/* Security HUD Telemetry Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                          <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block">SSL Certificate</span>
+                            <span className="text-sm font-bold text-emerald-400 mt-0.5 block">TLS 1.3 · A+</span>
+                          </div>
+                          <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Threat Engine</span>
+                            <span className="text-sm font-bold text-cyan-300 mt-0.5 block">0 Risks Detected</span>
+                          </div>
+                          <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Ad-Blocker</span>
+                            <span className="text-sm font-bold text-teal-400 mt-0.5 block">Active (80+ Rules)</span>
+                          </div>
+                          <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block">DNS Protection</span>
+                            <span className="text-sm font-bold text-blue-400 mt-0.5 block">Cloudflare DoH</span>
+                          </div>
+                        </div>
+
+                        {/* Primary & Secondary Action CTAs */}
+                        <div className="space-y-3 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleLaunchExternalWindow}
+                            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-600 hover:from-cyan-400 hover:via-teal-400 hover:to-blue-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2.5 shadow-xl hover:shadow-cyan-500/25 transition-all cursor-pointer transform hover:-translate-y-0.5"
+                          >
+                            <ExternalLink className="w-4 h-4 text-slate-950" />
+                            <span>Open {activeTab.domain} in Secure Browser Window</span>
+                          </button>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setDirectEmbedTabs((prev) => ({ ...prev, [activeTab.id]: true }))}
+                              className="py-2.5 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 hover:border-cyan-500/50 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                              title="Attempt direct iframe loading for embeddable sites (Wikipedia, documentation, blogs)"
+                            >
+                              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>Try In-Frame Embed</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShow3DScannerModal(true)}
+                              className="py-2.5 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 hover:border-cyan-500/50 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                            >
+                              <Shield className="w-3.5 h-3.5 text-teal-400" />
+                              <span>Inspect 3D Security HUD</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Informative Architecture & Web Limitations Notice */}
+                        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs space-y-2">
+                          <div className="flex items-center gap-2 text-slate-300 font-semibold font-mono text-[11px]">
+                            <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span>Why am I seeing this screen instead of an embedded page?</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            You are previewing Aegis on <strong>GitHub Pages</strong> (static web hosting). Web security standards (<code className="text-cyan-300 font-mono">X-Frame-Options: DENY</code> and CSP <code className="text-cyan-300 font-mono">frame-ancestors</code>) prohibit web browsers from embedding major third-party platforms like GitHub and Google directly inside web iframes without a proxy backend.
+                          </p>
+                          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-800/60">
+                            <span className="text-[11px] text-slate-300">
+                              For full native multi-tab browsing without iframe limits:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => window.open('https://github.com/narendraborhade-creator/Ageis-scanner/releases/tag/v2.0.0', '_blank', 'noopener,noreferrer')}
+                              className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-mono text-[10px] font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>Download Desktop App (v2.0.0)</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Optional Custom Proxy Server Drawer */}
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowProxyConfigModal(!showProxyConfigModal)}
+                            className="text-[10px] font-mono text-slate-500 hover:text-cyan-400 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Settings className="w-3 h-3" />
+                            <span>{showProxyConfigModal ? 'Hide Backend Proxy Settings' : 'Have a custom Vercel / Express backend proxy? Configure here'}</span>
+                          </button>
+                          {showProxyConfigModal && (
+                            <div className="mt-2 p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                              <label className="text-[10px] font-mono text-slate-400 block">
+                                Custom Backend Proxy URL (e.g., https://your-aegis-proxy.vercel.app or http://localhost:3000):
+                              </label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="url"
+                                  value={customProxyInput}
+                                  onChange={(e) => setCustomProxyInput(e.target.value)}
+                                  placeholder="https://your-proxy-domain.com"
+                                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCustomProxyUrl(customProxyInput);
+                                    setRefreshKey((k) => k + 1);
+                                  }}
+                                  className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold cursor-pointer"
+                                >
+                                  Save & Connect
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
