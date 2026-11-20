@@ -28,6 +28,7 @@ export interface TabInstance {
   canGoForward: boolean;
   isLoading: boolean;
   zoomFactor: number;
+  isPrivate?: boolean;
 }
 
 const CHROMIUM_USER_AGENT =
@@ -44,7 +45,12 @@ let currentBounds: TabBounds = { x: 0, y: 88, width: 1440, height: 832 };
 function normalizeUrl(inputUrl: string): string {
   if (!inputUrl) return 'about:blank';
   const trimmed = inputUrl.trim();
-  if (trimmed.startsWith('about:') || trimmed.startsWith('data:') || trimmed.startsWith('chrome:')) {
+  if (
+    trimmed.startsWith('aegis:') ||
+    trimmed.startsWith('about:') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('chrome:')
+  ) {
     return trimmed;
   }
   if (/^https?:\/\//i.test(trimmed)) {
@@ -207,7 +213,7 @@ function setupContextMenu(view: WebContentsView): void {
 /**
  * Creates and initializes a native WebContentsView tab
  */
-export function createTab(id: string, initialUrl?: string): TabInstance {
+export function createTab(id: string, initialUrl?: string, isPrivate?: boolean): TabInstance {
   if (tabs.has(id)) {
     const existing = tabs.get(id)!;
     if (initialUrl && initialUrl !== existing.url) {
@@ -216,15 +222,22 @@ export function createTab(id: string, initialUrl?: string): TabInstance {
     return existing;
   }
 
+  const webPrefs: Electron.WebPreferences = {
+    sandbox: true,
+    contextIsolation: true,
+    nodeIntegration: false,
+    spellcheck: true,
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+  };
+
+  // Pure in-memory session partition for zero-trace private tabs
+  if (isPrivate) {
+    webPrefs.partition = `incognito-${Date.now()}-${id}`;
+  }
+
   const view = new WebContentsView({
-    webPreferences: {
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      spellcheck: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-    },
+    webPreferences: webPrefs,
   });
 
   // Attach session to network AdBlocker
@@ -239,11 +252,12 @@ export function createTab(id: string, initialUrl?: string): TabInstance {
     id,
     view,
     url: initialUrl || 'about:blank',
-    title: 'New Tab',
+    title: isPrivate ? 'Private Tab' : 'New Tab',
     canGoBack: false,
     canGoForward: false,
     isLoading: false,
     zoomFactor: 1.0,
+    isPrivate: Boolean(isPrivate),
   };
 
   // Setup navigation event listeners
@@ -288,10 +302,10 @@ export function createTab(id: string, initialUrl?: string): TabInstance {
   // Intercept window.open or target="_blank" links
   view.webContents.setWindowOpenHandler(({ url }) => {
     const newId = `tab-${Date.now()}`;
-    createTab(newId, url);
+    createTab(newId, url, tab.isPrivate);
     switchTab(newId);
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('aegis-tab-created', { id: newId, url });
+      mainWindow.webContents.send('aegis-tab-created', { id: newId, url, isPrivate: tab.isPrivate });
     }
     return { action: 'deny' };
   });
@@ -305,15 +319,29 @@ export function createTab(id: string, initialUrl?: string): TabInstance {
 
   tabs.set(id, tab);
 
+  // Check if initial URL is internal or external
+  const isInternal =
+    !initialUrl ||
+    initialUrl === 'about:blank' ||
+    initialUrl.startsWith('aegis:') ||
+    initialUrl.startsWith('chrome:');
+
   // If no tab is currently active, activate this tab immediately
   if (!activeTabId) {
-    switchTab(id);
+    activeTabId = id;
+    if (isInternal) {
+      view.setVisible(false);
+      view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+    } else {
+      view.setVisible(true);
+      applyCurrentBounds(view);
+    }
   } else {
     view.setVisible(false);
     view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
   }
 
-  if (initialUrl && initialUrl !== 'about:blank') {
+  if (initialUrl && !isInternal) {
     navigateTab(id, initialUrl);
   }
 
@@ -343,8 +371,20 @@ export function switchTab(id: string): void {
     mainWindow.contentView.addChildView(target.view);
   }
 
-  target.view.setVisible(true);
-  applyCurrentBounds(target.view);
+  const isInternal =
+    !target.url ||
+    target.url === 'about:blank' ||
+    target.url.startsWith('aegis:') ||
+    target.url.startsWith('chrome:');
+
+  if (isInternal) {
+    target.view.setVisible(false);
+    target.view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+  } else {
+    target.view.setVisible(true);
+    applyCurrentBounds(target.view);
+  }
+
   emitNavigationState(target);
 }
 
@@ -381,11 +421,36 @@ export function closeTab(id: string): void {
  * Navigates a tab to a specified URL
  */
 export function navigateTab(id: string, targetUrl: string): void {
-  const tab = tabs.get(id);
-  if (!tab) return;
+  let tab = tabs.get(id);
+  if (!tab) {
+    tab = createTab(id, targetUrl);
+    switchTab(id);
+    return;
+  }
 
   const resolved = normalizeUrl(targetUrl);
   tab.url = resolved;
+
+  const isInternal =
+    !resolved ||
+    resolved === 'about:blank' ||
+    resolved.startsWith('aegis:') ||
+    resolved.startsWith('chrome:');
+
+  if (isInternal) {
+    tab.isLoading = false;
+    tab.view.setVisible(false);
+    tab.view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+    tab.view.webContents.loadURL('about:blank').catch(() => {});
+    emitNavigationState(tab);
+    return;
+  }
+
+  if (activeTabId === id) {
+    tab.view.setVisible(true);
+    applyCurrentBounds(tab.view);
+  }
+
   tab.isLoading = true;
   emitNavigationState(tab);
 
@@ -495,9 +560,9 @@ export function initTabManager(win: BrowserWindow): void {
 
   // Tab management IPC Handlers
   ipcMain.removeHandler('aegis-tabs-create');
-  ipcMain.handle('aegis-tabs-create', (e, id: string, url?: string) => {
+  ipcMain.handle('aegis-tabs-create', (e, id: string, url?: string, isPrivate?: boolean) => {
     if (!isAuthorizedSender(e)) return;
-    createTab(id, url);
+    createTab(id, url, isPrivate);
   });
 
   ipcMain.removeHandler('aegis-tabs-switch');

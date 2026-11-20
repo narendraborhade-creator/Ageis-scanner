@@ -1425,22 +1425,17 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       target = `https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`;
     } else if (
       lowerTarget === 'google' ||
-      lowerTarget.startsWith('google.') ||
-      lowerTarget.startsWith('www.google.') ||
-      lowerTarget.startsWith('https://google.') ||
-      lowerTarget.startsWith('http://google.') ||
-      lowerTarget.startsWith('https://www.google.') ||
-      lowerTarget.startsWith('http://www.google.') ||
-      lowerTarget.includes('google.com') ||
-      lowerTarget.includes('google.co')
+      lowerTarget === 'google.com' ||
+      lowerTarget === 'www.google.com' ||
+      lowerTarget === 'https://google.com' ||
+      lowerTarget === 'https://www.google.com' ||
+      lowerTarget === 'http://google.com' ||
+      lowerTarget === 'http://www.google.com'
     ) {
-      try {
-        const u = new URL(target.startsWith('http') ? target : `https://${target}`);
-        const q = u.searchParams.get('q') || '';
-        target = q ? `aegis://search?q=${encodeURIComponent(q)}` : 'aegis://search';
-      } catch {
-        target = 'aegis://search';
-      }
+      target = 'https://www.google.com';
+    } else if (lowerTarget.startsWith('google ') || lowerTarget.startsWith('g ')) {
+      const q = target.replace(/^(google|g)\s+/i, '').trim();
+      target = `https://www.google.com/search?q=${encodeURIComponent(q || 'technology')}`;
     } else if (lowerTarget === 'github' || lowerTarget === 'github.com') {
       target = 'https://github.com';
     } else if (lowerTarget === 'wikipedia' || lowerTarget === 'wikipedia.org') {
@@ -1467,8 +1462,8 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           const query = target.replace(/youtube/gi, '').trim() || 'trending tech';
           target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
         } else {
-          // Standard web search: navigate to Aegis Google Database Search Engine
-          target = `aegis://search?q=${encodeURIComponent(target)}`;
+          // Standard web search: navigate directly to Google Search database like Chrome!
+          target = `https://www.google.com/search?q=${encodeURIComponent(target)}`;
         }
       } else if (!/^https?:\/\//i.test(target)) {
         target = `https://${target}`;
@@ -1529,30 +1524,39 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       sslGrade: isQuarantined ? 'F' : isHttps ? 'A+' : 'C',
       isQuarantined,
       isPinned: activeTab.isPinned || false,
+      isPrivate: activeTab.isPrivate || Boolean(privacyMode),
       pageMetrics,
       createdAt: Date.now(),
       historyStack: newStack,
       historyIndex: newIndex,
     };
 
-    // Record to LocalStorage History
-    const updatedHistory = addHistoryItem({
-      url: target,
-      title,
-      domain,
-      isHttps,
-      threatStatus: isQuarantined ? 'blocked' : 'clean',
-      securityScore,
-    });
-    setHistory(updatedHistory);
+    // Record to LocalStorage History (zero-trace in private / incognito mode)
+    if (!updatedTab.isPrivate && !privacyMode && !target.startsWith('aegis://') && !target.startsWith('chrome://')) {
+      const updatedHistory = addHistoryItem({
+        url: target,
+        title,
+        domain,
+        isHttps,
+        threatStatus: isQuarantined ? 'blocked' : 'clean',
+        securityScore,
+      });
+      setHistory(updatedHistory);
+    }
 
     if (inNewTab) {
       setTabs((prev) => [...prev, updatedTab]);
       setActiveTabId(updatedTab.id);
+      if (typeof window !== 'undefined' && (window as any).aegis?.tabs?.createTab && !target.startsWith('aegis://')) {
+        (window as any).aegis.tabs.createTab(updatedTab.id, target, updatedTab.isPrivate).catch(() => {});
+      }
     } else {
       setTabs((prev) =>
         prev.map((t) => (t.id === activeTab.id ? updatedTab : t))
       );
+      if (typeof window !== 'undefined' && (window as any).aegis?.tabs?.navigate && !target.startsWith('aegis://')) {
+        (window as any).aegis.tabs.navigate(activeTab.id, target).catch(() => {});
+      }
       if (isDesktop && webviewRef.current && typeof webviewRef.current.loadURL === 'function' && !target.startsWith('aegis://')) {
         try {
           webviewRef.current.loadURL(target);
@@ -1594,22 +1598,17 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       target = `https://www.youtube.com/results?search_query=${encodeURIComponent(q || 'trending tech')}`;
     } else if (
       lowerNav === 'google' ||
-      lowerNav.startsWith('google.') ||
-      lowerNav.startsWith('www.google.') ||
-      lowerNav.startsWith('https://google.') ||
-      lowerNav.startsWith('http://google.') ||
-      lowerNav.startsWith('https://www.google.') ||
-      lowerNav.startsWith('http://www.google.') ||
-      lowerNav.includes('google.com') ||
-      lowerNav.includes('google.co')
+      lowerNav === 'google.com' ||
+      lowerNav === 'www.google.com' ||
+      lowerNav === 'https://google.com' ||
+      lowerNav === 'https://www.google.com' ||
+      lowerNav === 'http://google.com' ||
+      lowerNav === 'http://www.google.com'
     ) {
-      try {
-        const u = new URL(target.startsWith('http') ? target : `https://${target}`);
-        const q = u.searchParams.get('q') || '';
-        target = q ? `aegis://search?q=${encodeURIComponent(q)}` : 'aegis://search';
-      } catch {
-        target = 'aegis://search';
-      }
+      target = 'https://www.google.com';
+    } else if (lowerNav.startsWith('google ') || lowerNav.startsWith('g ')) {
+      const q = target.replace(/^(google|g)\s+/i, '').trim();
+      target = `https://www.google.com/search?q=${encodeURIComponent(q || 'technology')}`;
     }
 
     // Internal Browser Settings & Tools Navigation
@@ -1782,7 +1781,44 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newTab.id);
+    if (typeof window !== 'undefined' && (window as any).aegis?.tabs?.createTab) {
+      (window as any).aegis.tabs.createTab(newTab.id, newTab.url).catch(() => {});
+    }
     setUrlInputValue('aegis://newtab');
+    setIsEditingUrl(false);
+  };
+
+  const handleCreatePrivateTab = () => {
+    if (activeSidebar === 'tools' && isToolFullscreen) {
+      setIsToolFullscreen(false);
+    }
+    const newId = `tab-private-${Date.now()}`;
+    const newTab: BrowserTab = {
+      id: newId,
+      title: 'Private Tab',
+      url: 'aegis://newtab',
+      domain: 'aegis.local',
+      isHttps: true,
+      threatStatus: 'clean',
+      trackersBlocked: 0,
+      bugsSanitized: 0,
+      latencyMs: 1,
+      securityScore: 100,
+      sslGrade: 'A+',
+      isQuarantined: false,
+      isPinned: false,
+      isPrivate: true,
+      pageMetrics: calculatePageLoadMetrics('aegis://newtab', 'clean', 1),
+      createdAt: Date.now(),
+      historyStack: ['aegis://newtab'],
+      historyIndex: 0,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+    if (typeof window !== 'undefined' && (window as any).aegis?.tabs?.createTab) {
+      (window as any).aegis.tabs.createTab(newId, 'aegis://newtab', true).catch(() => {});
+    }
+    setUrlInputValue('');
     setIsEditingUrl(false);
   };
 
@@ -2038,7 +2074,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   }
                 }}
                 className={`group relative flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-t-xl text-xs font-sans transition-all cursor-pointer max-w-[160px] min-w-[90px] sm:max-w-[240px] sm:min-w-[130px] border-t border-x ${
-                  isActive
+                  tab.isPrivate
+                    ? isActive
+                      ? 'bg-[#181329] border-purple-500/80 text-purple-100 font-medium z-10 shadow-[0_-2px_12px_rgba(168,85,247,0.3)]'
+                      : 'bg-[#130f20]/90 border-transparent text-purple-300 hover:text-purple-100 hover:bg-[#181329]/60'
+                    : isActive
                     ? 'bg-[#282c34] border-slate-700/80 text-white font-medium z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.25)]'
                     : isSuspended
                     ? 'bg-[#181a1f]/80 border-transparent text-slate-500 hover:text-slate-300 hover:bg-[#282c34]/50 opacity-75'
@@ -2046,7 +2086,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                 }`}
               >
                 {/* Favicon / Lock / Status */}
-                {isSuspended ? (
+                {tab.isPrivate ? (
+                  <span title="Zero-Trace Private Tab">
+                    <EyeOff className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  </span>
+                ) : isSuspended ? (
                   <span title="Tab is sleeping to conserve CPU & RAM">
                     <Moon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   </span>
@@ -2103,6 +2147,17 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             title="New tab (Ctrl+T)"
           >
             <Plus className="w-4 h-4" />
+          </button>
+
+          {/* Dedicated New Private Tab Button */}
+          <button
+            type="button"
+            onClick={handleCreatePrivateTab}
+            className="flex items-center gap-1 px-2 h-7 rounded-full text-purple-300 hover:text-purple-100 hover:bg-purple-900/40 border border-purple-500/30 transition-all ml-1 shrink-0 cursor-pointer text-[11px] font-mono shadow-sm"
+            title="New Private Tab (Zero-Trace Incognito Mode)"
+          >
+            <EyeOff className="w-3.5 h-3.5 text-purple-400" />
+            <span className="hidden sm:inline font-semibold">Private</span>
           </button>
         </div>
 
@@ -2181,7 +2236,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   setIsEditingUrl(false);
                 }
               }}
-              className="w-full flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-full bg-[#181a1f] hover:bg-[#14161a] border border-transparent hover:border-slate-700 focus-within:border-blue-500/80 focus-within:bg-[#181a1f] font-sans text-xs transition-all shadow-inner"
+              className={`w-full flex items-center justify-between px-2.5 sm:px-3 py-1.5 rounded-full font-sans text-xs transition-all shadow-inner ${
+                activeTab.isPrivate || privacyMode
+                  ? 'bg-[#151224] border border-purple-500/50 hover:border-purple-400 focus-within:border-purple-400 focus-within:shadow-[0_0_12px_rgba(168,85,247,0.3)]'
+                  : 'bg-[#181a1f] hover:bg-[#14161a] border border-transparent hover:border-slate-700 focus-within:border-blue-500/80 focus-within:bg-[#181a1f]'
+              }`}
             >
               {/* Padlock / Tune Page Info Icon */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -2191,7 +2250,9 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                   className="p-1 rounded-full hover:bg-slate-700/60 transition-colors cursor-pointer text-slate-400 hover:text-slate-200"
                   title="View site information & security"
                 >
-                  {activeTab.isHttps ? (
+                  {activeTab.isPrivate || privacyMode ? (
+                    <EyeOff className="w-3.5 h-3.5 text-purple-400 hover:text-purple-200" />
+                  ) : activeTab.isHttps ? (
                     <Lock className="w-3.5 h-3.5 text-slate-400 hover:text-white" />
                   ) : (
                     <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
@@ -2227,7 +2288,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     setUrlInputValue(e.target.value);
                     setSelectedSuggestionIndex(-1);
                   }}
-                  placeholder="Search Google or type a URL"
+                  placeholder={activeTab.isPrivate || privacyMode ? "Search Google Database privately or type a URL" : "Search Google or type a URL"}
                   className="w-full bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none truncate font-sans text-xs"
                 />
               </div>
@@ -2736,6 +2797,60 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* Dedicated Zero-Trace Private Browsing Bar (Incognito Bar) */}
+        {(activeTab.isPrivate || privacyMode) && (
+          <div className="bg-gradient-to-r from-purple-950/95 via-indigo-950/90 to-purple-950/95 border-b border-purple-500/40 px-3 sm:px-4 py-2 flex items-center justify-between text-xs backdrop-blur-md transition-all shadow-inner shrink-0 z-10">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-6 h-6 rounded-lg bg-purple-500/25 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-sm shrink-0">
+                <EyeOff className="w-3.5 h-3.5" />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-purple-100 font-mono text-[11px] uppercase tracking-wider">
+                    Zero-Trace Private Session
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">
+                    Incognito
+                  </span>
+                </div>
+                <p className="text-purple-300/80 text-[11px] truncate hidden sm:block">
+                  Search Google Database & browse privately: History, cookies, and cache are isolated in memory and wiped immediately.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              <button
+                type="button"
+                onClick={handleCreatePrivateTab}
+                className="px-2.5 py-1 rounded-lg bg-purple-900/70 hover:bg-purple-800 text-purple-200 border border-purple-500/40 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                title="Open another private tab"
+              >
+                <Plus className="w-3 h-3 text-purple-300" />
+                <span>+ Private Tab</span>
+              </button>
+              {activeTab.isPrivate && (
+                <button
+                  type="button"
+                  onClick={(e) => handleCloseTab(e, activeTab.id)}
+                  className="px-2 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] transition-colors cursor-pointer"
+                  title="Close this private tab"
+                >
+                  Close Tab
+                </button>
+              )}
+              {privacyMode && onTogglePrivacy && (
+                <button
+                  type="button"
+                  onClick={onTogglePrivacy}
+                  className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/40 text-[11px] font-semibold transition-colors cursor-pointer"
+                >
+                  Exit Private Mode
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Optional Chrome Bookmarks Bar */}
         {showBookmarksBar && (
@@ -3740,7 +3855,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                         </button>
                       </div>
                     </div>
-                  ) : hasBackendProxy() ? (
+                  ) : hasBackendProxy() && !isGitHubPages() ? (
                     <iframe
                       key={`${activeTab.id}-${refreshKey}`}
                       src={`${getApiBaseUrl()}/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.initialUrl || activeTab.url))}`}

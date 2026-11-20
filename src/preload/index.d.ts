@@ -23,7 +23,7 @@ export interface AegisAdBlockerStats {
 
 export interface AegisAPI {
   tabs: {
-    createTab: (id: string, url?: string) => Promise<void>;
+    createTab: (id: string, url?: string, isPrivate?: boolean) => Promise<void>;
     switchTab: (id: string) => Promise<void>;
     closeTab: (id: string) => Promise<void>;
     updateBounds: (bounds: AegisTabBounds) => Promise<void>;
@@ -36,7 +36,7 @@ export interface AegisAPI {
       callback: (state: AegisNavigationState) => void
     ) => () => void;
     onTabCreated: (
-      callback: (tab: { id: string; url: string }) => void
+      callback: (tab: { id: string; url: string; isPrivate?: boolean }) => void
     ) => () => void;
   };
   adBlocker: {

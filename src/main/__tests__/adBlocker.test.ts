@@ -1,4 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('electron', () => ({
+  ipcMain: {
+    handle: vi.fn(),
+    removeHandler: vi.fn(),
+  },
+  session: {
+    defaultSession: {
+      webRequest: {
+        onBeforeRequest: vi.fn(),
+      },
+    },
+  },
+}));
 import {
   isAdOrTrackerUrl,
   isAdBlockerEnabled,
