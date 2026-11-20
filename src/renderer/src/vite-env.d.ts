@@ -24,7 +24,7 @@ export interface AegisAdBlockerStats {
 
 export interface AegisAPI {
   tabs: {
-    createTab: (tabId: string, url: string) => Promise<void>;
+    createTab: (tabId: string, url?: string, isPrivate?: boolean) => Promise<void>;
     switchTab: (tabId: string) => Promise<void>;
     closeTab: (tabId: string) => Promise<void>;
     updateBounds: (bounds: AegisTabBounds) => Promise<void> | void;

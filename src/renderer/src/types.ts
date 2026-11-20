@@ -37,6 +37,7 @@ export interface BrowserTab {
   historyStack?: string[];
   historyIndex?: number;
   isMuted?: boolean;
+  isPrivate?: boolean;
   createdAt: number;
 }
 

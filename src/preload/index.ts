@@ -25,8 +25,8 @@ export interface AegisAdBlockerStats {
 
 const aegis = {
   tabs: {
-    createTab: (id: string, url?: string): Promise<void> =>
-      ipcRenderer.invoke('aegis-tabs-create', id, url),
+    createTab: (id: string, url?: string, isPrivate?: boolean): Promise<void> =>
+      ipcRenderer.invoke('aegis-tabs-create', id, url, isPrivate),
     switchTab: (id: string): Promise<void> =>
       ipcRenderer.invoke('aegis-tabs-switch', id),
     closeTab: (id: string): Promise<void> =>
@@ -50,8 +50,8 @@ const aegis = {
       ipcRenderer.on('aegis-tabs-navigation-state', listener);
       return () => ipcRenderer.removeListener('aegis-tabs-navigation-state', listener);
     },
-    onTabCreated: (callback: (tab: { id: string; url: string }) => void): (() => void) => {
-      const listener = (_e: any, tab: { id: string; url: string }) => callback(tab);
+    onTabCreated: (callback: (tab: { id: string; url: string; isPrivate?: boolean }) => void): (() => void) => {
+      const listener = (_e: any, tab: { id: string; url: string; isPrivate?: boolean }) => callback(tab);
       ipcRenderer.on('aegis-tab-created', listener);
       return () => {
         ipcRenderer.removeListener('aegis-tab-created', listener);
