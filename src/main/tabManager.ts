@@ -88,10 +88,16 @@ function emitNavigationState(tab: TabInstance): void {
   }
 }
 
+function isInternalUrl(url?: string): boolean {
+  if (!url) return true;
+  return url === 'about:blank' || url.startsWith('aegis:') || url.startsWith('chrome:');
+}
+
 /**
  * Setup native context menu on right-click within the WebContentsView
  */
-function setupContextMenu(view: WebContentsView): void {
+function setupContextMenu(tab: TabInstance): void {
+  const view = tab.view;
   view.webContents.on('context-menu', (_e, params) => {
     const menu = new Menu();
 
@@ -101,10 +107,10 @@ function setupContextMenu(view: WebContentsView): void {
           label: 'Open Link in New Tab',
           click: () => {
             const newId = `tab-${Date.now()}`;
-            createTab(newId, params.linkURL);
+            createTab(newId, params.linkURL, tab.isPrivate);
             switchTab(newId);
             if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('aegis-tab-created', { id: newId, url: params.linkURL });
+              mainWindow.webContents.send('aegis-tab-created', { id: newId, url: params.linkURL, isPrivate: tab.isPrivate });
             }
           },
         })
@@ -124,8 +130,11 @@ function setupContextMenu(view: WebContentsView): void {
           label: 'Open Image in New Tab',
           click: () => {
             const newId = `tab-${Date.now()}`;
-            createTab(newId, params.srcURL);
+            createTab(newId, params.srcURL, tab.isPrivate);
             switchTab(newId);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('aegis-tab-created', { id: newId, url: params.srcURL, isPrivate: tab.isPrivate });
+            }
           },
         })
       );
@@ -146,8 +155,11 @@ function setupContextMenu(view: WebContentsView): void {
           click: () => {
             const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(params.selectionText)}`;
             const newId = `tab-${Date.now()}`;
-            createTab(newId, searchUrl);
+            createTab(newId, searchUrl, tab.isPrivate);
             switchTab(newId);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('aegis-tab-created', { id: newId, url: searchUrl, isPrivate: tab.isPrivate });
+            }
           },
         })
       );
@@ -310,7 +322,7 @@ export function createTab(id: string, initialUrl?: string, isPrivate?: boolean):
     return { action: 'deny' };
   });
 
-  setupContextMenu(view);
+  setupContextMenu(tab);
 
   // Add view to mainWindow hierarchy
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -334,7 +346,7 @@ export function createTab(id: string, initialUrl?: string, isPrivate?: boolean):
       view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
     } else {
       view.setVisible(true);
-      applyCurrentBounds(view);
+      applyCurrentBounds(view, initialUrl);
     }
   } else {
     view.setVisible(false);
@@ -382,7 +394,7 @@ export function switchTab(id: string): void {
     target.view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
   } else {
     target.view.setVisible(true);
-    applyCurrentBounds(target.view);
+    applyCurrentBounds(target.view, target.url);
   }
 
   emitNavigationState(target);
@@ -403,6 +415,15 @@ export function closeTab(id: string): void {
     } catch {}
   }
 
+  // Clear private session storage data and cache to prevent trace leaks
+  if (tab.isPrivate) {
+    try {
+      const ses = tab.view.webContents.session;
+      ses.clearStorageData().catch(() => {});
+      ses.clearCache().catch(() => {});
+    } catch {}
+  }
+
   try {
     tab.view.webContents.close();
   } catch {}
@@ -415,6 +436,24 @@ export function closeTab(id: string): void {
       activeTabId = null;
     }
   }
+}
+
+/**
+ * Clean up all open tabs and sessions
+ */
+export function cleanupTabManager(): void {
+  for (const tab of tabs.values()) {
+    try {
+      if (tab.isPrivate) {
+        const ses = tab.view.webContents.session;
+        ses.clearStorageData().catch(() => {});
+        ses.clearCache().catch(() => {});
+      }
+      tab.view.webContents.close();
+    } catch {}
+  }
+  tabs.clear();
+  activeTabId = null;
 }
 
 /**
@@ -448,7 +487,7 @@ export function navigateTab(id: string, targetUrl: string): void {
 
   if (activeTabId === id) {
     tab.view.setVisible(true);
-    applyCurrentBounds(tab.view);
+    applyCurrentBounds(tab.view, resolved);
   }
 
   tab.isLoading = true;
@@ -507,7 +546,13 @@ export function setTabZoom(id: string, factor: number): void {
 /**
  * Applies current bounds to a WebContentsView
  */
-function applyCurrentBounds(view: WebContentsView): void {
+function applyCurrentBounds(view: WebContentsView, url?: string): void {
+  if (isInternalUrl(url)) {
+    try {
+      view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+    } catch {}
+    return;
+  }
   const safeBounds = {
     x: Math.round(currentBounds.x),
     y: Math.round(currentBounds.y),
@@ -535,7 +580,9 @@ export function updateTabBounds(bounds: TabBounds): void {
 
   if (activeTabId && tabs.has(activeTabId)) {
     const active = tabs.get(activeTabId)!;
-    applyCurrentBounds(active.view);
+    if (!isInternalUrl(active.url)) {
+      applyCurrentBounds(active.view, active.url);
+    }
   }
 }
 
@@ -545,11 +592,19 @@ export function updateTabBounds(bounds: TabBounds): void {
 export function initTabManager(win: BrowserWindow): void {
   mainWindow = win;
 
+  // Cleanup all tab instances and views when window closes
+  win.on('closed', () => {
+    cleanupTabManager();
+    mainWindow = null;
+  });
+
   // Handle window resizing to keep active tab view in sync
   win.on('resize', () => {
     if (activeTabId && tabs.has(activeTabId)) {
       const active = tabs.get(activeTabId)!;
-      applyCurrentBounds(active.view);
+      if (!isInternalUrl(active.url)) {
+        applyCurrentBounds(active.view, active.url);
+      }
     }
   });
 
@@ -627,7 +682,8 @@ export function initTabManager(win: BrowserWindow): void {
   });
 
   ipcMain.removeHandler('aegis-tabs-get-active');
-  ipcMain.handle('aegis-tabs-get-active', () => {
+  ipcMain.handle('aegis-tabs-get-active', (e) => {
+    if (!isAuthorizedSender(e)) return null;
     if (!activeTabId || !tabs.has(activeTabId)) return null;
     const tab = tabs.get(activeTabId)!;
     return {

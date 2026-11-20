@@ -185,12 +185,19 @@ async function createWindow(): Promise<BrowserWindow> {
   return mainWindow;
 }
 
+// Helper to ensure IPC calls originate from the verified main renderer window
+const isAuthorizedSender = (e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean => {
+  return Boolean(mainWindow && !mainWindow.isDestroyed() && e.sender === mainWindow.webContents);
+};
+
 // Window Management IPC Handlers
-ipcMain.on('minimize-window', () => {
+ipcMain.on('minimize-window', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) mainWindow.minimize();
 });
 
-ipcMain.on('maximize-window', () => {
+ipcMain.on('maximize-window', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) {
     if (mainWindow.isMaximized()) {
       mainWindow.unmaximize();
@@ -200,15 +207,18 @@ ipcMain.on('maximize-window', () => {
   }
 });
 
-ipcMain.on('close-window', () => {
+ipcMain.on('close-window', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) mainWindow.close();
 });
 
-ipcMain.handle('aegis-window-is-maximized', () => {
+ipcMain.handle('aegis-window-is-maximized', (e) => {
+  if (!isAuthorizedSender(e)) return false;
   return mainWindow?.isMaximized() ?? false;
 });
 
-ipcMain.on('open-devtools', () => {
+ipcMain.on('open-devtools', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) {
     if (mainWindow.webContents.isDevToolsOpened()) {
       mainWindow.webContents.closeDevTools();
@@ -218,33 +228,38 @@ ipcMain.on('open-devtools', () => {
   }
 });
 
-ipcMain.on('print-page', () => {
+ipcMain.on('print-page', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) {
     mainWindow.webContents.print();
   }
 });
 
-ipcMain.on('zoom-in', () => {
+ipcMain.on('zoom-in', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) {
     const current = mainWindow.webContents.getZoomFactor();
     mainWindow.webContents.setZoomFactor(Math.min(current + 0.1, 3.0));
   }
 });
 
-ipcMain.on('zoom-out', () => {
+ipcMain.on('zoom-out', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) {
     const current = mainWindow.webContents.getZoomFactor();
     mainWindow.webContents.setZoomFactor(Math.max(current - 0.1, 0.4));
   }
 });
 
-ipcMain.on('zoom-reset', () => {
+ipcMain.on('zoom-reset', (e) => {
+  if (!isAuthorizedSender(e)) return;
   if (mainWindow) {
     mainWindow.webContents.setZoomFactor(1.0);
   }
 });
 
-ipcMain.on('open-external', (_e, url: string) => {
+ipcMain.on('open-external', (e, url: string) => {
+  if (!isAuthorizedSender(e)) return;
   if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
     shell.openExternal(url);
   }
