@@ -222,7 +222,8 @@ export function attachSessionToAdBlocker(targetSession: Session): void {
 
     if (isAdOrTrackerUrl(details.url)) {
       blockedCount++;
-      recentBlockedUrls.unshift(details.url);
+      const sanitizedUrl = details.url.split('?')[0];
+      recentBlockedUrls.unshift(sanitizedUrl);
       if (recentBlockedUrls.length > 50) {
         recentBlockedUrls.length = 50;
       }

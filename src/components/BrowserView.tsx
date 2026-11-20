@@ -459,36 +459,11 @@ function parseSearchUrl(url: string) {
       const cat = (parsed.searchParams.get('category') || 'all') as 'all' | 'news' | 'tech' | 'videos' | 'science';
       return { isSearch: true, query: q, category: cat };
     }
-    // Transparently support all Google Search URLs, Google homepages, and domain variations on mobile/web so it never gets blocked or shows refused to connect
-    const lower = clean.toLowerCase();
-    const isGoogle =
-      lower.includes('google.') ||
-      lower.includes('google.com') ||
-      lower.includes('google.co') ||
-      lower === 'google' ||
-      lower.startsWith('https://google.') ||
-      lower.startsWith('http://google.') ||
-      lower.startsWith('https://www.google.') ||
-      lower.startsWith('http://www.google.');
-
-    if (isGoogle) {
-      let q = '';
-      try {
-        const parsed = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
-        q = parsed.searchParams.get('q') || '';
-      } catch {}
-      return { isSearch: true, query: q, category: 'all' as const };
-    }
-    if (clean.includes('duckduckgo.com/') && clean.includes('q=')) {
-      const parsed = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
-      const q = parsed.searchParams.get('q') || '';
-      return { isSearch: true, query: q, category: 'all' as const };
-    }
     return { isSearch: false, query: '', category: 'all' as const };
   } catch {
     const qMatch = url.match(/[?&]q=([^&]+)/i);
     return {
-      isSearch: url.startsWith('aegis://search') || url.includes('/search?q=') || url.includes('google.com'),
+      isSearch: url.startsWith('aegis://search'),
       query: qMatch ? decodeURIComponent(qMatch[1]) : '',
       category: 'all' as const,
     };
@@ -1099,17 +1074,20 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     return () => window.removeEventListener(EVENT_READ_LATER_CHANGE, handleReadLaterChange);
   }, []);
 
-  // Auto-save browser state to session storage
+  // Auto-save browser state to session storage (filtering out private tabs)
   useEffect(() => {
     const current = tabs.find((t) => t.id === activeTabId) || tabs[0];
+    const persistentTabs = tabs.filter((t) => !t.isPrivate);
+    const safeActiveTabId = current?.isPrivate ? (persistentTabs[0]?.id || DEFAULT_TABS[0].id) : activeTabId;
+
     saveSessionState({
       browser: {
-        tabs,
-        activeTabId,
-        omnibarInput: current ? current.url : 'https://cloudflare.com',
+        tabs: persistentTabs.length ? persistentTabs : DEFAULT_TABS,
+        activeTabId: safeActiveTabId,
+        omnibarInput: current?.isPrivate ? 'aegis://newtab' : (current ? current.url : 'https://cloudflare.com'),
         activeSidebar,
         tabGroups,
-        recentlyClosedTabs,
+        recentlyClosedTabs: recentlyClosedTabs.filter((t) => !t.isPrivate),
       },
     });
   }, [tabs, activeTabId, activeSidebar, tabGroups, recentlyClosedTabs]);
@@ -1702,7 +1680,16 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     const kept = tabs.find((t) => t.id === targetId);
     if (!kept) return;
     const closed = tabs.filter((t) => t.id !== targetId);
-    setRecentlyClosedTabs((prev) => [...closed, ...prev].slice(0, 20));
+
+    // Clean up WebContentsView instances in main process
+    closed.forEach((t) => {
+      if (typeof window !== 'undefined' && (window as any).aegis?.tabs?.closeTab) {
+        (window as any).aegis.tabs.closeTab(t.id).catch(() => {});
+      }
+    });
+
+    const nonPrivateClosed = closed.filter((t) => !t.isPrivate);
+    setRecentlyClosedTabs((prev) => [...nonPrivateClosed, ...prev].slice(0, 20));
     setTabs([kept]);
     setActiveTabId(kept.id);
     setTabContextMenu(null);
@@ -1713,7 +1700,16 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     if (idx === -1) return;
     const kept = tabs.slice(0, idx + 1);
     const closed = tabs.slice(idx + 1);
-    setRecentlyClosedTabs((prev) => [...closed, ...prev].slice(0, 20));
+
+    // Clean up WebContentsView instances in main process
+    closed.forEach((t) => {
+      if (typeof window !== 'undefined' && (window as any).aegis?.tabs?.closeTab) {
+        (window as any).aegis.tabs.closeTab(t.id).catch(() => {});
+      }
+    });
+
+    const nonPrivateClosed = closed.filter((t) => !t.isPrivate);
+    setRecentlyClosedTabs((prev) => [...nonPrivateClosed, ...prev].slice(0, 20));
     setTabs(kept);
     if (!kept.some((t) => t.id === activeTabId)) {
       setActiveTabId(tabId);
@@ -1824,8 +1820,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
 
   const handleCloseTab = (e: React.MouseEvent, tabIdToClose: string) => {
     e.stopPropagation();
+    if (typeof window !== 'undefined' && (window as any).aegis?.tabs?.closeTab) {
+      (window as any).aegis.tabs.closeTab(tabIdToClose).catch(() => {});
+    }
     const target = tabs.find((t) => t.id === tabIdToClose);
-    if (target) {
+    if (target && !target.isPrivate) {
       setRecentlyClosedTabs((prev) => [target, ...prev].slice(0, 10));
     }
 
