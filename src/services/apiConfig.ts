@@ -115,32 +115,14 @@ export function setCustomProxyUrl(url: string): void {
   } catch {}
 }
 
+export const CLOUDFLARE_EDGE_PROXY_URL = 'https://aegis-proxy.narendra-aegis.workers.dev';
+
 /**
  * Determines whether a functional backend proxy (/api/proxy) is reachable.
- * On static GitHub Pages without a custom proxy URL, returns false.
+ * High-performance Cloudflare Edge Proxy is active for all web and mobile sessions.
  */
 export function hasBackendProxy(): boolean {
-  if (typeof window === 'undefined') return false;
-
-  const win = window as any;
-  if (Boolean(win.isAegisDesktop)) return true; // Desktop Electron handles WebContentsView / native tabs
-  if (getCustomProxyUrl()) return true;
-
-  // Local development server with Express proxy running
-  const isLocalDevServer =
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-    (window.location.port === '3000' || window.location.port === '5173') &&
-    !isCapacitorPlatform();
-  if (isLocalDevServer) return true;
-
-  // Static GitHub Pages host has NO Express / Node backend proxy
-  if (isGitHubPages()) return false;
-
-  // Capacitor native protocols or local files
-  if (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:') return false;
-
-  // Live web hosts (e.g. Vercel deployment with serverless /api/proxy)
-  return Boolean(window.location.origin && !window.location.origin.includes('github.io'));
+  return true;
 }
 
 /**
@@ -148,8 +130,7 @@ export function hasBackendProxy(): boolean {
  * - On Electron Desktop (.exe): returns http://127.0.0.1:3000 (embedded desktop proxy).
  * - On Local Dev Server: returns '' (relative to dev server port).
  * - If custom backend URL is configured: returns that URL.
- * - On GitHub Pages: returns '' (endpoints handled client-side or via fallback).
- * - On Vercel / server hosting: returns window.location.origin.
+ * - On GitHub Pages & Mobile: returns the live Cloudflare Edge Proxy URL.
  */
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return '';
@@ -175,17 +156,8 @@ export function getApiBaseUrl(): string {
     return '';
   }
 
-  // 4. On GitHub Pages, NEVER return window.location.origin for backend APIs because GitHub Pages is 100% static!
-  if (isGitHubPages()) {
-    return '';
-  }
-
-  // 5. Live web host (e.g. Vercel with serverless functions)
-  if (window.location.origin && !window.location.origin.startsWith('file:') && !window.location.origin.startsWith('capacitor:')) {
-    return window.location.origin;
-  }
-
-  return '';
+  // 4. Global Cloudflare Edge Proxy for GitHub Pages, mobile PWA, and Android APK
+  return CLOUDFLARE_EDGE_PROXY_URL;
 }
 
 /**

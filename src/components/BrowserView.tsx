@@ -3860,7 +3860,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     <webview
                       ref={webviewRef}
                       key={`desktop-webview-${activeTab.id}-${refreshKey}`}
-                      src={activeTab.initialUrl || activeTab.url}
+                      src={activeTab.url}
                       partition="persist:aegis-browser"
                       allowpopups={true as any}
                       useragent={isGoogleAuthEndpoint(activeTab.url) ? GOOGLE_AUTH_UA : CHROMIUM_DESKTOP_UA}
@@ -3888,17 +3888,38 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                         </button>
                       </div>
                     </div>
-                  ) : hasBackendProxy() && !isGitHubPages() ? (
-                    <iframe
-                      key={`${activeTab.id}-${refreshKey}`}
-                      src={`${getApiBaseUrl()}/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.initialUrl || activeTab.url))}`}
-                      title={activeTab.title}
-                      className="w-full h-full border-0 bg-white"
-                      sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                      allowFullScreen
-                      onLoad={() => setIsScanning(false)}
-                    />
+                  ) : hasBackendProxy() ? (
+                    <div className="w-full h-full relative flex flex-col bg-slate-950">
+                      <div className="bg-slate-900 border-b border-slate-800 px-3 py-1 flex items-center justify-between text-[11px] font-mono text-slate-300 shrink-0">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span className="text-emerald-300 font-semibold">Zero-Trust Edge Sandbox Active</span>
+                          <span className="text-slate-500">·</span>
+                          <span className="text-slate-400 truncate">{activeTab.domain}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleLaunchExternalWindow}
+                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Open in new window"
+                          >
+                            <ExternalLink className="w-3 h-3 text-cyan-400" />
+                            <span>External</span>
+                          </button>
+                        </div>
+                      </div>
+                      <iframe
+                        key={`${activeTab.id}-${refreshKey}`}
+                        src={`${getApiBaseUrl()}/api/proxy?url=${encodeURIComponent(unwrapProxyUrl(activeTab.url))}`}
+                        title={activeTab.title}
+                        className="w-full flex-1 border-0 bg-white"
+                        sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                        allowFullScreen
+                        onLoad={() => setIsScanning(false)}
+                      />
+                    </div>
                   ) : directEmbedTabs[activeTab.id] ? (
                     <div className="w-full h-full relative flex flex-col bg-slate-950">
                       <div className="bg-slate-900 border-b border-slate-800 px-3 py-1.5 flex items-center justify-between text-[11px] font-mono text-slate-300 shrink-0">
@@ -3928,7 +3949,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       </div>
                       <iframe
                         key={`direct-${activeTab.id}-${refreshKey}`}
-                        src={unwrapProxyUrl(activeTab.initialUrl || activeTab.url)}
+                        src={unwrapProxyUrl(activeTab.url)}
                         title={activeTab.title}
                         className="w-full flex-1 border-0 bg-white"
                         sandbox="allow-scripts allow-forms allow-same-origin allow-modals allow-downloads allow-popups allow-popups-to-escape-sandbox"
