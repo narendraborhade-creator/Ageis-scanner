@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#030712"/>
+      <stop offset="50%" stop-color="#082f49"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background with rounded corners (safe zone 15% margin) -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGrad)"/>
+
+  <!-- Cybernetic Grid / Radial lines -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="6 8" opacity="0.4"/>
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="4 12" opacity="0.3"/>
+
+  <!-- Outer Glowing Shield -->
+  <path d="M 256,90 L 390,146 C 390,270 332,364 256,418 C 180,364 122,270 122,146 Z" 
+        fill="url(#glowGrad)" 
+        filter="url(#glow)" 
+        opacity="0.5"/>
+
+  <!-- Main Cyber Shield -->
+  <path d="M 256,104 L 376,156 C 376,264 324,348 256,398 C 188,348 136,264 136,156 Z" 
+        fill="none" 
+        stroke="url(#shieldGrad)" 
+        stroke-width="14" 
+        stroke-linejoin="round"/>
+
+  <!-- Inner Core Plate -->
+  <path d="M 256,134 L 350,175 C 350,256 310,320 256,360 C 202,320 162,256 162,175 Z" 
+        fill="#041f38" 
+        stroke="#0ea5e9" 
+        stroke-width="4"/>
+
+  <!-- Glowing Lock / Quantum Key Core -->
+  <!-- Lock Shackle -->
+  <path d="M 224,242 L 224,216 C 224,198 238,184 256,184 C 274,184 288,198 288,216 L 288,242" 
+        fill="none" 
+        stroke="#38bdf8" 
+        stroke-width="10" 
+        stroke-linecap="round"/>
+
+  <!-- Lock Body -->
+  <rect x="206" y="240" width="100" height="78" rx="16" fill="url(#shieldGrad)"/>
+  
+  <!-- Lock Core / Keyhole -->
+  <circle cx="256" cy="272" r="8" fill="#030712"/>
+  <polygon points="253,276 259,276 261,294 251,294" fill="#030712"/>
+
+  <!-- Tech Dots and Accents -->
+  <circle cx="256" cy="118" r="5" fill="#38bdf8"/>
+  <circle cx="152" cy="162" r="4" fill="#22d3ee"/>
+  <circle cx="360" cy="162" r="4" fill="#22d3ee"/>
+  <circle cx="256" cy="386" r="5" fill="#38bdf8"/>
+</svg>
