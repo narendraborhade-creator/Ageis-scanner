@@ -248,7 +248,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'freeCodeCamp.org and CS50',
     views: '720K views',
     published: 'University Lecture',
-    thumbnail: 'https://i.ytimg.com/vi/9HOpanT0GRs/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/9HOpanT0GRs/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=9HOpanT0GRs',
   },
   {
@@ -257,7 +257,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'IBM Technology',
     views: '1.1M views',
     published: 'Enterprise Security',
-    thumbnail: 'https://i.ytimg.com/vi/jq_LZ1RFPfU/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/jq_LZ1RFPfU/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=jq_LZ1RFPfU',
   },
   {
@@ -266,7 +266,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'Quantum Computing Lab',
     views: '4.2M views',
     published: 'Cybersecurity & Physics',
-    thumbnail: 'https://i.ytimg.com/vi/M576WGiDBdQ/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/M576WGiDBdQ/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=M576WGiDBdQ',
   },
   {
@@ -275,17 +275,17 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'SpaceX & Aerospace',
     views: '18M views',
     published: 'Aerospace Engineering',
-    thumbnail: 'https://i.ytimg.com/vi/L_LUpnjgPso/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/L_LUpnjgPso/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
   },
   {
-    id: '4b4bYMW6vD8',
-    title: 'How The Internet Works - Computer Networks & Security',
+    id: 'PG9oKZdFb7w',
+    title: 'Network Stacks and the Internet - Computer Networks & Security',
     channel: 'Computerphile',
     views: '2.4M views',
     published: 'Computer Systems',
-    thumbnail: 'https://i.ytimg.com/vi/4b4bYMW6vD8/hq720.jpg',
-    url: 'https://www.youtube.com/watch?v=4b4bYMW6vD8',
+    thumbnail: 'https://i.ytimg.com/vi/PG9oKZdFb7w/hqdefault.jpg',
+    url: 'https://www.youtube.com/watch?v=PG9oKZdFb7w',
   },
   {
     id: '_DVVNOGYtmU',
@@ -293,7 +293,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'Grow with Google',
     views: '5.3M views',
     published: 'Google Cloud & Security',
-    thumbnail: 'https://i.ytimg.com/vi/_DVVNOGYtmU/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/_DVVNOGYtmU/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=_DVVNOGYtmU',
   },
   {
@@ -302,7 +302,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'Rick Astley',
     views: '1.5B views',
     published: 'Official 4K Remaster',
-    thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   },
   {
@@ -311,7 +311,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'jawed',
     views: '315M views',
     published: 'Historical Archive',
-    thumbnail: 'https://i.ytimg.com/vi/jNQXAC9IVRw/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
   },
   {
@@ -320,7 +320,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'Luis Fonsi',
     views: '8.4B views',
     published: 'Music Video',
-    thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/kJQP7kiw5Fk/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
   },
   {
@@ -329,17 +329,17 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'OfficialPsy',
     views: '5.1B views',
     published: 'K-Pop Sensation',
-    thumbnail: 'https://i.ytimg.com/vi/9bZkp7q19f0/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
   },
   {
-    id: 'bZ6hQoA16J0',
-    title: 'Three.js 3D Web Graphics Crash Course - Full Tutorial',
+    id: 'UMqNHi1GDAE',
+    title: 'Learn Three.js by Building 5 Projects – Full Course',
     channel: 'freeCodeCamp.org',
-    views: '890K views',
-    published: 'Web Graphics & WebGL',
-    thumbnail: 'https://i.ytimg.com/vi/bZ6hQoA16J0/hq720.jpg',
-    url: 'https://www.youtube.com/watch?v=bZ6hQoA16J0',
+    views: '1.2M views',
+    published: '3D WebGL & Graphics',
+    thumbnail: 'https://i.ytimg.com/vi/UMqNHi1GDAE/hqdefault.jpg',
+    url: 'https://www.youtube.com/watch?v=UMqNHi1GDAE',
   },
   {
     id: 'kUMe1FH4CHE',
@@ -347,7 +347,7 @@ export const DEFAULT_YT_VIDEOS = [
     channel: 'SuperSimpleDev',
     views: '11M views',
     published: 'Web Development',
-    thumbnail: 'https://i.ytimg.com/vi/kUMe1FH4CHE/hq720.jpg',
+    thumbnail: 'https://i.ytimg.com/vi/kUMe1FH4CHE/hqdefault.jpg',
     url: 'https://www.youtube.com/watch?v=kUMe1FH4CHE',
   },
 ];
@@ -452,14 +452,27 @@ function parseSearchUrl(url: string) {
       const cat = (parsed.searchParams.get('category') || 'all') as 'all' | 'news' | 'tech' | 'videos' | 'science';
       return { isSearch: true, query: q, category: cat };
     }
-    // Transparently handle Google Search URLs when running in web / static mode so it never errors with 404
+    // Transparently handle Google Search & Google homepage URLs so it never errors with 429 proxy block
     const lower = clean.toLowerCase();
-    if (lower.includes('google.com/search') || (lower.includes('google.') && lower.includes('/search'))) {
+    if (
+      lower.includes('google.com/search') ||
+      (lower.includes('google.') && lower.includes('/search')) ||
+      lower === 'https://google.com' ||
+      lower === 'https://www.google.com' ||
+      lower === 'http://google.com' ||
+      lower === 'http://www.google.com' ||
+      lower === 'https://google.com/' ||
+      lower === 'https://www.google.com/' ||
+      lower === 'google.com' ||
+      lower === 'www.google.com'
+    ) {
       try {
         const parsed = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
         const q = parsed.searchParams.get('q') || '';
         return { isSearch: true, query: q, category: 'all' as const };
-      } catch {}
+      } catch {
+        return { isSearch: true, query: '', category: 'all' as const };
+      }
     }
     return { isSearch: false, query: '', category: 'all' as const };
   } catch {
@@ -1621,10 +1634,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       lowerNav === 'http://google.com' ||
       lowerNav === 'http://www.google.com'
     ) {
-      target = 'https://www.google.com';
+      target = isDesktop ? 'https://www.google.com' : 'aegis://search?q=&category=all';
     } else if (lowerNav.startsWith('google ') || lowerNav.startsWith('g ')) {
       const q = target.replace(/^(google|g)\s+/i, '').trim();
-      target = `https://www.google.com/search?q=${encodeURIComponent(q || 'technology')}`;
+      target = isDesktop
+        ? `https://www.google.com/search?q=${encodeURIComponent(q || 'technology')}`
+        : `aegis://search?q=${encodeURIComponent(q || 'technology')}&category=all`;
     }
 
     // Internal Browser Settings & Tools Navigation
@@ -3308,7 +3323,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                         >
                           <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
                             <img
-                              src={vid.thumbnail}
+                              src={vid.thumbnail || `https://i.ytimg.com/vi/${vid.id}/hqdefault.jpg`}
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                if (!target.src.includes('mqdefault')) {
+                                  target.src = `https://i.ytimg.com/vi/${vid.id}/mqdefault.jpg`;
+                                }
+                              }}
                               alt={vid.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               loading="lazy"
@@ -3369,18 +3390,18 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleNavigate(`https://www.google.com/search?q=${encodeURIComponent(searchQueryInput || searchInfo.query)}`, false, false)}
+                        onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(searchQueryInput || searchInfo.query)}`, '_blank', 'noopener,noreferrer')}
                         className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title="Open directly on Google Search"
+                        title="Open directly on Google Search in a new window"
                       >
                         <ExternalLink className="w-3 h-3 text-cyan-400" />
                         <span>Google Direct</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleNavigate(`https://duckduckgo.com/?q=${encodeURIComponent(searchQueryInput || searchInfo.query)}`, false, false)}
+                        onClick={() => window.open(`https://duckduckgo.com/?q=${encodeURIComponent(searchQueryInput || searchInfo.query)}`, '_blank', 'noopener,noreferrer')}
                         className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title="Open on DuckDuckGo"
+                        title="Open on DuckDuckGo in a new window"
                       >
                         <ExternalLink className="w-3 h-3 text-amber-400" />
                         <span>DuckDuckGo</span>
@@ -3565,10 +3586,10 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                       </p>
                       <button
                         type="button"
-                        onClick={() => handleNavigate(`https://www.google.com/search?q=${encodeURIComponent(searchInfo.query)}`, false, false)}
+                        onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(searchInfo.query)}`, '_blank', 'noopener,noreferrer')}
                         className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono transition-all cursor-pointer"
                       >
-                        Search on Google.com
+                        Search on Google.com (Direct Window)
                       </button>
                     </div>
                   ) : (
