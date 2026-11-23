@@ -87,6 +87,21 @@ async function main() {
     }
     const stat = fs.statSync(file.filePath);
     const sizeMb = (stat.size / (1024 * 1024)).toFixed(2);
+
+    const existingAsset = (release.assets || []).find((a) => a.name === file.name);
+    if (existingAsset) {
+      console.log(`Deleting old release asset ${file.name} (id: ${existingAsset.id})...`);
+      const delRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/releases/assets/${existingAsset.id}`, {
+        method: 'DELETE',
+        headers
+      });
+      if (delRes.ok) {
+        console.log(`Deleted old asset ${file.name}.`);
+      } else {
+        console.warn(`Warning deleting old asset: ${delRes.status}`);
+      }
+    }
+
     console.log(`Uploading ${file.name} (${sizeMb} MB)...`);
 
     const fileStream = fs.readFileSync(file.filePath);
