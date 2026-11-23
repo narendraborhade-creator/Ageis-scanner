@@ -1,1 +1,28 @@
-if(!self.define){let e,s={};const n=(n,i)=>(n=new URL(n+".js",i).href,s[n]||new Promise(s=>{if("document"in self){const e=document.createElement("script");e.src=n,e.onload=s,document.head.appendChild(e)}else e=n,importScripts(n),s()}).then(()=>{let e=s[n];if(!e)throw new Error(`Module ${n} didn’t register its module`);return e}));self.define=(i,c)=>{const a=e||("document"in self?document.currentScript.src:"")||location.href;if(s[a])return;let r={};const o=e=>n(e,a),t={module:{uri:a},exports:r,require:o};s[a]=Promise.all(i.map(e=>t[e]||o(e))).then(e=>(c(...e),r))}}define(["./workbox-835c8c05"],function(e){"use strict";self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"registerSW.js",revision:"402b66900e731ca748771b6fc5e7a068"},{url:"pwa-maskable-512x512.png",revision:"6d4e8fab2313e76d650b89c6640f45d7"},{url:"pwa-512x512.png",revision:"6d4e8fab2313e76d650b89c6640f45d7"},{url:"pwa-192x192.png",revision:"43ca234fa4b2a8552c6812e2415f68e3"},{url:"index.html",revision:"5f5ba792f6a54d472e66e85661ed1fd7"},{url:"icon.svg",revision:"c192e2b8fc548884bbe2eac50412db29"},{url:"apple-touch-icon.png",revision:"5c0480ed72ec6350ab1283648bac62f9"},{url:"404.html",revision:"cf38ac4a21af354885a633f082ca28fb"},{url:"docs_assets/screen5_cyberbot_python.png",revision:"2862f6eb4560612bb5a486658b8d0d6c"},{url:"docs_assets/screen4_auth_vault.png",revision:"d6d4e3dfefbcbdb53b739db70b225b14"},{url:"docs_assets/screen3_about_team.png",revision:"fb0735a27f857d1b655c12ce7bab548c"},{url:"docs_assets/screen2_command_palette.png",revision:"7123ea04056eeb9f5a40cfb1af8ab457"},{url:"docs_assets/screen1_safe_browser_copilot.png",revision:"7bcef8e671cdda3fc73452c84fdfab8f"},{url:"assets/index-TXQOpmFH.css",revision:null},{url:"assets/index-Dj82XjsH.js",revision:null},{url:"apple-touch-icon.png",revision:"5c0480ed72ec6350ab1283648bac62f9"},{url:"icon.svg",revision:"c192e2b8fc548884bbe2eac50412db29"},{url:"pwa-192x192.png",revision:"43ca234fa4b2a8552c6812e2415f68e3"},{url:"pwa-512x512.png",revision:"6d4e8fab2313e76d650b89c6640f45d7"},{url:"pwa-maskable-512x512.png",revision:"6d4e8fab2313e76d650b89c6640f45d7"},{url:"manifest.webmanifest",revision:"fff808b50e80d7e8fb5d11dd2866ddc1"}],{}),e.cleanupOutdatedCaches(),e.registerRoute(new e.NavigationRoute(e.createHandlerBoundToURL("index.html"),{denylist:[/^\/api/]})),e.registerRoute(/^https:\/\/fonts\.googleapis\.com\/.*/i,new e.CacheFirst({cacheName:"google-fonts-cache",plugins:[new e.ExpirationPlugin({maxEntries:10,maxAgeSeconds:31536e3}),new e.CacheableResponsePlugin({statuses:[0,200]})]}),"GET"),e.registerRoute(/^https:\/\/fonts\.gstatic\.com\/.*/i,new e.CacheFirst({cacheName:"gstatic-fonts-cache",plugins:[new e.ExpirationPlugin({maxEntries:10,maxAgeSeconds:31536e3}),new e.CacheableResponsePlugin({statuses:[0,200]})]}),"GET")});
+// Self-terminating cache-purging service worker
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          console.log('[Aegis SW] Deleting legacy cache:', cacheName);
+          return caches.delete(cacheName);
+        })
+      );
+    }).then(() => {
+      console.log('[Aegis SW] Unregistering service worker');
+      return self.registration.unregister();
+    }).then(() => {
+      return self.clients.matchAll();
+    }).then((clients) => {
+      clients.forEach((client) => {
+        if (client.url && 'navigate' in client) {
+          client.navigate(client.url);
+        }
+      });
+    })
+  );
+});

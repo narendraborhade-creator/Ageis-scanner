@@ -588,6 +588,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const [refreshKey, setRefreshKey] = useState<number>(0);
   // Tab-specific direct in-frame embedding toggle for static web / GitHub Pages
   const [directEmbedTabs, setDirectEmbedTabs] = useState<Record<string, boolean>>({});
+  const [bypassedAntiBotTabs, setBypassedAntiBotTabs] = useState<Record<string, boolean>>({});
   const [customProxyInput, setCustomProxyInput] = useState<string>(() => getCustomProxyUrl());
   const [showProxyConfigModal, setShowProxyConfigModal] = useState<boolean>(false);
   // Authentic Chromium Menu, Page Info, and Bookmark Bar States
@@ -734,6 +735,17 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0';
   const isGoogleAuthEndpoint = (url: string) =>
     Boolean(url) && /accounts\.google\.|myaccount\.google\.|accounts\.youtube\.|oauth\.google\.|google\.[a-z.]+\/(signin|ServiceLogin|o\/oauth2|interactiveconsent)/i.test(url);
+
+  const isStrictAntiBotDomain = (url: string) => {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return (
+      lower.includes('chatgpt.com') ||
+      lower.includes('openai.com') ||
+      lower.includes('reddit.com') ||
+      lower.includes('redd.it')
+    );
+  };
   
   const isInternalChromePage =
     activeTab.url.startsWith('chrome://') ||
@@ -3909,6 +3921,73 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                         </button>
                       </div>
                     </div>
+                  ) : !isDesktop && isStrictAntiBotDomain(activeTab.url) && !bypassedAntiBotTabs[activeTab.id] ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-slate-950 text-slate-100 text-center overflow-y-auto">
+                      <div className="max-w-lg w-full bg-slate-900/90 border border-cyan-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 backdrop-blur-xl">
+                        <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-cyan-600/30 to-blue-600/30 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
+                          <Shield className="w-8 h-8" />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-medium">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                            <span>Datacenter Bot Protection Active</span>
+                          </div>
+                          <h3 className="text-xl font-bold text-white tracking-wide">
+                            Direct Window Required for {activeTab.domain}
+                          </h3>
+                          <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
+                            {activeTab.domain.includes('chatgpt') || activeTab.domain.includes('openai')
+                              ? 'ChatGPT enforces strict Cloudflare Bot Management rules that block cloud serverless proxies with "VPN detected (IP: 2a06:98c0:...)". Open directly in a secure window to use your device\'s local residential connection without VPN blocks.'
+                              : `${activeTab.domain} serves interactive Cloudflare Turnstile anti-bot proof-of-work challenges that cannot execute inside a proxied sandbox. Open directly in a secure window to browse seamlessly.`}
+                          </p>
+                        </div>
+
+                        <div className="space-y-3 pt-2">
+                          <button
+                            type="button"
+                            onClick={handleLaunchExternalWindow}
+                            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-600 hover:from-cyan-400 hover:via-teal-400 hover:to-blue-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2.5 shadow-xl hover:shadow-cyan-500/25 transition-all cursor-pointer transform hover:-translate-y-0.5"
+                          >
+                            <ExternalLink className="w-4 h-4 text-slate-950" />
+                            <span>Open {activeTab.domain} in Direct Secure Window</span>
+                          </button>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {activeTab.domain.includes('chatgpt') || activeTab.domain.includes('openai') ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveSidebar('tools');
+                                  setActiveToolTab('ai-copilot');
+                                }}
+                                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-cyan-500/40 text-slate-200 text-xs font-mono flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                              >
+                                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>Use Aegis CyberBot AI</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleNavigate(`aegis://search?q=site:${activeTab.domain}&category=all`, false, false)}
+                                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-cyan-500/40 text-slate-200 text-xs font-mono flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                              >
+                                <Search className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>Search {activeTab.domain}</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setBypassedAntiBotTabs((prev) => ({ ...prev, [activeTab.id]: true }))}
+                              className="py-2.5 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-slate-400 hover:text-slate-200 text-xs font-mono flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                            >
+                              <span>Try Proxied Embed</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ) : hasBackendProxy() ? (
                     <div className="w-full h-full relative flex flex-col bg-slate-950">
                       <div className="bg-slate-900 border-b border-slate-800 px-3 py-1 flex items-center justify-between text-[11px] font-mono text-slate-300 shrink-0">
@@ -3922,11 +4001,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
                           <button
                             type="button"
                             onClick={handleLaunchExternalWindow}
-                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
-                            title="Open in new window"
+                            className="px-2.5 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                            title="Open in direct window with your local network IP (bypasses VPN and bot blocks)"
                           >
-                            <ExternalLink className="w-3 h-3 text-cyan-400" />
-                            <span>External</span>
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Open in Direct Window</span>
                           </button>
                         </div>
                       </div>

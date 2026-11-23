@@ -2,8 +2,30 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <title>Aegis 3D Safe Browser - Next-Gen Threat Blocking & DNS Scanner</title>
+    <script>
+      // Immediate Cache-Busting & Service Worker Killer
+      (function() {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister();
+            }
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            for (var i = 0; i < keys.length; i++) {
+              caches.delete(keys[i]);
+            }
+          });
+        }
+      })();
+    </script>
     <meta name="description" content="Futuristic 3D glassy web browser with real-time DNS scanning, website comparison, threat and vulnerability blocking, Gemini cyber copilot, and Science research indexing by Narendra Borhade." />
     <meta property="og:title" content="Aegis 3D Safe Browser - Next-Gen Threat Blocking & DNS Scanner" />
     <meta property="og:description" content="Futuristic 3D glassy web browser with real-time DNS scanning, website comparison, threat and vulnerability blocking, Gemini cyber copilot, and Science research indexing by Narendra Borhade." />
@@ -33,9 +55,9 @@
         }
       })();
     </script>
-    <script type="module" crossorigin src="./assets/index-Dj82XjsH.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-TXQOpmFH.css">
-  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+    <script type="module" crossorigin src="./assets/index-DxGaZOst.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DNoDFF5l.css">
+  </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500 selection:text-slate-950 overflow-x-hidden min-h-screen w-full relative">
     <div id="root" class="min-h-screen w-full overflow-x-hidden relative flex flex-col"></div>
   </body>
