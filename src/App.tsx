@@ -30,17 +30,6 @@ import { isCapacitorPlatform, isMobileDevice } from './services/apiConfig';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
-  // Recursion Frame-Buster Guard: Only apply frame-busting on generic web if not running inside Capacitor or Desktop wrapper
-  if (
-    typeof window !== 'undefined' &&
-    !isCapacitorPlatform() &&
-    !(window as any).isAegisDesktop &&
-    !(window as any).aegis &&
-    window.self !== window.top
-  ) {
-    return null;
-  }
-
   const initialSession = getStoredSessionState();
 
   const [user, setUser] = useState<UserAccount | null>(() => getStoredUser());

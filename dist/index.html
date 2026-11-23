@@ -20,7 +20,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="./assets/index-DIpp7-ev.js"></script>
+    <script>
+      // GitHub Pages SPA trailing slash and 404 redirect handler
+      if (window.location.pathname === '/Ageis-scanner') {
+        window.location.replace('/Ageis-scanner/' + window.location.search + window.location.hash);
+      }
+      (function(){
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect != location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-Dj82XjsH.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-TXQOpmFH.css">
   <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500 selection:text-slate-950 overflow-x-hidden min-h-screen w-full relative">
