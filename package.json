@@ -23,12 +23,15 @@
     "directories": {
       "output": "release"
     },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
     "win": {
       "target": [
         "nsis",
         "portable"
-      ],
-      "icon": "public/icon.svg"
+      ]
     }
   },
   "dependencies": {

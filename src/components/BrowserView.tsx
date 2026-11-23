@@ -29,6 +29,7 @@ import { TabSnapshotThumbnail } from './TabSnapshotThumbnail';
 import { autoGroupTabs } from '../services/resourceMonitorService';
 import { queryAegisCopilot } from '../services/cyberBotService';
 import { LinkAuthPromptModal } from './LinkAuthPromptModal';
+import { SocAnalystDrawer } from './SocAnalystDrawer';
 import {
   isGuestModeActive,
   setGuestModeActive,
@@ -459,11 +460,20 @@ function parseSearchUrl(url: string) {
       const cat = (parsed.searchParams.get('category') || 'all') as 'all' | 'news' | 'tech' | 'videos' | 'science';
       return { isSearch: true, query: q, category: cat };
     }
+    // Transparently handle Google Search URLs when running in web / static mode so it never errors with 404
+    const lower = clean.toLowerCase();
+    if (lower.includes('google.com/search') || (lower.includes('google.') && lower.includes('/search'))) {
+      try {
+        const parsed = new URL(clean.startsWith('http') ? clean : `https://${clean}`);
+        const q = parsed.searchParams.get('q') || '';
+        return { isSearch: true, query: q, category: 'all' as const };
+      } catch {}
+    }
     return { isSearch: false, query: '', category: 'all' as const };
   } catch {
     const qMatch = url.match(/[?&]q=([^&]+)/i);
     return {
-      isSearch: url.startsWith('aegis://search'),
+      isSearch: url.startsWith('aegis://search') || url.includes('/search?q='),
       query: qMatch ? decodeURIComponent(qMatch[1]) : '',
       category: 'all' as const,
     };
@@ -574,6 +584,7 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
   const [showBookmarksBar, setShowBookmarksBar] = useState<boolean>(true);
   const [zoomPercent, setZoomPercent] = useState<number>(100);
+  const [showSocDrawer, setShowSocDrawer] = useState<boolean>(false);
 
   // Opera Sidebar & Chrome Tab Context Menu States
   const [showOperaSidebar, setShowOperaSidebar] = useState<boolean>(() => {
@@ -1410,10 +1421,12 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
       lowerTarget === 'http://google.com' ||
       lowerTarget === 'http://www.google.com'
     ) {
-      target = 'https://www.google.com';
+      target = isDesktop ? 'https://www.google.com' : 'aegis://search?q=&category=all';
     } else if (lowerTarget.startsWith('google ') || lowerTarget.startsWith('g ')) {
       const q = target.replace(/^(google|g)\s+/i, '').trim();
-      target = `https://www.google.com/search?q=${encodeURIComponent(q || 'technology')}`;
+      target = isDesktop
+        ? `https://www.google.com/search?q=${encodeURIComponent(q || 'technology')}`
+        : `aegis://search?q=${encodeURIComponent(q || 'technology')}&category=all`;
     } else if (lowerTarget === 'github' || lowerTarget === 'github.com') {
       target = 'https://github.com';
     } else if (lowerTarget === 'wikipedia' || lowerTarget === 'wikipedia.org') {
@@ -1439,8 +1452,11 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
         if (lowerTarget.includes('youtube')) {
           const query = target.replace(/youtube/gi, '').trim() || 'trending tech';
           target = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        } else if (!isDesktop) {
+          // Standard web search on Web/Static host: navigate directly to In-Browser Google Database Search!
+          target = `aegis://search?q=${encodeURIComponent(target)}&category=all`;
         } else {
-          // Standard web search: navigate directly to Google Search database like Chrome!
+          // Standard web search in Desktop Electron Chromium WebContentsView:
           target = `https://www.google.com/search?q=${encodeURIComponent(target)}`;
         }
       } else if (!/^https?:\/\//i.test(target)) {
@@ -2360,7 +2376,25 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           </div>
 
           {/* Right Toolbar Controls: Extensions, Profile, and Chrome 3-dots Menu */}
-          <div className="flex items-center gap-1 shrink-0 text-slate-300">
+          <div className="flex items-center gap-1.5 shrink-0 text-slate-300">
+            {/* Dedicated SOC Analyst Cyber Suite Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setShowSocDrawer((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] font-bold transition-all cursor-pointer shadow-sm ${
+                showSocDrawer
+                  ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.5)]'
+                  : 'bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40'
+              }`}
+              title="Toggle SOC Analyst Cyber Suite (Alt+S)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">SOC Suite</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                {activeTab.sslGrade || 'A+'}
+              </span>
+            </button>
+
             {/* Appearance & Themes Palette */}
             <button
               type="button"
@@ -5173,6 +5207,13 @@ export const BrowserView: React.FC<BrowserViewProps> = ({
           </div>
         </div>
       )}
+      {/* SOC Analyst Cyber Suite Drawer */}
+      <SocAnalystDrawer
+        isOpen={showSocDrawer}
+        onClose={() => setShowSocDrawer(false)}
+        activeTab={activeTab}
+        onNavigate={(url) => handleNavigate(url, false, false)}
+      />
     </div>
   );
 };

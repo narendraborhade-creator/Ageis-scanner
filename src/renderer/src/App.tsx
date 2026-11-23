@@ -31,8 +31,13 @@ import { onAuthStateChange, isFirebaseConfigured } from './services/firebaseSync
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
-  // Recursion Frame-Buster Guard: If index.html is loaded inside an iframe (e.g. proxy fallback), never mount React app
-  if (typeof window !== 'undefined' && window.self !== window.top) {
+  // Recursion Frame-Buster Guard: Only apply frame-busting on generic web if not running inside Desktop wrapper
+  if (
+    typeof window !== 'undefined' &&
+    !(window as any).isAegisDesktop &&
+    !(window as any).aegis &&
+    window.self !== window.top
+  ) {
     return null;
   }
 

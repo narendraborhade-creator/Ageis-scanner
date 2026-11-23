@@ -57,9 +57,9 @@ export const AegisBrowserLanding: React.FC<AegisBrowserLandingProps> = (props) =
   });
 
   const GITHUB_REPO = 'https://github.com/narendraborhade-creator/Ageis-scanner';
-  const RELEASE_TAG = 'v1.0.0';
-  const SETUP_EXE_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser-Setup-1.0.0.exe`;
-  const PORTABLE_EXE_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser-1.0.0.exe`;
+  const RELEASE_TAG = 'v2.1.0';
+  const SETUP_EXE_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser-Setup.exe`;
+  const PORTABLE_EXE_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser.exe`;
   const ANDROID_APK_URL = `${GITHUB_REPO}/releases/download/${RELEASE_TAG}/Aegis-3D-Safe-Browser.apk`;
 
   const handleTriggerDownload = (type: 'setup' | 'portable' | 'apk') => {
