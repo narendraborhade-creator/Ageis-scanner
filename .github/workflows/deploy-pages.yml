@@ -28,14 +28,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
 
       - name: Install Dependencies
-        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+        run: npm install --legacy-peer-deps
 
       - name: Build Web Application for Pages
-        run: npm run build
+        run: npx vite build
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -44,6 +45,24 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
+
+      - name: Wait for Pages artifact metadata propagation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 12); do
+            artifacts=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts")
+            count=$(jq '[.artifacts[] | select(.name == "github-pages" and .expired == false)] | length' <<< "$artifacts")
+            if [ "$count" -gt 0 ]; then
+              echo "Pages artifact is available; waiting for metadata to propagate"
+              sleep 10
+              exit 0
+            fi
+            echo "Waiting for Pages artifact (attempt ${attempt}/12)..."
+            sleep 5
+          done
+          echo "Timed out waiting for Pages artifact metadata" >&2
+          exit 1
 
       - name: Deploy to GitHub Pages
         id: deployment
